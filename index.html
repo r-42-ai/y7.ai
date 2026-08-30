@@ -25,19 +25,18 @@
     right: clamp(18px, 3.6vw, 42px);
     bottom: clamp(16px, 3.2vw, 34px);
     display: block;
-    width: clamp(96px, 12vw, 138px);
-    opacity: 0.42;
-    transition: opacity 0.45s ease;
+    width: clamp(100px, 12.5vw, 144px);
+    color: #338080;
+    transition: color 0.45s ease;
   }
-  .addr:hover, .addr:focus-visible { opacity: 0.9; }
-  .addr:focus-visible { outline: 1px solid #1c8f87; outline-offset: 7px; }
+  .addr:hover, .addr:focus-visible { color: #5cb5b2; }
+  .addr:focus-visible { outline: 1px solid #338080; outline-offset: 7px; }
   .addr svg { display: block; width: 100%; height: auto; }
   @media (prefers-reduced-motion: no-preference) {
-    .mark { animation: rise 1s ease-out both; }
-    .addr { animation: settle 1.2s 0.45s ease-out both; }
+    .mark { animation: fade 1s ease-out both; }
+    .addr { animation: fade 1.2s 0.45s ease-out both; }
   }
-  @keyframes rise { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes settle { from { opacity: 0; } to { opacity: 0.42; } }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 </style>
 </head>
 <body>
@@ -56,22 +55,22 @@
 </svg>
 
 <a class="addr" href="mailto:i@y7.ai" aria-label="i@y7.ai">
-  <svg viewBox="-6 -6 515 132" role="img" aria-label="i@y7.ai">
+  <svg viewBox="-6 -6 539 132" role="img" aria-label="i@y7.ai">
     <title>i@y7.ai</title>
-    <g fill="none" stroke="#a9e7e1" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
       <path d="M0 0 L0 120"/>
-      <circle cx="56" cy="60" r="25"/>
-      <g transform="translate(114,0)">
+      <circle cx="80" cy="60" r="25"/>
+      <g transform="translate(138,0)">
         <path d="M0 0 L69.282 120 M69.282 0 L34.641 60"/>
         <path d="M69.282 0 L138.564 0" clip-path="url(#bs)"/>
         <path d="M138.564 0 L69.282 120" clip-path="url(#ra)"/>
       </g>
-      <path d="M328.564 120 L397.846 0 L467.128 120 M356.277 72 L439.415 72"/>
-      <path d="M499.128 0 L499.128 120"/>
+      <path d="M352.564 120 L421.846 0 L491.128 120 M380.277 72 L463.415 72"/>
+      <path d="M523.128 0 L523.128 120"/>
     </g>
-    <g fill="#a9e7e1">
-      <circle cx="56" cy="60" r="7.5"/>
-      <circle cx="290.564" cy="60" r="7.5"/>
+    <g fill="currentColor">
+      <circle cx="80" cy="60" r="7.5"/>
+      <circle cx="314.564" cy="60" r="7.5"/>
     </g>
   </svg>
 </a>
