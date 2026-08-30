@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>y7.ai</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#05100f">
+<script>
+  /* GitHub Pages cannot issue a server-side redirect, but it does serve this
+     file for any path it can't resolve - so this doubles as the site's
+     redirect table. Pages URLs are case-sensitive, which is the whole reason
+     /sift/ needs to be caught here: the directory is committed as SIFT/, so
+     every other casing lands on a 404 instead.
+
+     Runs in <head>, before anything paints, so a matched path never flashes
+     this page. Keep it dependency-free and synchronous for that reason. */
+  (function () {
+    var MOVED = {
+      "/sift": "/SIFT/",            // any casing but the canonical one
+      "/spelling.html": "/SIFT/",   // where the game lived before the move
+      "/spelling": "/SIFT/"         // Pages resolves an extensionless path to
+                                    // the .html file, so this is the form
+                                    // people actually have bookmarked
+    };
+    var here = location.pathname;
+    var to = MOVED[here.toLowerCase().replace(/\/+$/, "")];
+    // the guard matters: without it the canonical path would map to itself
+    // and spin, if this file were ever served for a path that does resolve
+    if (to && to !== here) location.replace(to + location.search + location.hash);
+  })();
+</script>
+<style>
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: #05100f;
+    color: #338080;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    text-align: center;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+  .mark { width: min(26vw, 108px); height: auto; display: block; }
+  p {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #2c6b6b;
+  }
+  nav { display: flex; gap: 26px; }
+  a {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #338080;
+    text-decoration: none;
+    transition: color 0.45s ease;
+  }
+  a:hover, a:focus-visible { color: #5cb5b2; }
+  a:focus-visible { outline: 1px solid #338080; outline-offset: 6px; }
+  /* No entrance fade here, deliberately. The landing page can afford one, but
+     an `animation: ... both` starts at opacity 0 and only becomes visible if
+     the animation actually runs - a bad bet on the page people reach when
+     something has already gone wrong. This one is visible the moment it
+     paints. Matched paths never paint it at all; they redirect from <head>. */
+</style>
+</head>
+<body>
+
+<svg class="mark" viewBox="-10 -10 158.564 140" role="img" aria-label="y7.ai">
+  <title>y7.ai</title>
+  <defs>
+    <clipPath id="bs"><polygon points="-30.7,-173.2 169.3,173.2 600,400 600,-500"/></clipPath>
+    <clipPath id="ra"><polygon points="69.282,-500 600,-500 600,600 69.282,600"/></clipPath>
+  </defs>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="7">
+    <path d="M0 0 L69.282 120 M69.282 0 L34.641 60" stroke="#a9e7e1"/>
+    <path d="M69.282 0 L138.564 0" stroke="#1c8f87" clip-path="url(#bs)"/>
+    <path d="M138.564 0 L69.282 120" stroke="#1c8f87" clip-path="url(#ra)"/>
+  </g>
+</svg>
+
+<p>Nothing here</p>
+
+<nav>
+  <a href="/">y7.ai</a>
+  <a href="/SIFT/">Sift</a>
+  <a href="/fr/">Fran&ccedil;ais</a>
+</nav>
+
+</body>
+</html>
