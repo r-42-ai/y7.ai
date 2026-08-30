@@ -1306,48 +1306,66 @@
     return pair;
   }
 
-  // math: ~3rd grade at tier 0 up to harder mental math at tier 4. Each
-  // generator returns the expression and its real value; pickEquation picks
-  // a tier-appropriate one and decides 50/50 whether to show it with the
-  // correct answer or a plausibly wrong one.
-  const SUP = ["⁰","¹","²","³","⁴","⁵","⁶","⁷","⁸","⁹"];
-  function sup(n) { return String(n).split("").map(function (d) { return SUP[+d]; }).join(""); }
+  // The sums track the words in difficulty, which means tracking them in KIND
+  // as well. A word is recall: you know "accommodate" or you don't, and the
+  // call takes about the same half-second at level 1 as at level 5 - only the
+  // chance you know it changes. So every sum here has to be recall too, a
+  // fact you either hold or you don't, never one you have to work out. None
+  // of them needs carrying, columns, or a second step.
+  //
+  // That matters because of the clock. A player gets roughly one spawn
+  // interval per tile before the next arrives - 2.3s at level 1, down to 1.2s
+  // at level 5 - so the level where the arithmetic is hardest is also the one
+  // with the least time for it. This curve used to run the other way: it
+  // reached two-digit multiplication and cubes (23x14, and 12 cubed = 1728)
+  // at exactly the point the budget dropped below a second and a half.
+  //
+  // The ramp is the primary-school one: bonds, the first tables, the small
+  // tables both ways, the whole table, then out to twelve. Each generator
+  // returns the expression and its real value; pickEquation picks a
+  // level-appropriate one and decides 50/50 whether to show it with the right
+  // answer or a near miss.
   function rint(lo, hi) { return lo + ((Math.random() * (hi - lo + 1)) | 0); }
 
   const TIER_EQ = [
-    function () { // tier 0 - easiest, single digit
-      const r = Math.random();
-      if (r < 0.5) { const a = rint(1,9), b = rint(1,9); return { expr: a + "+" + b, value: a + b }; }
-      if (r < 0.85) { const a = rint(3,10), b = rint(1, a - 1); return { expr: a + "−" + b, value: a - b }; }
-      const a = rint(2,5), b = rint(2,5); return { expr: a + "×" + b, value: a * b };
+    function () { // level 1 - number bonds within ten
+      if (Math.random() < 0.55) {
+        const a = rint(1, 8), b = rint(1, 9 - a);
+        return { expr: a + "+" + b, value: a + b };
+      }
+      const a = rint(3, 10), b = rint(1, a - 1);
+      return { expr: a + "−" + b, value: a - b };
     },
-    function () { // tier 1
+    function () { // level 2 - within twenty, and the tables learnt first
       const r = Math.random();
-      if (r < 0.4) { const a = rint(1,15), b = rint(1,15); return { expr: a + "+" + b, value: a + b }; }
-      if (r < 0.7) { const a = rint(5,20), b = rint(1, a - 1); return { expr: a + "−" + b, value: a - b }; }
-      const a = rint(2,7), b = rint(2,7); return { expr: a + "×" + b, value: a * b };
+      if (r < 0.35) { const a = rint(2, 12), b = rint(2, 20 - a); return { expr: a + "+" + b, value: a + b }; }
+      if (r < 0.65) { const a = rint(6, 20), b = rint(2, a - 2); return { expr: a + "−" + b, value: a - b }; }
+      const a = rint(2, 10), b = [2, 5, 10][rint(0, 2)];
+      return { expr: a + "×" + b, value: a * b };
     },
-    function () { // tier 2
+    function () { // level 3 - the small tables, and round numbers
       const r = Math.random();
-      if (r < 0.3) { const a = rint(10,30), b = rint(10,30); return { expr: a + "+" + b, value: a + b }; }
-      if (r < 0.55) { const a = rint(15,40), b = rint(5, a - 5); return { expr: a + "−" + b, value: a - b }; }
-      if (r < 0.85) { const a = rint(2,10), b = rint(2,10); return { expr: a + "×" + b, value: a * b }; }
-      const q = rint(2,9), b = rint(2,9); return { expr: (q * b) + "÷" + b, value: q };
+      // held to tens and fives: 50+35 is a glance, 19+34 would be a sum
+      if (r < 0.2) { const a = rint(2, 8) * 10, b = rint(1, 9) * 5; return { expr: a + "+" + b, value: a + b }; }
+      if (r < 0.4) { const a = rint(4, 10) * 10, b = rint(1, 7) * 5; return { expr: a + "−" + b, value: a - b }; }
+      if (r < 0.8) { const a = rint(2, 10), b = rint(2, 5); return { expr: a + "×" + b, value: a * b }; }
+      const b = rint(2, 5), q = rint(2, 10);
+      return { expr: (q * b) + "÷" + b, value: q };
     },
-    function () { // tier 3
+    function () { // level 4 - the whole times table, forwards and back
       const r = Math.random();
-      if (r < 0.4) { const a = rint(2,12), b = rint(2,12); return { expr: a + "×" + b, value: a * b }; }
-      if (r < 0.6) { const a = rint(11,20), b = rint(2,9); return { expr: a + "×" + b, value: a * b }; }
-      if (r < 0.8) { const a = rint(2,10); return { expr: a + "²", value: a * a }; }
-      const q = rint(2,12), b = rint(2,10); return { expr: (q * b) + "÷" + b, value: q };
+      if (r < 0.5) { const a = rint(2, 10), b = rint(2, 10); return { expr: a + "×" + b, value: a * b }; }
+      if (r < 0.8) { const b = rint(2, 10), q = rint(2, 10); return { expr: (q * b) + "÷" + b, value: q }; }
+      const a = rint(2, 10);
+      return { expr: a + "²", value: a * a };
     },
-    function () { // tier 4
+    function () { // level 5 - out to twelve, and the squares
       const r = Math.random();
-      if (r < 0.3) { const a = rint(11,25), b = rint(11,15); return { expr: a + "×" + b, value: a * b }; }
-      if (r < 0.5) { const a = rint(3,12); return { expr: a + "²", value: a * a }; }
-      if (r < 0.65) { const a = rint(2,5); return { expr: a + "³", value: a * a * a }; }
-      if (r < 0.8) { const n = rint(3,5); return { expr: "2" + sup(n), value: Math.pow(2, n) }; }
-      const a = rint(3,12); return { expr: "√" + (a * a), value: a };
+      if (r < 0.4) { const a = rint(3, 12), b = rint(6, 12); return { expr: a + "×" + b, value: a * b }; }
+      if (r < 0.7) { const b = rint(3, 12), q = rint(3, 12); return { expr: (q * b) + "÷" + b, value: q }; }
+      if (r < 0.85) { const a = rint(4, 12); return { expr: a + "²", value: a * a }; }
+      const a = rint(4, 12);
+      return { expr: "√" + (a * a), value: a };
     }
   ];
 
@@ -1365,12 +1383,15 @@
     const correct = Math.random() < 0.5;
     let shown = eq.value;
     if (!correct) {
-      // small offsets keep the mental check quick; harder tiers allow a
-      // bigger miss too, but never anything wild
-      const deltas = t < 3 ? [1, -1, 2, -2] : [1, -1, 2, -2, 5, -5];
+      // The same small offsets at every level. The old wider spread at the
+      // top was compensating for arithmetic that had got too hard to check;
+      // now that every answer is a fact, a near miss is enough - if you know
+      // it, being one out is as obvious as "recieve".
+      const deltas = [1, -1, 2, -2];
       shown = eq.value + deltas[(Math.random() * deltas.length) | 0];
       if (shown === eq.value) shown += 1;
-      if (shown < 0) shown = eq.value + 1;
+      // never show zero or below: it would give the answer away for free
+      if (shown < 1) shown = eq.value + 1;
     }
     // handed back in halves: the disc sets them on two lines
     return { expr: eq.expr, answer: shown, isWrong: !correct };
