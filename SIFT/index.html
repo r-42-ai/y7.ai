@@ -981,6 +981,13 @@
         {r:"silhouette",w:"silouette"},{r:"sophomore",w:"sophmore"}
     ]
     ],
+    // Swiss orthography. Switzerland does not use the eszett at all: where
+    // Germany writes it, Swiss German writes ss - heissen, Strasse, gross.
+    // So this list must contain none, and adding one would be a spelling
+    // mistake here rather than a trap. It also opens up a trap a German list
+    // cannot use: the ss that replaces the eszett follows a long vowel or a
+    // diphthong, exactly where a single s looks right, so ss-vs-s is a live
+    // confusion in Swiss spelling and worth mining for pairs.
     de: [
       [ // tier 0
         {r:"bisschen",w:"bischen"},{r:"Fahrrad",w:"Farrad"},
@@ -990,7 +997,7 @@
         {r:"ziemlich",w:"zimlich"},{r:"zusammen",w:"zusamen"},
         {r:"Adresse",w:"Addresse"},{r:"bezahlen",w:"bezalen"},
         {r:"danach",w:"dannach"},{r:"endlich",w:"entlich"},
-        {r:"Familie",w:"Famielie"},{r:"heißen",w:"heisen"},
+        {r:"Familie",w:"Famielie"},{r:"heissen",w:"heisen"},
         {r:"jetzt",w:"jezt"},{r:"kaputt",w:"kaput"},
         {r:"Nachmittag",w:"Nachmitag"},{r:"trotzdem",w:"trozdem"},
         {r:"übrigens",w:"übrigends"},{r:"zufrieden",w:"zufriden"},
@@ -1000,7 +1007,7 @@
     ],
       [ // tier 1
         {r:"Aggression",w:"Agression"},{r:"Attraktion",w:"Atraktion"},
-        {r:"auseinander",w:"ausseinander"},{r:"beziehungsweise",w:"beziehungsweiße"},
+        {r:"auseinander",w:"ausseinander"},{r:"beziehungsweise",w:"beziehungsweisse"},
         {r:"definitiv",w:"defenitiv"},{r:"deshalb",w:"desshalb"},
         {r:"Diskussion",w:"Disskussion"},{r:"eigentlich",w:"eigendlich"},
         {r:"Geheimnis",w:"Geheimniss"},{r:"gemütlich",w:"gemühtlich"},
