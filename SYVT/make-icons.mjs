@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 /**
- * Renders Sift's raster assets from the vector originals:
- *   SIFT/apple-touch-icon.png  180×180   (iOS/Android home screen)
- *   SIFT/og.png               1200×630   (link previews)
+ * Renders SYVT's raster assets from the vector originals:
+ *   SYVT/apple-touch-icon.png  180×180   (iOS/Android home screen)
+ *   SYVT/og.png               1200×630   (link previews)
  *
- * Usage:  node SIFT/make-icons.mjs
+ * Usage:  node SYVT/make-icons.mjs
  * Needs sharp, for rendering only, never at runtime:  npm install sharp
  * (fr/make-icons.mjs does the same job with Playwright; sharp is enough here
- * because both sources are pure geometry — the wordmark in brand/sift-og.svg
+ * because both sources are pure geometry — the wordmark in brand/syvt-og.svg
  * is already converted to outlines, so no font has to be resolved.)
  *
  * Both PNGs are DERIVED. Edit the SVGs, never the PNGs, and re-run:
- *   SIFT/icon.svg      -> apple-touch-icon.png
- *   brand/sift-og.svg  -> og.png
+ *   SYVT/icon.svg      -> apple-touch-icon.png
+ *   brand/syvt-og.svg  -> og.png
  *
  * icon.svg follows the browser theme, but it declares dark as the default and
  * overrides for light, so a renderer that ignores media queries — this one,
@@ -38,7 +38,7 @@ const ROOT = join(DIR, '..');
 
 const JOBS = [
   { from: join(DIR, 'icon.svg'), to: join(DIR, 'apple-touch-icon.png'), w: 180, h: 180 },
-  { from: join(ROOT, 'brand', 'sift-og.svg'), to: join(DIR, 'og.png'), w: 1200, h: 630 }
+  { from: join(ROOT, 'brand', 'syvt-og.svg'), to: join(DIR, 'og.png'), w: 1200, h: 630 }
 ];
 
 for (const { from, to, w, h } of JOBS) {

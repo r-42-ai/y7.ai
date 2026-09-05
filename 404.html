@@ -12,16 +12,18 @@
   /* GitHub Pages cannot issue a server-side redirect, but it does serve this
      file for any path it can't resolve - so this doubles as the site's
      redirect table. Pages URLs are case-sensitive, which is the whole reason
-     /sift/ needs to be caught here: the directory is committed as SIFT/, so
-     every other casing lands on a 404 instead.
+     /syvt/ needs to be caught here: the directory is committed as SYVT/, so
+     every other casing lands on a 404 instead. The same table carries the
+     game's earlier names, so no link to it ever goes dead.
 
      Runs in <head>, before anything paints, so a matched path never flashes
      this page. Keep it dependency-free and synchronous for that reason. */
   (function () {
     var MOVED = {
-      "/sift": "/SIFT/",            // any casing but the canonical one
-      "/spelling.html": "/SIFT/",   // where the game lived before the move
-      "/spelling": "/SIFT/"         // Pages resolves an extensionless path to
+      "/syvt": "/SYVT/",            // any casing but the canonical one
+      "/sift": "/SYVT/",            // the game's previous name
+      "/spelling.html": "/SYVT/",   // where it lived before the move
+      "/spelling": "/SYVT/"         // Pages resolves an extensionless path to
                                     // the .html file, so this is the form
                                     // people actually have bookmarked
     };
@@ -95,7 +97,7 @@
 
 <nav>
   <a href="/">y7.ai</a>
-  <a href="/SIFT/">Sift</a>
+  <a href="/SYVT/">SYVT</a>
   <a href="/fr/">Fran&ccedil;ais</a>
 </nav>
 
