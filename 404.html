@@ -2,38 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>y7.ai</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#05100f">
-<script>
-  /* GitHub Pages cannot issue a server-side redirect, but it does serve this
-     file for any path it can't resolve - so this doubles as the site's
-     redirect table. Pages URLs are case-sensitive, which is the whole reason
-     /syvt/ needs to be caught here: the directory is committed as SYVT/, so
-     every other casing lands on a 404 instead. The same table carries the
-     game's earlier names, so no link to it ever goes dead.
-
-     Runs in <head>, before anything paints, so a matched path never flashes
-     this page. Keep it dependency-free and synchronous for that reason. */
-  (function () {
-    var MOVED = {
-      "/syvt": "/SYVT/",            // any casing but the canonical one
-      "/sift": "/SYVT/",            // the game's previous name
-      "/spelling.html": "/SYVT/",   // where it lived before the move
-      "/spelling": "/SYVT/"         // Pages resolves an extensionless path to
-                                    // the .html file, so this is the form
-                                    // people actually have bookmarked
-    };
-    var here = location.pathname;
-    var to = MOVED[here.toLowerCase().replace(/\/+$/, "")];
-    // the guard matters: without it the canonical path would map to itself
-    // and spin, if this file were ever served for a path that does resolve
-    if (to && to !== here) location.replace(to + location.search + location.hash);
-  })();
-</script>
 <style>
   html, body { height: 100%; }
   body {
@@ -97,7 +71,6 @@
 
 <nav>
   <a href="/">y7.ai</a>
-  <a href="/SYVT/">SYVT</a>
   <a href="/fr/">Fran&ccedil;ais</a>
 </nav>
 
