@@ -1202,15 +1202,19 @@
   // "__proto__" or "constructor" would pass a truthy property-lookup check
   // (inherited from Object.prototype) and then crash the round
   const LANGS = ["en", "de", "fr"];
-  // the storage keys keep the game's old name on purpose: renaming them to
-  // renaming them would orphan every best score already saved on a device
-  let lang = localStorage.getItem("spellDrop.lang");
+
+  // Everything the game saves is filed under this prefix. Stated once rather
+  // than spelled out at each call site, so a future rename is one line and
+  // the keys cannot drift apart from each other.
+  const STORE = "syvt.";
+
+  let lang = localStorage.getItem(STORE + "lang");
   if (LANGS.indexOf(lang) === -1) lang = "en";
 
   let fieldWidth, fieldHeight, floorY, ceilingY;
   let blocks = [];
   let score = 0;
-  let best = +(localStorage.getItem("spellDrop.best." + lang) || 0);
+  let best = +(localStorage.getItem(STORE + "best." + lang) || 0);
   let running = false;
   let lastTime = 0;
   let spawnTimer = 0;
@@ -1896,7 +1900,7 @@
     const t = I18N[lang];
     if (score > best) {
       best = score;
-      localStorage.setItem("spellDrop.best." + lang, String(best));
+      localStorage.setItem(STORE + "best." + lang, String(best));
     }
     overlayTitle.textContent = t.over;
     // column-reverse in CSS, so the big number leads and the label sits under it
@@ -1926,14 +1930,14 @@
     langButtons.forEach(function (btn) {
       btn.classList.toggle("active", btn.dataset.lang === lang);
     });
-    best = +(localStorage.getItem("spellDrop.best." + lang) || 0);
+    best = +(localStorage.getItem(STORE + "best." + lang) || 0);
     updateHUD();
   }
 
   langButtons.forEach(function (btn) {
     btn.addEventListener("click", function () {
       lang = btn.dataset.lang;
-      localStorage.setItem("spellDrop.lang", lang);
+      localStorage.setItem(STORE + "lang", lang);
       recentWords = [];
       applyLang();
     });
