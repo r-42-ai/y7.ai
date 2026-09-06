@@ -18,13 +18,23 @@
   html, body { height: 100%; }
   body {
     margin: 0;
-    background: #120907;
+    --mark: min(42vw, 300px);
+    background:
+      radial-gradient(circle calc(var(--mark) * 0.744) at 50% calc(50% - 8px),
+        rgba(226, 81, 42, 0.42) 0%,
+        rgba(226, 81, 42, 0.30) 20%,
+        rgba(226, 81, 42, 0.19) 40%,
+        rgba(226, 81, 42, 0.105) 60%,
+        rgba(226, 81, 42, 0.045) 80%,
+        rgba(226, 81, 42, 0.012) 92%,
+        rgba(226, 81, 42, 0) 100%),
+      #120907;
     display: flex;
     align-items: center;
     justify-content: center;
   }
   .mark {
-    width: min(42vw, 300px);
+    width: var(--mark);
     height: auto;
     display: block;
   }
