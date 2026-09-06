@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-9 -18 157 157">
   <style>
-    :root { --bg: #ffffff; --y: #0d4b46; --seven: #1c8f87; }
+    :root { --bg: #ffffff; --y: #7a3117; --seven: #e2512a; }
     @media (prefers-color-scheme: dark) {
-      :root { --bg: #05100f; --y: #a9e7e1; --seven: #1c8f87; }
+      :root { --bg: #120907; --y: #ffb4a0; --seven: #e2512a; }
     }
   </style>
   <defs>
