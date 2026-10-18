@@ -13,7 +13,10 @@
  *   --force        alles neu erzeugen, z.B. nach einem Stimmwechsel
  *   --aufraeumen   verwaiste Dateien löschen
  *   --voice <id>   andere Stimme (Standard: STIMME unten)
- *   --speed <n>    Sprechtempo 0.7–1.2 (Standard: 0.95)
+ *   --speed <n>    Sprechtempo 0.7–1.2 (Standard: 1)
+ *   --nur-lebhaft  nur die jubelnden Sätze (Lob, Feier, Grüsse, Tiere)
+ *   --ausdrucksstark  jubelnde Sätze mit eleven_v3 und «[excited]» statt
+ *                  eleven_multilingual_v2 (zusammen mit --force --nur-lebhaft)
  *
  * Der Schlüssel kommt nur aus der Umgebung und landet nie im Repo.
  */
@@ -26,8 +29,9 @@ const DIR = dirname(fileURLToPath(import.meta.url));
 const AUDIO = join(DIR, 'audio');
 const T = createRequire(import.meta.url)('./texte.js');
 
-// «Ela – Cheerful and Happy»: fröhlich, aber nicht überdreht
-const STIMME = 'NE7AIW5DoJ7lUosXV2KR';
+// «Sandra Squirrel – Quirky Explorer»: verspielt und lebendig, von Yunas Familie
+// ausgewählt (vorher «Ela», die beim Loben zu eintönig klang)
+const STIMME = 'iwP1PxYYSTdHA1qXlwFe';
 const MODELL = 'eleven_multilingual_v2';
 const GLEICHZEITIG = 3;
 
@@ -51,7 +55,7 @@ if (verwaist.length) {
   }
 }
 
-const todo = saetze.filter(x => has('--force') || !vorhanden.has(x.id));
+const todo = saetze.filter(x => (has('--force') || !vorhanden.has(x.id)) && (!has('--nur-lebhaft') || x.lebhaft));
 const zeichen = todo.reduce((n, x) => n + x.s.length, 0);
 console.log(saetze.length + ' Sätze, davon ' + todo.length + ' zu vertonen (' + zeichen + ' Zeichen).');
 if (has('--dry')) {
@@ -63,12 +67,19 @@ if (!todo.length) process.exit(0);
 const KEY = process.env.ELEVENLABS_API_KEY;
 if (!KEY) { console.error('ELEVENLABS_API_KEY fehlt.'); process.exit(1); }
 const voice = opt('--voice') || STIMME;
-const speed = Math.min(1.2, Math.max(0.7, parseFloat(opt('--speed') || '0.95')));
+const speed = Math.min(1.2, Math.max(0.7, parseFloat(opt('--speed') || '1')));
 
 async function vertonen(x) {
-  const body = { text: x.s, model_id: MODELL, voice_settings: { speed } };
-  if (x.vorher) body.previous_text = x.vorher;
-  if (x.nachher) body.next_text = x.nachher;
+  let body;
+  if (x.lebhaft && has('--ausdrucksstark')) {
+    // Gefühls-Anweisung in eckigen Klammern wird nicht mitgesprochen
+    body = { text: '[excited] ' + x.s, model_id: 'eleven_v3', voice_settings: { stability: 0.5 } };
+  } else {
+    body = { text: x.s, model_id: MODELL };
+    if (speed !== 1) body.voice_settings = { speed };
+    if (x.vorher) body.previous_text = x.vorher;
+    if (x.nachher) body.next_text = x.nachher;
+  }
   for (let versuch = 1; versuch <= 5; versuch++) {
     const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_64`, {
       method: 'POST',

@@ -420,20 +420,26 @@ const stufentext = n => 'Stufe ' + n + '!';
 
 // Jeder Satz, den die App je abspielen kann, mit gedachtem Satz drumherum
 // (vorher/nachher), damit einzelne Wörter natürlich klingen.
+// Listen, die jubeln und loben (lebhaft); der Rest erklärt und darf ruhiger sein
+const LEBHAFT = ['gruss_morgen', 'gruss_tag', 'gruss_abend', 'start', 'start_hoeher', 'start_gross',
+  'ok', 'ok_minus', 'ok_nachfehler', 'ok_serie', 'fertig', 'fertig_perfekt', 'fertig_muehsam',
+  'stufe_auf', 'stimme_an'];
+
 function alleSaetze() {
   const liste = [];
-  const dazu = (s, vorher, nachher) => liste.push({ s, vorher: vorher || '', nachher: nachher || '' });
+  const dazu = (s, vorher, nachher, lebhaft) =>
+    liste.push({ s, vorher: vorher || '', nachher: nachher || '', lebhaft: !!lebhaft });
   const umfeld = { tipp_vor: ['', 'zwölf plus sieben.'], loesung_nach: ['Zwölf plus sieben gibt neunzehn.', ''] };
   for (const [name, pool] of Object.entries(TEXTE)) {
     const [vorher, nachher] = umfeld[name] || [];
-    for (const e of pool) dazu(sprechtext(e), vorher, nachher);
+    for (const e of pool) dazu(sprechtext(e), vorher, nachher, LEBHAFT.includes(name));
   }
   for (const e of FAKTEN) dazu(sprechtext(e), 'Wusstest du?');
-  for (const f of FREUNDE) dazu(sprechtext(f.text), NEUER_FREUND);
-  for (const t of Object.values(TIERE)) for (const s of t.saetze) dazu(sprechtext(s));
-  dazu(NEUER_FREUND);
+  for (const f of FREUNDE) dazu(sprechtext(f.text), NEUER_FREUND, '', true);
+  for (const t of Object.values(TIERE)) for (const s of t.saetze) dazu(sprechtext(s), '', '', true);
+  dazu(NEUER_FREUND, '', '', true);
   dazu(sprechtext(ANLEITUNG));
-  for (let n = 1; n <= STUFEN; n++) dazu(stufentext(n));
+  for (let n = 1; n <= STUFEN; n++) dazu(stufentext(n), '', '', true);
   for (let n = 0; n <= 50; n++) dazu(zahlwort(n), 'Rechne mal:', 'plus drei.');
   dazu('plus', 'Rechne mal: zwölf', 'sieben.');
   dazu('minus', 'Rechne mal: zwölf', 'sieben.');

@@ -6,10 +6,12 @@
 // Liefert alleSaetze() und kennung(), um alle Aufnahmen zu kennen
 importScripts('texte.js');
 
-// Bei neuen Texten genügt es, diese Zeile zu ändern: dann holt der neue
+// Bei neuen Texten genügt es, die «Stand»-Zeile zu ändern: dann holt der neue
 // Service Worker die fehlenden Aufnahmen nach, ohne alles neu zu laden.
-// Stand: Tiere zu Besuch
-const CACHE = 'pyr-v2';
+// Wurden bestehende Aufnahmen neu gesprochen (gleiche Dateinamen, z.B. andere
+// Stimme), stattdessen CACHE hochzählen, damit alte Aufnahmen verschwinden.
+// Stand: Stimme «Sandra Squirrel»
+const CACHE = 'pyr-v3';
 const FILES = [
   './',
   'texte.js',
