@@ -393,7 +393,22 @@ const FAKTEN = [
    ===================================================================== */
 
 const anzeigetext = e => (typeof e === 'string' ? e : e.t);
-const sprechtext = e => (typeof e === 'string' ? e : e.s || e.t).replace(/Yuna/g, SPRECHNAME);
+// Die Schweizer Schreibweise hat ss, wo im Hochdeutschen ß steht. Nach langem
+// Vokal liest die Stimme ss aber kurz («Grossartig» wie «Ross»). Für die Stimme
+// darum ß, angezeigt wird weiter ss. Wörter mit kurzem Vokal (Wasser, dass,
+// Fluss) bleiben, wie sie sind. Neue Wörter dieser Art hier ergänzen.
+const SCHARFES_S = [
+  [/([Gg])ross/g, '$1roß'],     // gross, grosse, Grossartig
+  [/([Gg])röss/g, '$1röß'],     // grösser, grösste
+  [/([Ff])üss/g, '$1üß'],       // Füssen
+  [/([Ss])pass/g, '$1paß'],     // Spass
+  [/([Ss])trass/g, '$1traß'],   // Strasse
+  [/([Gg])rüss/g, '$1rüß'],     // Grüsse
+  [/iess/g, 'ieß'],             // schliessen
+  [/eiss/g, 'eiß'],             // heisst, weisst, dreissig
+];
+const aussprache = s => SCHARFES_S.reduce((t, [muster, ersatz]) => t.replace(muster, ersatz), s);
+const sprechtext = e => aussprache((typeof e === 'string' ? e : e.s || e.t).replace(/Yuna/g, SPRECHNAME));
 
 // Kennung einer Aufnahme: FNV-1a über den gesprochenen Text
 function kennung(s) {
@@ -405,11 +420,11 @@ function kennung(s) {
   return h.toString(16).padStart(8, '0');
 }
 
-// 0 … 100 als Wort, Schweizer Schreibweise
+// 0 … 100 als Wort für die Stimme (wird nie angezeigt, darum mit ß, siehe oben)
 function zahlwort(n) {
   const e = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun',
     'zehn', 'elf', 'zwölf', 'dreizehn', 'vierzehn', 'fünfzehn', 'sechzehn', 'siebzehn', 'achtzehn', 'neunzehn'];
-  const z = ['', '', 'zwanzig', 'dreissig', 'vierzig', 'fünfzig', 'sechzig', 'siebzig', 'achtzig', 'neunzig'];
+  const z = ['', '', 'zwanzig', 'dreißig', 'vierzig', 'fünfzig', 'sechzig', 'siebzig', 'achtzig', 'neunzig'];
   if (n < 20) return e[n];
   if (n === 100) return 'hundert';
   const zehner = Math.floor(n / 10), einer = n % 10;

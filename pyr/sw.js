@@ -10,7 +10,7 @@ importScripts('texte.js');
 // Service Worker die fehlenden Aufnahmen nach, ohne alles neu zu laden.
 // Wurden bestehende Aufnahmen neu gesprochen (gleiche Dateinamen, z.B. andere
 // Stimme), stattdessen CACHE hochzählen, damit alte Aufnahmen verschwinden.
-// Stand: kurze Ausrufe auf Deutsch neu gesprochen
+// Stand: lange Vokale vor ss (gross, grösste, dreissig) richtig gesprochen
 const CACHE = 'pyr-v4';
 const FILES = [
   './',
