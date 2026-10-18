@@ -2013,25 +2013,36 @@ const BESUCHER = {
 
 const Besuch = (() => {
   const vorne = $('besuchVorne'), hinten = $('besuchHinten');
-  let timer = 0, gerade = null, letzter = '';
+  let timer = 0, letzter = '';
   const zeile = {};
+  const unterwegs = { boden: null, himmel: null };   // höchstens ein Läufer und ein Flieger zugleich
+  const spurVon = id => (BESUCHER[id].fliegt ? 'himmel' : 'boden');
+
+  // Wie echte Tiere: meist eine Weile nichts, manchmal zwei kurz nacheinander,
+  // manchmal lange Ruhe. Die Wartezeit ist exponentiell verteilt.
+  const wartezeit = mittel => clamp(-Math.log(1 - Math.random()) * mittel, 3000, 120000);
 
   function planen(ms) {
     clearTimeout(timer);
     if (reduce) return;
-    timer = setTimeout(kommen, ms !== undefined ? ms : rnd(30000, 60000));
+    timer = setTimeout(() => kommen(), ms !== undefined ? ms : wartezeit(35000));
   }
 
   function kommen(wunsch) {
-    if (document.hidden || !$('intro').hidden || gerade) { planen(10000); return; }
-    const id = BESUCHER[wunsch] ? wunsch : pick(Object.keys(BESUCHER).filter(k => k !== letzter));
+    if (document.hidden || !$('intro').hidden) { planen(wartezeit(12000)); return; }
+    const frei = Object.keys(BESUCHER).filter(k => k !== letzter && !unterwegs[spurVon(k)]);
+    const id = BESUCHER[wunsch] ? wunsch : frei.length ? pick(frei) : null;
+    if (!id) { planen(wartezeit(12000)); return; }
     letzter = id;
     const d = BESUCHER[id];
+    // jedes Mal ein bisschen anders schnell und gross
+    const tempo = d.tempo * (0.8 + Math.random() * 0.4);
+    const groesse = d.groesse * (0.88 + Math.random() * 0.12);
     const [, , vbW, vbH] = d.vb.split(' ').map(Number);
     const ebene = d.fliegt ? hinten : vorne;
     const W = ebene.clientWidth, H = ebene.clientHeight;
     const basis = d.fliegt ? clamp(H * 0.11, 42, 80) : $('ground').offsetHeight;
-    const h = basis * d.groesse, w = h * vbW / vbH;
+    const h = basis * groesse, w = h * vbW / vbH;
     const vonLinks = Math.random() < 0.5;
     const el = document.createElement('div');
     el.className = `besucher ${id} ${d.klasse}` + (vonLinks ? '' : ' links');
@@ -2044,14 +2055,16 @@ const Besuch = (() => {
     const von = vonLinks ? -w - 20 : W + 20, bis = vonLinks ? W + 20 : -w - 20;
     const lauf = el.animate(
       [{ transform: `translateX(${von}px)` }, { transform: `translateX(${bis}px)` }],
-      { duration: (W + w + 40) / (d.tempo * basis) * 1000, easing: 'linear', fill: 'forwards' },
+      { duration: (W + w + 40) / (tempo * basis) * 1000, easing: 'linear', fill: 'forwards' },
     );
-    const b = (gerade = { id, el, lauf, ebene, fliegt: !!d.fliegt, zuletzt: 0 });
+    const spur = spurVon(id);
+    const b = (unterwegs[spur] = { id, el, lauf, ebene, fliegt: !!d.fliegt, zuletzt: 0 });
     lauf.onfinish = () => {
       el.remove();
-      if (gerade === b) gerade = null;
-      planen();
+      if (unterwegs[spur] === b) unterwegs[spur] = null;
     };
+    // Der nächste Besuch hängt nicht davon ab, wann dieser fertig ist
+    planen();
     el.addEventListener('pointerdown', e => { e.preventDefault(); reagieren(b); });
   }
 
@@ -2144,7 +2157,8 @@ const Besuch = (() => {
     }
   }
 
-  return { planen, kommen };
+  // Erster Besuch nach dem Start, ebenfalls zufällig
+  return { start: () => planen(wartezeit(15000)), planen, kommen };
 })();
 
 // Die Freunde, die schon da sind, freuen sich auch über einen Tipp
@@ -2225,13 +2239,13 @@ $('go').addEventListener('click', () => {
   // Der Tipp gibt den Ton frei; jetzt kann Capy den Auftrag vorlesen
   audio();
   if (erstesMal || stand.solved < 2) sag(zieh('erste'));
-  Besuch.planen(rnd(12000, 20000));
+  Besuch.start();
 });
 $('los').addEventListener('click', () => {
   karte(null);
   audio();
   sag(gruss());
-  Besuch.planen(rnd(12000, 20000));
+  Besuch.start();
 });
 $('reset').addEventListener('click', () => {
   if (!resetScharf) {
