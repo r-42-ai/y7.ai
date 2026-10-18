@@ -10,7 +10,7 @@ importScripts('texte.js');
 // Service Worker die fehlenden Aufnahmen nach, ohne alles neu zu laden.
 // Wurden bestehende Aufnahmen neu gesprochen (gleiche Dateinamen, z.B. andere
 // Stimme), stattdessen CACHE hochzählen, damit alte Aufnahmen verschwinden.
-// Stand: lange Vokale vor ss (gross, grösste, dreissig) richtig gesprochen
+// Stand: Name «Zahlen-Capy», neues Symbol mit «3+4»
 const CACHE = 'pyr-v4';
 const FILES = [
   './',

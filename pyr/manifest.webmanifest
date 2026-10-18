@@ -1,14 +1,13 @@
 {
   "id": "/pyr/",
-  "name": "Zahlenpyramiden",
-  "short_name": "Pyramiden",
+  "name": "Zahlen-Capy",
+  "short_name": "Zahlen-Capy",
   "description": "Zahlenpyramiden mit Capy: Plus und Minus bis 50",
   "lang": "de-CH",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
   "display_override": ["fullscreen", "standalone"],
-  "orientation": "landscape",
   "background_color": "#A4DAF5",
   "theme_color": "#A4DAF5",
   "icons": [
