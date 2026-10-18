@@ -6,6 +6,9 @@
 // Liefert alleSaetze() und kennung(), um alle Aufnahmen zu kennen
 importScripts('texte.js');
 
+// Bei neuen Texten genügt es, diese Zeile zu ändern: dann holt der neue
+// Service Worker die fehlenden Aufnahmen nach, ohne alles neu zu laden.
+// Stand: Tiere zu Besuch
 const CACHE = 'pyr-v2';
 const FILES = [
   './',

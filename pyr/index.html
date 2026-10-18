@@ -190,7 +190,7 @@
     padding-top: 6px;
   }
   .pyr-wrap { display: flex; justify-content: center; }
-  .ground { flex: none; height: clamp(30px, 6.5vh, 62px); position: relative; margin-top: 4px; }
+  .ground { flex: none; height: clamp(40px, 9.5vh, 80px); position: relative; margin-top: 4px; }
 
   .pyramid {
     --bw: 80px; --bh: 58px; --gap: 6px;
@@ -289,6 +289,73 @@
   @keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.25); } 100% { transform: scale(1); } }
   @keyframes sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
 
+  /* Besucher: Wer fliegt, zieht hinter der Pyramide durch. Wer läuft, nimmt
+     den Streifen unter ihr und ist nie höher als er, so kommt kein Tier einem
+     Stein in die Quere. Die Pyramide lässt Tipps durch, nur ihre Steine nicht. */
+  .besuch { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .besuch.vorne { z-index: 2; }
+  .pyr-box { position: relative; z-index: 1; pointer-events: none; }
+  .dock { z-index: 3; }
+  .pyramid .cell, .friend { pointer-events: auto; }
+  .besucher {
+    position: absolute;
+    left: 0;
+    pointer-events: auto;
+    cursor: pointer;
+    touch-action: manipulation;
+    will-change: transform;
+    filter: drop-shadow(0 3px 0 rgba(52, 100, 30, 0.18));
+  }
+  .besucher .huepf, .besucher .dreh { width: 100%; height: 100%; }
+  .besucher.links .dreh { transform: scaleX(-1); }
+  .besucher svg { width: 100%; height: 100%; overflow: visible; }
+  .besucher.geher .huepf { animation: watscheln .5s ease-in-out infinite; }
+  .besucher.ente .huepf { animation: wackeln .4s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+  .besucher.frosch .huepf { animation: hopsen .9s ease-in-out infinite; }
+  .besucher.flieger .huepf { animation: schweben 1.8s ease-in-out infinite; }
+  .besucher.schmetterling svg { animation: flap .3s ease-in-out infinite alternate; }
+  .besucher .bein { transform-box: fill-box; transform-origin: 50% 0; animation: schritt .5s ease-in-out infinite alternate; }
+  .besucher .bein.b { animation-direction: alternate-reverse; }
+  .besucher.steht .bein, .besucher.steht .huepf { animation-play-state: paused; }
+  .besucher .fluegel { transform-box: view-box; transform-origin: 42px 30px; animation: flattern .2s ease-in-out infinite alternate; }
+  .besucher .kugel { display: none; }
+  .besucher.rollt .normal { display: none; }
+  .besucher.rollt .kugel { display: inline; transform-box: fill-box; transform-origin: center; animation: rollen .45s linear infinite; }
+  .besucher.rollt .huepf { animation: none; }
+  .besucher .kopf { transform-box: fill-box; transform-origin: 0 50%; transition: transform .25s ease-in; }
+  .besucher.versteckt .kopf { transform: translateX(-55%) scale(.55); }
+  .etikett {
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    margin-bottom: 4px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 800;
+    white-space: nowrap;
+    box-shadow: 0 3px 0 rgba(60, 120, 150, 0.15);
+    pointer-events: none;
+    animation: etikett 2s ease-out forwards;
+  }
+  .etikett.unten { bottom: auto; top: 100%; margin: 4px 0 0; }
+  @keyframes watscheln { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4%); } }
+  @keyframes wackeln { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+  @keyframes hopsen { 0%, 60%, 100% { transform: translateY(0) scaleY(1); } 25% { transform: translateY(-45%) scaleY(1.04); } 50% { transform: translateY(0) scaleY(.88); } }
+  @keyframes schweben { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(22%); } }
+  @keyframes schritt { from { transform: rotate(-16deg); } to { transform: rotate(16deg); } }
+  @keyframes flattern { from { transform: rotate(-30deg); } to { transform: rotate(18deg); } }
+  @keyframes rollen { to { transform: rotate(360deg); } }
+  @keyframes etikett {
+    0% { opacity: 0; transform: translate(-50%, 8px) scale(.7); }
+    12% { opacity: 1; transform: translate(-50%, 0) scale(1.06); }
+    22% { transform: translate(-50%, 0) scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -10px); }
+  }
+
   /* Freunde, die nach und nach dazukommen */
   .friend { position: absolute; display: none; filter: drop-shadow(0 3px 0 rgba(52, 100, 30, 0.2)); }
   .friend.on { display: block; }
@@ -296,9 +363,9 @@
   /* Grösse folgt der Höhe des Bodens, damit niemand in die Pyramide ragt */
   .ground .friend { bottom: 0; width: auto; }
   /* links bleibt Platz für Capy, rechts für den Frosch auf dem Seerosenblatt */
-  .f-schildkroete { left: 37%; height: 74%; aspect-ratio: 72 / 46; }
-  .f-ente { left: 55%; height: 80%; aspect-ratio: 58 / 48; }
-  .f-baby { right: 19%; height: 96%; aspect-ratio: 80 / 74; }
+  .f-schildkroete { left: 37%; height: 60%; aspect-ratio: 72 / 46; }
+  .f-ente { left: 55%; height: 64%; aspect-ratio: 58 / 48; }
+  .f-baby { right: 19%; height: 78%; aspect-ratio: 80 / 74; }
   .lily .f-frosch { left: 24%; bottom: 46%; width: 56%; }
   .f-schmetterling { top: 6%; left: 6%; width: clamp(36px, 6vw, 58px); }
   .f-schmetterling.on { animation: flutter 9s ease-in-out infinite; }
@@ -843,6 +910,7 @@
   </header>
 
   <section class="stage" id="stage">
+    <div class="besuch" id="besuchHinten" aria-hidden="true"></div>
     <div class="friend f-schmetterling" data-f="schmetterling"><svg viewBox="0 0 60 50"><use href="#f-schmetterling"/></svg></div>
     <div class="pyr-box" id="pyrbox">
       <div class="pyr-wrap"><div class="pyramid" id="pyramid" role="group" aria-label="Zahlenpyramide"></div></div>
@@ -852,6 +920,7 @@
         <svg class="friend f-baby" data-f="baby" viewBox="0 0 80 74"><use href="#f-baby"/></svg>
       </div>
     </div>
+    <div class="besuch vorne" id="besuchVorne" aria-hidden="true"></div>
   </section>
 
   <section class="dock" id="dock">
@@ -1201,6 +1270,15 @@ const Ton = (() => {
     },
     stufe() { [659, 784, 988, 1319, 1568].forEach((f, i) => note(f, i * 0.09, 0.28, 'square', 0.035)); },
     freund() { [1047, 1319, 1568, 2093].forEach((f, i) => note(f, i * 0.08, 0.4, 'sine', 0.07)); },
+    // Tierlaute
+    quiek() { note(1250, 0, 0.09, 'sine', 0.1, 1700); note(1350, 0.12, 0.12, 'sine', 0.09, 1900); },
+    quak() { note(380, 0, 0.13, 'sawtooth', 0.05, 300); note(360, 0.17, 0.15, 'sawtooth', 0.05, 280); },
+    quaak() { note(170, 0, 0.12, 'square', 0.05, 140); note(200, 0.16, 0.18, 'square', 0.05, 150); },
+    plopp() { note(520, 0, 0.12, 'sine', 0.12, 180); },
+    boing() { note(220, 0, 0.35, 'triangle', 0.12, 660); },
+    kraechz() { note(900, 0, 0.14, 'sawtooth', 0.045, 520); note(820, 0.16, 0.16, 'sawtooth', 0.045, 480); },
+    glitzer() { [1568, 2093, 2637].forEach((f, i) => note(f, i * 0.06, 0.25, 'sine', 0.05)); },
+    piep() { note(2200, 0, 0.06, 'sine', 0.07, 2600); note(2400, 0.09, 0.07, 'sine', 0.07, 2900); },
   };
 })();
 
@@ -1305,6 +1383,14 @@ const Stimme = (() => {
     stopp,
     vorladen: saetze => saetze.forEach(holen),
     nochmal: () => (letzte.length ? sprechen(letzte) : null),
+    // Zwischenruf (z.B. zu einem Tier): ein Tipp auf die Blase wiederholt
+    // danach trotzdem das, was in der Blase steht
+    einwurf(saetze) {
+      const alt = letzte;
+      const p = sprechen(saetze);
+      letzte = alt;
+      return p;
+    },
   };
 })();
 
@@ -1838,6 +1924,238 @@ function tonZeigen() {
   $('stimme').setAttribute('aria-label', stand.stimme ? 'Vorlesen ausschalten' : 'Vorlesen einschalten');
 }
 
+/* =====================================================================
+   BESUCH: Ab und zu läuft ein Tier über die Wiese oder fliegt vorbei.
+   Tippt Yuna es an, reagiert es, und Capy sagt etwas dazu.
+   Die Zeichnungen schauen nach rechts; nach links wird gespiegelt.
+   ===================================================================== */
+const CAPY_SEITE = `
+  <rect class="bein a" x="22" y="58" width="11" height="24" rx="5.5" fill="#8E5C35"/>
+  <rect class="bein b" x="36" y="58" width="11" height="24" rx="5.5" fill="#9A6539"/>
+  <rect class="bein b" x="70" y="58" width="11" height="24" rx="5.5" fill="#8E5C35"/>
+  <rect class="bein a" x="84" y="58" width="11" height="24" rx="5.5" fill="#9A6539"/>
+  <ellipse cx="56" cy="46" rx="44" ry="25" fill="#C88D5A"/>
+  <path d="M28 31 C40 25 54 23 68 24" stroke="#DCA877" stroke-width="5" stroke-linecap="round" fill="none" opacity=".7"/>
+  <ellipse cx="85" cy="19" rx="6.5" ry="6" fill="#A86E40"/>
+  <rect x="76" y="19" width="42" height="33" rx="15" fill="#C88D5A"/>
+  <rect x="99" y="27" width="19" height="22" rx="9.5" fill="#A86E40"/>
+  <circle cx="112.5" cy="31" r="1.8" fill="#3B2415"/>
+  <ellipse cx="95" cy="30" rx="2.6" ry="3.2" fill="#2B1A10"/>
+  <circle cx="95.8" cy="29" r=".9" fill="#fff"/>
+  <ellipse cx="92" cy="42" rx="5" ry="3" fill="#F59E95" opacity=".55"/>
+  <path d="M105 45 Q108.5 47.5 112 45" stroke="#3B2415" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
+
+const BESUCHER = {
+  capybara: { vb: '0 0 120 84', klasse: 'geher', tempo: 0.9, groesse: 0.95, svg: CAPY_SEITE },
+  familie: {
+    vb: '0 0 236 84', klasse: 'geher', tempo: 0.75, groesse: 0.95,
+    svg: `<g class="mitglied"><g transform="translate(0 40) scale(.52)">${CAPY_SEITE}</g></g>
+          <g class="mitglied"><g transform="translate(64 40) scale(.52)">${CAPY_SEITE}</g></g>
+          <g class="mitglied"><g transform="translate(116 0)">${CAPY_SEITE}</g></g>`,
+  },
+  ente: { vb: '0 0 58 48', klasse: 'ente', tempo: 1.3, groesse: 0.72, svg: '<use href="#f-ente"/>' },
+  schildkroete: {
+    vb: '0 0 72 46', klasse: 'geher', tempo: 0.5, groesse: 0.62,
+    svg: `
+      <ellipse class="bein a" cx="16" cy="38" rx="6.5" ry="6" fill="#8BD17C"/>
+      <ellipse class="bein b" cx="45" cy="38" rx="6.5" ry="6" fill="#8BD17C"/>
+      <path d="M8 33 L1 31 L6 37 Z" fill="#8BD17C"/>
+      <g class="kopf">
+        <circle cx="60" cy="25" r="10" fill="#8BD17C"/>
+        <circle cx="63.5" cy="22" r="2" fill="#2B1A10"/><circle cx="64.1" cy="21.4" r=".7" fill="#fff"/>
+        <path d="M59 29 Q62.5 31.5 66 29" stroke="#2F6B2A" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        <ellipse cx="66.5" cy="26" rx="2" ry="1.2" fill="#FF9E9E" opacity=".7"/>
+      </g>
+      <path d="M6 34 C6 16 18 6 30 6 C43 6 54 16 54 34 Z" fill="#5FA84A"/>
+      <path d="M30 10.5 L38 16 L36 26 L24 26 L22 16 Z" fill="#7CC35F"/>
+      <path d="M14 27 L19 19 M46 27 L41 19" stroke="#7CC35F" stroke-width="4" stroke-linecap="round"/>
+      <rect x="4" y="31" width="52" height="6" rx="3" fill="#3F8A34"/>`,
+  },
+  guerteltier: {
+    vb: '0 0 110 64', klasse: 'geher', tempo: 1, groesse: 0.7,
+    svg: `
+      <g class="normal">
+        <rect class="bein a" x="26" y="42" width="8" height="16" rx="4" fill="#8E7A66"/>
+        <rect class="bein b" x="36" y="42" width="8" height="16" rx="4" fill="#7E6A58"/>
+        <rect class="bein b" x="64" y="42" width="8" height="16" rx="4" fill="#8E7A66"/>
+        <rect class="bein a" x="74" y="42" width="8" height="16" rx="4" fill="#7E6A58"/>
+        <path d="M24 42 C14 44 6 50 1 55 C9 53 17 50 26 47 Z" fill="#A08A74"/>
+        <path d="M84 30 C93 28 104 34 108 42 C102 46 92 47 84 44 Z" fill="#C7B097"/>
+        <ellipse cx="87" cy="27" rx="4" ry="6.5" fill="#C7B097"/>
+        <circle cx="95" cy="36" r="2" fill="#2B1A10"/>
+        <circle cx="107" cy="42" r="1.8" fill="#6B5544"/>
+        <path d="M18 46 C18 24 34 12 54 12 C74 12 88 24 88 46 Z" fill="#B39C84"/>
+        <path d="M38 17 V46 M48 13 V46 M58 13 V46 M68 16 V46" stroke="#957E68" stroke-width="3"/>
+        <rect x="16" y="43" width="74" height="6" rx="3" fill="#957E68"/>
+      </g>
+      <g class="kugel">
+        <circle cx="55" cy="40" r="22" fill="#B39C84" stroke="#957E68" stroke-width="2"/>
+        <path d="M42 23 Q54 40 42 57 M55 18 V62 M68 23 Q56 40 68 57" stroke="#957E68" stroke-width="3" fill="none"/>
+      </g>`,
+  },
+  frosch: { vb: '0 0 60 50', klasse: 'frosch', tempo: 1.1, groesse: 0.62, svg: '<use href="#f-frosch"/>' },
+  tukan: {
+    vb: '0 0 110 64', klasse: 'flieger', tempo: 1.9, groesse: 0.8, fliegt: true,
+    svg: `
+      <path d="M22 36 L2 30 L6 44 Z" fill="#23232B"/>
+      <ellipse cx="42" cy="38" rx="24" ry="14" fill="#2B2B35"/>
+      <path d="M30 48 L36 54 L42 48 Z" fill="#E2512A"/>
+      <circle cx="58" cy="32" r="12" fill="#2B2B35"/>
+      <ellipse cx="60" cy="39" rx="8" ry="7" fill="#FFE9A8"/>
+      <path d="M64 26 C78 18 100 22 108 31 C100 38 80 42 64 38 Z" fill="#FF9F1C"/>
+      <path d="M99 25.5 C103 27 106.5 29.5 108 31 C105 33.5 102 35 98.5 35.8 Z" fill="#2B2B35"/>
+      <path d="M66 31 C80 28 94 28.5 104 30.5" stroke="#FFC56B" stroke-width="2" fill="none" stroke-linecap="round" opacity=".8"/>
+      <circle cx="60" cy="28" r="4.2" fill="#6AC7F0"/><circle cx="60.6" cy="28" r="2.1" fill="#111"/><circle cx="61.3" cy="27.2" r=".7" fill="#fff"/>
+      <g class="fluegel"><path d="M28 34 C34 12 52 6 58 14 C52 24 42 32 28 36 Z" fill="#1E1E26"/></g>`,
+  },
+  schmetterling: { vb: '0 0 60 50', klasse: 'flieger schmetterling', tempo: 0.9, groesse: 0.5, fliegt: true, svg: '<use href="#f-schmetterling"/>' },
+};
+
+const Besuch = (() => {
+  const vorne = $('besuchVorne'), hinten = $('besuchHinten');
+  let timer = 0, gerade = null, letzter = '';
+  const zeile = {};
+
+  function planen(ms) {
+    clearTimeout(timer);
+    if (reduce) return;
+    timer = setTimeout(kommen, ms !== undefined ? ms : rnd(30000, 60000));
+  }
+
+  function kommen(wunsch) {
+    if (document.hidden || !$('intro').hidden || gerade) { planen(10000); return; }
+    const id = BESUCHER[wunsch] ? wunsch : pick(Object.keys(BESUCHER).filter(k => k !== letzter));
+    letzter = id;
+    const d = BESUCHER[id];
+    const [, , vbW, vbH] = d.vb.split(' ').map(Number);
+    const ebene = d.fliegt ? hinten : vorne;
+    const W = ebene.clientWidth, H = ebene.clientHeight;
+    const basis = d.fliegt ? clamp(H * 0.11, 42, 80) : $('ground').offsetHeight;
+    const h = basis * d.groesse, w = h * vbW / vbH;
+    const vonLinks = Math.random() < 0.5;
+    const el = document.createElement('div');
+    el.className = `besucher ${id} ${d.klasse}` + (vonLinks ? '' : ' links');
+    el.style.width = w + 'px';
+    el.style.height = h + 'px';
+    if (d.fliegt) el.style.top = rnd(3, 14) + '%';
+    else el.style.bottom = '2px';
+    el.innerHTML = `<div class="huepf"><div class="dreh"><svg viewBox="${d.vb}">${d.svg}</svg></div></div>`;
+    ebene.appendChild(el);
+    const von = vonLinks ? -w - 20 : W + 20, bis = vonLinks ? W + 20 : -w - 20;
+    const lauf = el.animate(
+      [{ transform: `translateX(${von}px)` }, { transform: `translateX(${bis}px)` }],
+      { duration: (W + w + 40) / (d.tempo * basis) * 1000, easing: 'linear', fill: 'forwards' },
+    );
+    const b = (gerade = { id, el, lauf, ebene, fliegt: !!d.fliegt, zuletzt: 0 });
+    lauf.onfinish = () => {
+      el.remove();
+      if (gerade === b) gerade = null;
+      planen();
+    };
+    el.addEventListener('pointerdown', e => { e.preventDefault(); reagieren(b); });
+  }
+
+  const hops = (ziel, wie, mal = 1, ms = 420) => ziel.animate(
+    [{ transform: 'translateY(0)' }, { transform: `translateY(-${wie})`, offset: 0.4 }, { transform: 'translateY(0)' }],
+    { duration: ms, iterations: mal, easing: 'ease-out' },
+  );
+
+  function reagieren(b) {
+    const jetzt = Date.now();
+    if (jetzt - b.zuletzt < 900) return;
+    b.zuletzt = jetzt;
+    const t = TIERE[b.id];
+    zeile[b.id] = ((zeile[b.id] === undefined ? -1 : zeile[b.id]) + 1) % t.saetze.length;
+    Stimme.einwurf([sprechtext(t.saetze[zeile[b.id]])]);
+    etikett(b, t.name);
+    herzen(b);
+    const huepf = b.el.querySelector('.huepf'), svg = b.el.querySelector('svg');
+    // kurz stehen bleiben, dann weiter
+    const anhalten = ms => {
+      b.lauf.pause();
+      b.el.classList.add('steht');
+      setTimeout(() => {
+        b.el.classList.remove('steht');
+        if (b.lauf.playState === 'paused') b.lauf.play();
+      }, ms);
+    };
+    switch (b.id) {
+      case 'capybara':
+        Ton.quiek(); anhalten(1300); hops(huepf, '30%', 2);
+        break;
+      case 'familie':
+        Ton.quiek(); anhalten(1700);
+        b.el.querySelectorAll('.mitglied').forEach((m, i) => setTimeout(() => {
+          hops(m, '14px', 2, 380);
+          if (i) Ton.quiek();
+        }, i * 180));
+        break;
+      case 'ente':
+        Ton.quak(); hops(huepf, '35%'); b.lauf.playbackRate = 2.6;
+        break;
+      case 'schildkroete':
+        Ton.plopp(); b.el.classList.add('versteckt'); anhalten(2300);
+        setTimeout(() => b.el.classList.remove('versteckt'), 2000);
+        break;
+      case 'guerteltier':
+        Ton.boing(); b.el.classList.add('rollt'); b.lauf.playbackRate = 3.2;
+        break;
+      case 'frosch':
+        Ton.quaak(); hops(huepf, '90%', 1, 600); b.lauf.playbackRate = 1.8;
+        break;
+      case 'tukan':
+        Ton.kraechz();
+        svg.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(-360deg)' }], { duration: 800, easing: 'ease-in-out' });
+        b.lauf.playbackRate = 1.5;
+        break;
+      case 'schmetterling':
+        Ton.glitzer();
+        huepf.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-160%)' }], { duration: 1400, easing: 'ease-out', fill: 'forwards' });
+        b.lauf.playbackRate = 1.6;
+        break;
+    }
+  }
+
+  function etikett(b, text) {
+    b.el.querySelectorAll('.etikett').forEach(x => x.remove());
+    const e = document.createElement('div');
+    e.className = 'etikett' + (b.fliegt ? ' unten' : '');
+    e.textContent = text;
+    b.el.appendChild(e);
+    setTimeout(() => e.remove(), 2100);
+  }
+
+  function herzen(b) {
+    const ebene = b.ebene, r = b.el.getBoundingClientRect(), o = ebene.getBoundingClientRect();
+    for (let i = 0; i < 3; i++) {
+      const s = document.createElementNS(SVGNS, 'svg');
+      s.setAttribute('viewBox', '0 0 30 30');
+      s.innerHTML = '<use href="#herz"/>';
+      Object.assign(s.style, {
+        position: 'absolute', width: '22px', height: '22px', pointerEvents: 'none',
+        left: (r.left - o.left + r.width * (0.3 + 0.2 * i) - 11) + 'px', top: (r.top - o.top) + 'px',
+      });
+      ebene.appendChild(s);
+      s.animate([
+        { transform: 'translateY(0) scale(.5)', opacity: 0 },
+        { transform: 'translateY(-10px) scale(1)', opacity: 1, offset: 0.2 },
+        { transform: `translate(${rnd(-14, 14)}px, -60px) scale(.9)`, opacity: 0 },
+      ], { duration: 1200, delay: i * 120, easing: 'ease-out', fill: 'both' }).onfinish = () => s.remove();
+    }
+  }
+
+  return { planen, kommen };
+})();
+
+// Die Freunde, die schon da sind, freuen sich auch über einen Tipp
+const FREUNDE_LAUT = { schmetterling: 'glitzer', vogel: 'piep', schildkroete: 'plopp', frosch: 'quaak', ente: 'quak', baby: 'quiek' };
+document.querySelectorAll('[data-f]').forEach(el => el.addEventListener('pointerdown', () => {
+  Ton[FREUNDE_LAUT[el.dataset.f]]();
+  el.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-12px)', offset: 0.4 }, { transform: 'translateY(0)' }],
+    { duration: 380, iterations: 2, composite: 'add' });
+}));
+capyEl.addEventListener('pointerdown', () => { stimmung('happy', 900); Ton.quiek(); });
+
 /* ---------- Start, Begrüssung und «So geht's» ---------- */
 let resetScharf = false;
 // karte: 'regeln' oder 'willkommen'; null schliesst
@@ -1907,11 +2225,13 @@ $('go').addEventListener('click', () => {
   // Der Tipp gibt den Ton frei; jetzt kann Capy den Auftrag vorlesen
   audio();
   if (erstesMal || stand.solved < 2) sag(zieh('erste'));
+  Besuch.planen(rnd(12000, 20000));
 });
 $('los').addEventListener('click', () => {
   karte(null);
   audio();
   sag(gruss());
+  Besuch.planen(rnd(12000, 20000));
 });
 $('reset').addEventListener('click', () => {
   if (!resetScharf) {

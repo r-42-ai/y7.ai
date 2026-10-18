@@ -221,6 +221,18 @@ const FREUNDE = [
 ];
 const NEUER_FREUND = 'Neuer Freund!';
 
+// Tiere, die ab und zu vorbeikommen. Tippt Yuna eines an, sagt Capy etwas dazu.
+const TIERE = {
+  capybara:      { name: 'Capybara', saetze: ['Schau mal, ein Capybara!', 'Hallo, liebes Capybara!', 'Noch ein Capybara! Wir sind gern zusammen.'] },
+  familie:       { name: 'Capybara-Familie', saetze: ['Eine ganze Capybara-Familie!', 'Schau, die kleinen Capybara-Babys!'] },
+  ente:          { name: 'Ente', saetze: ['Quak! Die Ente hat es eilig.', 'Eine Ente watschelt vorbei.'] },
+  schildkroete:  { name: 'Schildkröte', saetze: ['Die Schildkröte versteckt sich im Panzer!', 'Nur keine Eile, Schildkröte.'] },
+  guerteltier:   { name: 'Gürteltier', saetze: ['Ein Gürteltier! Es rollt sich zur Kugel.', 'Kugel-Alarm! Das Gürteltier rollt davon.'] },
+  frosch:        { name: 'Frosch', saetze: ['Hops! Der Frosch springt hoch.', 'Ein Frosch! Quak, quak!'] },
+  tukan:         { name: 'Tukan', saetze: ['Ein Tukan! Was für ein Schnabel!', 'Der Tukan fliegt einen Looping!'] },
+  schmetterling: { name: 'Schmetterling', saetze: ['Ein Schmetterling! Wie hübsch.', 'Der Schmetterling flattert davon.'] },
+};
+
 // Erklärung auf der ersten Karte, zum Vorlesen
 const ANLEITUNG = 'Hallo Yuna! Ich bin Capy. Hilfst du mir, Zahlenpyramiden zu bauen? ' +
   'Zwei Steine nebeneinander ergeben zusammen den Stein darüber: drei plus vier gibt sieben. ' +
@@ -418,6 +430,7 @@ function alleSaetze() {
   }
   for (const e of FAKTEN) dazu(sprechtext(e), 'Wusstest du?');
   for (const f of FREUNDE) dazu(sprechtext(f.text), NEUER_FREUND);
+  for (const t of Object.values(TIERE)) for (const s of t.saetze) dazu(sprechtext(s));
   dazu(NEUER_FREUND);
   dazu(sprechtext(ANLEITUNG));
   for (let n = 1; n <= STUFEN; n++) dazu(stufentext(n));
@@ -429,6 +442,6 @@ function alleSaetze() {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { TEXTE, FREUNDE, NEUER_FREUND, ANLEITUNG, STUFEN, FAKTEN, SPRECHNAME,
+  module.exports = { TEXTE, FREUNDE, NEUER_FREUND, TIERE, ANLEITUNG, STUFEN, FAKTEN, SPRECHNAME,
     anzeigetext, sprechtext, kennung, zahlwort, RECHENWORT, stufentext, alleSaetze };
 }
