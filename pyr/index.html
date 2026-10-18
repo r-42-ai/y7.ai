@@ -2,7 +2,7 @@
 <html lang="de-CH">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#A4DAF5">
@@ -165,6 +165,11 @@
   }
   .round svg { width: 24px; height: 24px; }
   @media (min-width: 560px) { .title { visibility: visible; } }
+  @media (max-width: 400px) {
+    .bar { gap: 6px; }
+    .round { width: 40px; height: 40px; }
+    .count { padding-right: 11px; }
+  }
 
   /* Bühne mit der Pyramide */
   .stage {
@@ -380,6 +385,8 @@
     border-radius: 3px;
   }
   .bubble span { position: relative; }
+  .bubble { cursor: pointer; }
+  .bubble.lang { font-size: clamp(14px, 3.6vmin, 17px); line-height: 1.22; }
   .bubble.pop { animation: talk .35s ease-out; }
   .bubble .op { color: #E07B00; white-space: nowrap; }
   @keyframes talk { 0% { transform: scale(.94); } 60% { transform: scale(1.02); } 100% { transform: none; } }
@@ -555,6 +562,23 @@
     box-shadow: 0 6px 0 var(--green-edge);
   }
   .go:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--green-edge); }
+  .vorlesen {
+    margin-top: 8px;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 18px 8px 14px;
+    border-radius: 999px;
+    background: #E3F4FB;
+    color: #2F7FA8;
+    font-size: 17px; font-weight: 800;
+    box-shadow: 0 3px 0 #BFE2F1;
+  }
+  .vorlesen svg { width: 22px; height: 22px; }
+  .vorlesen:active { transform: translateY(2px); box-shadow: 0 1px 0 #BFE2F1; }
+  .welcome { max-width: 400px; }
+  .welcome .capy-big { width: 150px; }
+  .bilanz { display: flex; justify-content: center; gap: 22px; margin: 14px 0 4px; font-size: 20px; font-weight: 800; }
+  .bilanz span { display: inline-flex; align-items: center; gap: 6px; }
+  .bilanz svg { width: 30px; height: 30px; }
   .parents {
     margin-top: 16px;
     padding-top: 12px;
@@ -700,6 +724,31 @@
       <use href="#bluete" x="31" y="4" width="18" height="18"/>
     </symbol>
 
+    <symbol id="capy-froh" viewBox="0 0 140 132">
+      <ellipse cx="38" cy="34" rx="11" ry="9" fill="#A86E40"/>
+      <ellipse cx="102" cy="34" rx="11" ry="9" fill="#A86E40"/>
+      <ellipse cx="38" cy="35" rx="5.5" ry="4.2" fill="#7A4A28"/>
+      <ellipse cx="102" cy="35" rx="5.5" ry="4.2" fill="#7A4A28"/>
+      <path d="M70 29 C104 29 124 47 124 79 L124 104 C124 122 110 132 90 132 L50 132 C30 132 16 122 16 104 L16 79 C16 47 36 29 70 29 Z" fill="#C88D5A"/>
+      <g fill="none" stroke="#2B1A10" stroke-width="3.2" stroke-linecap="round"><path d="M42 68 Q48 60 54 68"/><path d="M86 68 Q92 60 98 68"/></g>
+      <rect x="46" y="74" width="48" height="32" rx="16" fill="#A86E40"/>
+      <ellipse cx="62" cy="83" rx="3.6" ry="2.8" fill="#3B2415"/>
+      <ellipse cx="78" cy="83" rx="3.6" ry="2.8" fill="#3B2415"/>
+      <path d="M64 96 Q70 100.5 76 96" stroke="#3B2415" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      <ellipse cx="31" cy="84" rx="8" ry="5" fill="#F59E95" opacity=".55"/>
+      <ellipse cx="109" cy="84" rx="8" ry="5" fill="#F59E95" opacity=".55"/>
+      <use href="#mandarine" x="52" y="-1" width="36" height="36"/>
+    </symbol>
+    <symbol id="i-stimme" viewBox="0 0 24 24">
+      <path d="M4.5 4 H15 a2.5 2.5 0 0 1 2.5 2.5 V12.5 a2.5 2.5 0 0 1 -2.5 2.5 H10 L6 18.5 V15 H4.5 A2.5 2.5 0 0 1 2 12.5 V6.5 A2.5 2.5 0 0 1 4.5 4 Z" fill="currentColor"/>
+      <path d="M20 6.5 Q22.2 9.5 20 12.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="6.8" cy="9.5" r="1.1" fill="#fff"/><circle cx="9.8" cy="9.5" r="1.1" fill="#fff"/><circle cx="12.8" cy="9.5" r="1.1" fill="#fff"/>
+    </symbol>
+    <symbol id="i-stimme-aus" viewBox="0 0 24 24">
+      <path d="M4.5 4 H15 a2.5 2.5 0 0 1 2.5 2.5 V12.5 a2.5 2.5 0 0 1 -2.5 2.5 H10 L6 18.5 V15 H4.5 A2.5 2.5 0 0 1 2 12.5 V6.5 A2.5 2.5 0 0 1 4.5 4 Z" fill="currentColor" opacity=".45"/>
+      <path d="M3 3 L21 20" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M3 3 L21 20" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+    </symbol>
     <!-- Bedienelemente -->
     <symbol id="i-back" viewBox="0 0 32 32">
       <path d="M11 7 H26 a3 3 0 0 1 3 3 V22 a3 3 0 0 1 -3 3 H11 L3 16 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
@@ -788,7 +837,8 @@
       <svg viewBox="0 0 40 40" id="countIcon"><use href="#mandarine"/></svg>
       <span id="solved">0</span>
     </div>
-    <button class="round pill" id="sound" type="button" aria-label="Ton ausschalten"><svg viewBox="0 0 24 24"><use href="#i-ton"/></svg></button>
+    <button class="round pill" id="stimme" type="button" aria-label="Vorlesen ausschalten"><svg viewBox="0 0 24 24"><use href="#i-stimme"/></svg></button>
+    <button class="round pill" id="sound" type="button" aria-label="Geräusche ausschalten"><svg viewBox="0 0 24 24"><use href="#i-ton"/></svg></button>
     <button class="round pill" id="help" type="button" aria-label="So geht's"><svg viewBox="0 0 24 24"><use href="#i-frage"/></svg></button>
   </header>
 
@@ -840,7 +890,7 @@
         <path d="M0 116 Q6 110 18 116 T42 116 T66 116 T90 116 T114 116 T138 116 Q140 116 140 115 V140 H0 Z" fill="#93DAF0" opacity=".95"/>
         <path d="M10 121 Q20 118 30 121 M98 123 Q108 120 118 123" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".7"/>
       </svg>
-      <div class="bubble" id="bubble" aria-live="polite"><span id="say">Hallo Yuna!</span></div>
+      <div class="bubble" id="bubble" role="button" tabindex="0" aria-label="Nochmal vorlesen"><span id="say" aria-live="polite">Hallo Yuna!</span></div>
       <button class="tipp" id="tipp" type="button" aria-label="Tipp">
         <svg viewBox="0 0 32 32"><use href="#i-birne"/></svg>Tipp
       </button>
@@ -869,23 +919,10 @@
 <div class="toast" id="toast" role="status"><div class="ic" id="toastIc"></div><div><b id="toastT"></b><span id="toastS"></span></div></div>
 
 <div class="overlay" id="intro" hidden>
-  <div class="card" role="dialog" aria-modal="true" aria-labelledby="introT">
-    <svg class="capy-big" viewBox="0 0 140 132" aria-hidden="true">
-      <ellipse cx="38" cy="34" rx="11" ry="9" fill="#A86E40"/>
-      <ellipse cx="102" cy="34" rx="11" ry="9" fill="#A86E40"/>
-      <ellipse cx="38" cy="35" rx="5.5" ry="4.2" fill="#7A4A28"/>
-      <ellipse cx="102" cy="35" rx="5.5" ry="4.2" fill="#7A4A28"/>
-      <path d="M70 29 C104 29 124 47 124 79 L124 104 C124 122 110 132 90 132 L50 132 C30 132 16 122 16 104 L16 79 C16 47 36 29 70 29 Z" fill="#C88D5A"/>
-      <g fill="none" stroke="#2B1A10" stroke-width="3.2" stroke-linecap="round"><path d="M42 68 Q48 60 54 68"/><path d="M86 68 Q92 60 98 68"/></g>
-      <rect x="46" y="74" width="48" height="32" rx="16" fill="#A86E40"/>
-      <ellipse cx="62" cy="83" rx="3.6" ry="2.8" fill="#3B2415"/>
-      <ellipse cx="78" cy="83" rx="3.6" ry="2.8" fill="#3B2415"/>
-      <path d="M64 96 Q70 100.5 76 96" stroke="#3B2415" stroke-width="2.6" fill="none" stroke-linecap="round"/>
-      <ellipse cx="31" cy="84" rx="8" ry="5" fill="#F59E95" opacity=".55"/>
-      <ellipse cx="109" cy="84" rx="8" ry="5" fill="#F59E95" opacity=".55"/>
-      <use href="#mandarine" x="52" y="-1" width="36" height="36"/>
-    </svg>
-    <h1 id="introT">Hallo Yuna!</h1>
+  <!-- Beim ersten Mal und über «?»: so geht's -->
+  <div class="card" id="regeln" role="dialog" aria-modal="true" aria-labelledby="regelnT" hidden>
+    <svg class="capy-big" viewBox="0 0 140 132" aria-hidden="true"><use href="#capy-froh"/></svg>
+    <h1 id="regelnT">Hallo Yuna!</h1>
     <p class="lead">Ich bin Capy. Hilfst du mir, Zahlenpyramiden zu bauen?</p>
     <div class="demos">
       <div class="demo">
@@ -901,14 +938,28 @@
     </div>
     <p>Zwei Steine nebeneinander ergeben zusammen den Stein darüber.</p>
     <p class="lead">Fehlt unten ein Stein? Dann rechnest du minus.</p>
+    <button class="vorlesen" id="vorlesen" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ton"/></svg>Vorlesen</button>
     <button class="go" id="go" type="button">Los geht's!</button>
     <div class="parents">
       <span id="stats"></span>
       <button id="reset" type="button">Fortschritt löschen</button>
     </div>
   </div>
+  <!-- Bei jedem weiteren Öffnen: kurz begrüssen. Der Tipp auf «Los geht's»
+       erlaubt dem Browser auch, Capys Stimme abzuspielen. -->
+  <div class="card welcome" id="willkommen" role="dialog" aria-modal="true" aria-labelledby="willkommenT" hidden>
+    <svg class="capy-big" viewBox="0 0 140 132" aria-hidden="true"><use href="#capy-froh"/></svg>
+    <h1 id="willkommenT">Hallo Yuna!</h1>
+    <p class="lead">Schön, dass du wieder da bist.</p>
+    <div class="bilanz">
+      <span><svg viewBox="0 0 40 40" aria-hidden="true"><use href="#mandarine"/></svg><b id="bilanzM">0</b></span>
+      <span><svg viewBox="0 0 40 40" aria-hidden="true"><use href="#stern"/></svg>Stufe <b id="bilanzS">1</b></span>
+    </div>
+    <button class="go" id="los" type="button">Los geht's!</button>
+  </div>
 </div>
 
+<script src="texte.js"></script>
 <script>
 'use strict';
 
@@ -935,38 +986,6 @@ const LEVELS = [
   { n: 6, max: 50, leer: [10, 15], minus: [0, 0], unten: true },
   { n: 6, max: 50, leer: [13, 15], minus: [2, 15] },
 ];
-
-// Freunde, die nach so vielen gelösten Pyramiden dazukommen
-const FRIENDS = [
-  { id: 'schmetterling', at: 2,  name: 'Schmetterling', text: 'Ein Schmetterling ist zu Besuch!' },
-  { id: 'vogel',         at: 4,  name: 'Vogel',         text: 'Ein Vogel setzt sich zu Capy.' },
-  { id: 'schildkroete',  at: 7,  name: 'Schildkröte',   text: 'Eine Schildkröte kommt vorbei.' },
-  { id: 'frosch',        at: 11, name: 'Frosch',        text: 'Ein Frosch hüpft herbei!' },
-  { id: 'ente',          at: 16, name: 'Ente',          text: 'Eine Ente watschelt herbei.' },
-  { id: 'baby',          at: 22, name: 'Capybara-Baby', text: 'Ein Capybara-Baby will mitspielen!' },
-];
-
-const TEXT = {
-  start: ['Los geht\'s! Welche Zahlen fehlen?', 'Neue Pyramide! Du schaffst das.', 'Hier kommt die nächste Pyramide!', 'Bereit? Dann los!', 'Auf geht\'s, Yuna!'],
-  first: 'Welche Zahl gehört in den leuchtenden Stein? Tippe sie ein und drücke ✓.',
-  ok: ['Super!', 'Richtig!', 'Genau!', 'Toll!', 'Prima!', 'Juhu!', 'Klasse!', 'Stimmt!', 'Sehr gut!'],
-  wrong: ['Hmm, das stimmt noch nicht. Probier\'s nochmal!', 'Fast! Rechne nochmal nach.', 'Nicht ganz. Du schaffst das!'],
-  tricky: 'Dieser Stein ist noch knifflig. Fang hier an!',
-  done: ['Geschafft, Yuna!', 'Pyramide fertig!', 'Wunderbar!', 'Super gemacht!', 'Bravo, Yuna!'],
-  facts: [
-    'Wusstest du? Capybaras sind die grössten Nagetiere der Welt.',
-    'Wusstest du? Capybaras leben in Südamerika, immer nahe am Wasser.',
-    'Wusstest du? Capybaras können sehr gut schwimmen.',
-    'Wusstest du? Capybaras haben kleine Schwimmhäute zwischen den Zehen.',
-    'Wusstest du? Capybaras können bis zu fünf Minuten tauchen.',
-    'Wusstest du? Capybaras fressen Gras und Wasserpflanzen.',
-    'Wusstest du? Capybaras leben gern in Gruppen zusammen.',
-    'Wusstest du? Vögel sitzen oft auf dem Rücken von Capybaras.',
-    'Wusstest du? Ein anderer Name für Capybara ist Wasserschwein.',
-    'Wusstest du? Augen, Ohren und Nase sitzen oben am Kopf. So schaut Capy auch beim Schwimmen.',
-    'Wusstest du? In Japan baden Capybaras im Winter in warmen Quellen, mit Zitrusfrüchten im Wasser.',
-  ],
-};
 
 /* ===== Hilfsfunktionen ===== */
 const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
@@ -1102,14 +1121,17 @@ function baue(level) {
 const STORE = 'y7.pyr.';
 const stand = laden();
 function laden() {
-  const s = { skill: 0, solved: 0, ton: true, intro: false };
+  // stimme: Capy liest vor · fakten: Kennungen der schon erzählten Fakten
+  const s = { skill: 0, solved: 0, ton: true, stimme: true, intro: false, fakten: [] };
   try {
     const raw = JSON.parse(localStorage.getItem(STORE + 'stand') || 'null');
     if (raw && typeof raw === 'object') {
       if (Number.isFinite(raw.skill)) s.skill = clamp(raw.skill, 0, LEVELS.length - 0.01);
       if (Number.isInteger(raw.solved) && raw.solved >= 0) s.solved = raw.solved;
       if (typeof raw.ton === 'boolean') s.ton = raw.ton;
+      if (typeof raw.stimme === 'boolean') s.stimme = raw.stimme;
       if (raw.intro === true) s.intro = true;
+      if (Array.isArray(raw.fakten)) s.fakten = raw.fakten.filter(k => typeof k === 'string').slice(-500);
     }
   } catch (e) { /* privater Modus o.ä. */ }
   return s;
@@ -1134,20 +1156,25 @@ function anpassen(q, leer) {
 }
 
 /* =====================================================================
-   TÖNE (selbst erzeugt, keine Dateien)
+   AUDIO: ein gemeinsamer Kontext für Töne und Stimme. Er darf erst nach
+   einem Tipp loslegen; davor bleibt er stumm.
    ===================================================================== */
-const Ton = (() => {
-  let ctx = null;
-  function ac() {
-    if (!stand.ton) return null;
-    if (!ctx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return null;
-      ctx = new AC();
-    }
-    if (ctx.state === 'suspended') ctx.resume();
-    return ctx;
+let audioCtx = null;
+function audio() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    audioCtx = new AC();
   }
+  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  return audioCtx;
+}
+// Auf iPad und iPhone sonst stumm, sobald der Lautlos-Schalter an ist
+try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* älteres Safari */ }
+
+/* TÖNE (selbst erzeugt, keine Dateien) */
+const Ton = (() => {
+  const ac = () => (stand.ton ? audio() : null);
   function note(f, t0, dur, type = 'sine', vol = 0.12, to = 0) {
     const c = ac();
     if (!c) return;
@@ -1178,6 +1205,110 @@ const Ton = (() => {
 })();
 
 /* =====================================================================
+   STIMME: Capy liest vor. Jeder Satz liegt als audio/<kennung>.mp3 bereit
+   (siehe texte.js und make-audio.mjs). Mehrere Sätze werden nahtlos
+   aneinandergehängt, z.B. «Rechne:» «zwölf» «plus» «sieben».
+   Eine neue Ansage unterbricht immer die laufende.
+   ===================================================================== */
+const pause = ms => new Promise(res => setTimeout(res, ms));
+const Stimme = (() => {
+  const roh = new Map();        // kennung → Promise<ArrayBuffer|null>
+  const fertig = new Map();     // kennung → AudioBuffer (ohne Stille am Rand)
+  let laeuft = [];
+  let nummer = 0;
+  let wecker = null;            // beendet das Warten, wenn unterbrochen wird
+  let letzte = [];
+
+  function holen(satz) {
+    const id = kennung(satz);
+    if (!roh.has(id)) {
+      roh.set(id, fetch('audio/' + id + '.mp3').then(r => (r.ok ? r.arrayBuffer() : null)).catch(() => null));
+    }
+    return roh.get(id);
+  }
+
+  // Stille am Anfang und Ende abschneiden, damit Teile ohne Lücke klingen
+  function trimmen(c, buf) {
+    const d = buf.getChannelData(0), n = d.length, rand = Math.floor(buf.sampleRate * 0.025);
+    let a = 0, b = n - 1;
+    while (a < n && Math.abs(d[a]) < 0.012) a++;
+    while (b > a && Math.abs(d[b]) < 0.012) b--;
+    a = Math.max(0, a - rand);
+    b = Math.min(n - 1, b + rand);
+    if (b <= a || (a === 0 && b === n - 1)) return buf;
+    const out = c.createBuffer(buf.numberOfChannels, b - a + 1, buf.sampleRate);
+    for (let k = 0; k < buf.numberOfChannels; k++) out.getChannelData(k).set(buf.getChannelData(k).subarray(a, b + 1));
+    return out;
+  }
+
+  async function dekodieren(c, satz) {
+    const id = kennung(satz);
+    if (fertig.has(id)) return fertig.get(id);
+    const daten = await holen(satz);
+    if (!daten) { roh.delete(id); return null; }
+    try {
+      const buf = await new Promise((ok, nein) => c.decodeAudioData(daten.slice(0), ok, nein));
+      const t = trimmen(c, buf);
+      fertig.set(id, t);
+      return t;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function schlafen(ms) {
+    return new Promise(res => {
+      const t = setTimeout(res, ms);
+      wecker = () => { clearTimeout(t); res(); };
+    });
+  }
+
+  function stopp() {
+    nummer++;
+    laeuft.forEach(q => { try { q.stop(); } catch (e) { /* schon zu Ende */ } });
+    laeuft = [];
+    if (wecker) { wecker(); wecker = null; }
+  }
+
+  // Ungefähre Lesezeit, wenn nichts zu hören ist (Stimme aus, offline …)
+  const lesezeit = saetze => clamp(saetze.join(' ').length * 55, 900, 6500);
+
+  // Spricht die Sätze nacheinander. Erfüllt sich, wenn alles gesagt ist
+  // (true) oder eine neuere Ansage dazwischenkam (false).
+  async function sprechen(saetze, warte = 0) {
+    stopp();
+    const meine = nummer;
+    letzte = saetze;
+    const c = stand.stimme ? audio() : null;
+    const bufs = c ? await Promise.all(saetze.map(s => dekodieren(c, s))) : [];
+    if (meine !== nummer) return false;
+    if (!c || c.state !== 'running' || !bufs.some(Boolean)) {
+      await schlafen(warte * 1000 + lesezeit(saetze));
+      return meine === nummer;
+    }
+    let t = c.currentTime + 0.04 + warte;
+    bufs.forEach((b, i) => {
+      if (!b) return;
+      const q = c.createBufferSource();
+      q.buffer = b;
+      q.connect(c.destination);
+      q.start(t);
+      laeuft.push(q);
+      t += b.duration + (i < bufs.length - 1 ? 0.09 : 0);
+    });
+    await schlafen((t - c.currentTime) * 1000 + 120);
+    return meine === nummer;
+  }
+
+  return {
+    sprechen,
+    stopp,
+    vorladen: saetze => saetze.forEach(holen),
+    nochmal: () => (letzte.length ? sprechen(letzte) : null),
+  };
+})();
+
+/* =====================================================================
    OBERFLÄCHE
    ===================================================================== */
 const $ = id => document.getElementById(id);
@@ -1190,12 +1321,14 @@ let P = null;          // die aktuelle Pyramide
 let zellen = [];       // Knöpfe der Steine, Index wie in P.values
 let sel = -1;          // ausgewählter Stein
 let getippt = '';      // bisher getippte Ziffern
-let sperre = false;    // kurz gesperrt, während geprüft wird
 let crownEl = null;
 let letzte = '';
+let serie = 0;         // richtige Antworten hintereinander, ohne Fehler
+let warteTimer = 0;    // Capy meldet sich, wenn lange nichts passiert
 
 function neuePyramide() {
   const lvl = stufe();
+  const vorherN = P ? P.geo.n : 0;
   let p, key;
   do {
     p = baue(lvl);
@@ -1210,12 +1343,39 @@ function neuePyramide() {
   });
   sel = -1;
   getippt = '';
-  sperre = false;
   dockEl.classList.remove('done');
+  $('toast').classList.remove('show');
+  freundeZeigen();
   aufbauen();
   waehle(naechster(-1));
-  sagen(stand.solved < 2 ? TEXT.first : pick(TEXT.start));
+
+  const n = P.geo.n;
+  let text;
+  if (stand.solved < 2) text = zieh('erste');
+  else if (vorherN && n > vorherN) text = zieh('start_hoeher');
+  else if (n === 6 && Math.random() < 0.3) text = zieh('start_gross');
+  else if (P.minus > 0 && !LEVELS[P.level].unten && Math.random() < 0.25) text = zieh('start_minus');
+  else text = zieh('start');
+  sag(text);
   stufeZeigen();
+  wachHalten();
+
+  // Was gleich gebraucht wird, schon mal holen
+  Stimme.vorladen([...new Set(P.values)].map(zahlwort).concat(
+    ['plus', 'minus', 'gibt'],
+    ['ok', 'falsch', 'tipp_vor', 'fertig'].map(k => sprechtext(vorschau(k))),
+  ));
+}
+
+// Nach einer Weile ohne Tippen bietet Capy einmal Hilfe an
+function wachHalten() {
+  clearTimeout(warteTimer);
+  if (!P || P.done || P.gewartet) return;
+  warteTimer = setTimeout(() => {
+    if (!P || P.done || !$('intro').hidden) return;
+    P.gewartet = true;
+    sag(zieh('warten'));
+  }, 45000);
 }
 
 function aufbauen() {
@@ -1335,12 +1495,55 @@ function schrittFuer(c) {
   return s.plus.find(x => x.cell === c) || s.minus.find(x => x.cell === c) || null;
 }
 
-/* ---------- Sprechblase und Capy ---------- */
-function sagen(text, html) {
-  if (html) sayEl.innerHTML = html; else sayEl.textContent = text;
+/* ---------- Was Capy sagt ---------- */
+// Aus jeder Liste in zufälliger Reihenfolge, ohne Wiederholung, bis alle
+// einmal dran waren; auch über den Wechsel hinweg nie zweimal dasselbe.
+const beutel = {}, zuletzt = {};
+function fuellen(name) {
+  const b = shuffle(TEXTE[name].slice());
+  if (b.length > 1 && b[b.length - 1] === zuletzt[name]) b.unshift(b.pop());
+  return (beutel[name] = b);
+}
+function vorschau(name) {
+  const b = beutel[name] && beutel[name].length ? beutel[name] : fuellen(name);
+  return b[b.length - 1];
+}
+function zieh(name) {
+  vorschau(name);
+  return (zuletzt[name] = beutel[name].pop());
+}
+
+// Fakten: keiner doppelt, bis alle erzählt sind (über Tage hinweg gemerkt)
+function naechsterFakt() {
+  const gesehen = new Set(stand.fakten);
+  let frei = FAKTEN.filter(f => !gesehen.has(kennung(sprechtext(f))));
+  if (!frei.length) { stand.fakten = []; frei = FAKTEN.slice(); }
+  const f = pick(frei);
+  stand.fakten.push(kennung(sprechtext(f)));
+  speichern();
+  return f;
+}
+
+const esc = s => s.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+
+// Zeigt etwas in der Sprechblase und liest es vor. html ist die Anzeige,
+// saetze sind die gesprochenen Teile. warte verschiebt nur den Ton.
+function ansage(html, saetze, warte) {
+  sayEl.innerHTML = html;
+  bubbleEl.classList.toggle('lang', sayEl.textContent.length > 72);
   bubbleEl.classList.remove('pop');
   void bubbleEl.offsetWidth;
   bubbleEl.classList.add('pop');
+  return Stimme.sprechen(saetze, warte);
+}
+const sag = (e, warte) => ansage(esc(anzeigetext(e)), [sprechtext(e)], warte);
+
+// «12 + 7» als Anzeige und als gesprochene Teile
+function rechnung(a, op, b, c) {
+  const html = `${a} ${op} ${b}` + (c === undefined ? '' : ` = ${c}`);
+  const teile = [zahlwort(a), RECHENWORT[op], zahlwort(b)];
+  if (c !== undefined) teile.push(RECHENWORT['='], zahlwort(c));
+  return { html: '<span class="op">' + html + '</span>', teile };
 }
 let moodTimer = 0;
 function stimmung(m, ms) {
@@ -1354,29 +1557,25 @@ function stimmung(m, ms) {
 
 /* ---------- Eingabe ---------- */
 function ziffer(d) {
-  if (!P || P.done || sperre) return;
+  if (!P || P.done) return;
   if (sel < 0) waehle(naechster(-1));
   if (getippt.length >= 2) return;
   if (getippt === '0') getippt = '';
   getippt += d;
   Ton.tipp();
   zeichne(sel);
-  // Zwei Ziffern sind immer eine ganze Zahl (alles bleibt unter 100)
-  if (getippt.length === 2) {
-    sperre = true;
-    setTimeout(() => { sperre = false; pruefen(); }, 260);
-  }
+  // Geprüft wird erst, wenn Yuna selbst auf ✓ tippt
 }
 
 function loeschen() {
-  if (!P || P.done || sperre || sel < 0 || !getippt) return;
+  if (!P || P.done || sel < 0 || !getippt) return;
   getippt = getippt.slice(0, -1);
   Ton.tipp();
   zeichne(sel);
 }
 
 function pruefen() {
-  if (!P || P.done || sperre || sel < 0) return;
+  if (!P || P.done || sel < 0) return;
   if (!getippt) {
     zellen[sel].classList.remove('shake');
     void zellen[sel].offsetWidth;
@@ -1384,7 +1583,9 @@ function pruefen() {
     return;
   }
   const c = sel, b = zellen[c];
-  if (parseInt(getippt, 10) === P.values[c]) {
+  const zahl = parseInt(getippt, 10);
+  const st = schrittFuer(c);    // wie sich dieser Stein gerade ausrechnen lässt (oder null)
+  if (zahl === P.values[c]) {
     P.known[c] = true;
     getippt = '';
     hinweiseWeg();
@@ -1393,13 +1594,21 @@ function pruefen() {
     void b.offsetWidth;
     b.classList.add('pop');
     Ton.richtig();
+    const vorherFalsch = P.fails.get(c) > 0;
+    serie = vorherFalsch ? 0 : serie + 1;
     if (P.known.every(Boolean)) { fertig(); return; }
     stimmung('happy', 900);
-    sagen(pick(TEXT.ok));
+    let text;
+    if (vorherFalsch) text = zieh('ok_nachfehler');
+    else if (serie >= 5 && serie % 5 === 0) text = zieh('ok_serie');
+    else if (st && st.op === '−' && Math.random() < 0.4) text = zieh('ok_minus');
+    else text = zieh('ok');
+    sag(text);
     waehle(naechster(c));
     return;
   }
   // falsch
+  serie = 0;
   const f = (P.fails.get(c) || 0) + 1;
   P.fails.set(c, f);
   getippt = '';
@@ -1410,33 +1619,41 @@ function pruefen() {
   b.classList.add('shake', 'wrong');
   setTimeout(() => b.classList.remove('wrong'), 450);
   zeichne(c);
-  if (f === 1) { sagen(pick(TEXT.wrong)); return; }
-  const st = schrittFuer(c);
+  if (f === 1) {
+    // Typische Verwechslungen gezielt ansprechen
+    const [x, y] = st ? st.from.map(k => P.values[k]) : [];
+    if (st && st.op === '−' && zahl === x + y) sag(zieh('falsch_minus'));
+    else if (st && st.op === '+' && zahl === Math.abs(x - y)) sag(zieh('falsch_plus'));
+    else if (Math.abs(zahl - P.values[c]) <= 2) sag(zieh('falsch_knapp'));
+    else sag(zieh('falsch'));
+    return;
+  }
   if (!st) {
     // Dieser Stein geht noch gar nicht – zu einem führen, der geht
     const k = naechster(c);
     waehle(k);
-    zeigeSchritt(schrittFuer(k), TEXT.tricky);
+    zeigeSchritt(schrittFuer(k), zieh('knifflig'));
     return;
   }
-  if (f === 2) zeigeSchritt(st);
-  else {
-    zeigeSchritt(st, null, true);
-  }
+  zeigeSchritt(st, null, f >= 3);
 }
 
-// Markiert die zwei Steine, mit denen man rechnet, und sagt die Rechnung
+// Markiert die zwei Steine, mit denen man rechnet, und sagt die Rechnung.
+// vorne: Satz davor · loesung: auch das Ergebnis nennen
 function zeigeSchritt(st, vorne, loesung) {
   if (!st) return;
   hinweiseWeg();
   st.from.forEach(x => zellen[x].classList.add('hint'));
   const a = P.values[st.from[0]], b = P.values[st.from[1]];
-  const rechnung = `${a} ${st.op} ${b}`;
-  let html = (vorne ? esc(vorne) + ' ' : '') + 'Rechne: <span class="op">' + rechnung + '</span>';
-  if (loesung) html = 'Rechne: <span class="op">' + rechnung + ' = ' + P.values[st.cell] + '</span>. Tippe es ein!';
-  sagen('', html);
+  if (loesung) {
+    const r = rechnung(a, st.op, b, P.values[st.cell]), nach = zieh('loesung_nach');
+    ansage(r.html + '. ' + esc(anzeigetext(nach)), r.teile.concat(sprechtext(nach)));
+    return;
+  }
+  const r = rechnung(a, st.op, b), vor = zieh('tipp_vor');
+  const html = (vorne ? esc(anzeigetext(vorne)) + ' ' : '') + esc(anzeigetext(vor)) + ' ' + r.html;
+  ansage(html, (vorne ? [sprechtext(vorne)] : []).concat(sprechtext(vor), r.teile));
 }
-const esc = s => s.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
 
 function tipp() {
   if (!P || P.done) return;
@@ -1455,6 +1672,7 @@ function tipp() {
 /* ---------- Geschafft ---------- */
 function fertig() {
   P.done = true;
+  clearTimeout(warteTimer);
   const alt = sel;
   sel = -1;
   if (alt >= 0) zeichne(alt);
@@ -1472,28 +1690,42 @@ function fertig() {
 
   Ton.fertig();
   stimmung('happy', 1800);
-  sagen(pick(TEXT.done));
   konfetti();
   // Alles Spätere nur, solange noch diese Pyramide zu sehen ist
   const diese = P;
   const spaeter = (fn, ms) => setTimeout(() => { if (P === diese) fn(); }, ms);
   spaeter(() => pyrEl.classList.add('cheer'), 200);
   spaeter(mandarineFliegt, 350);
-  spaeter(() => sagen(pick(TEXT.facts)), 2600);
   // «Weiter» erst nach einem Moment, damit ein Doppeltipp die Feier nicht überspringt
   spaeter(() => { P.bereit = true; dockEl.classList.add('done'); }, 700);
+  setTimeout(stufeZeigen, 1200);
 
-  const freund = FRIENDS.find(f => f.at === stand.solved);
-  if (sprung > 0) {
-    meldung('stern', 'Stufe ' + (stufe() + 1) + '!', 'Du wirst immer besser!', () => Ton.stufe(), 1500);
+  const lob = fehler === 0 ? zieh('fertig_perfekt') : q < 0.5 ? zieh('fertig_muehsam') : zieh('fertig');
+  feiern(diese, lob, sprung > 0, FREUNDE.find(f => f.at === stand.solved));
+}
+
+// Nacheinander: Lob, dann neue Stufe und neuer Freund (falls es sie gibt),
+// dann ein Fakt. Jede Zeile erscheint, wenn sie gesprochen wird. Geht es
+// vorher zur nächsten Pyramide, hört die Feier einfach auf.
+async function feiern(diese, lob, aufgestiegen, freund) {
+  const gilt = () => P === diese;
+  const fakt = naechsterFakt(), vor = zieh('fakt_vor');
+  Stimme.vorladen([sprechtext(vor), sprechtext(fakt)]);
+  if (!(await sag(lob, 0.5)) || !gilt()) return;
+  if (aufgestiegen) {
+    const unter = zieh('stufe_auf'), titel = stufentext(stufe() + 1);
+    Ton.stufe();
+    if (!(await meldung('stern', titel, anzeigetext(unter), [titel, sprechtext(unter)])) || !gilt()) return;
   }
   if (freund) {
-    meldung('f-' + freund.id, 'Neuer Freund: ' + freund.name, freund.text, () => {
-      Ton.freund();
-      freundeZeigen(freund.id);
-    }, sprung > 0 ? 0 : 1500);
+    Ton.freund();
+    freundeZeigen(freund.id);
+    if (!(await meldung('f-' + freund.id, 'Neuer Freund: ' + freund.name, freund.text,
+      [NEUER_FREUND, sprechtext(freund.text)])) || !gilt()) return;
   }
-  setTimeout(stufeZeigen, 1200);
+  await pause(300);
+  if (!gilt()) return;
+  ansage(esc(anzeigetext(vor)) + ' ' + esc(anzeigetext(fakt)), [sprechtext(vor), sprechtext(fakt)]);
 }
 
 function weiter() {
@@ -1561,37 +1793,24 @@ function mandarineFliegt() {
   ], { duration: 950, easing: 'ease-in-out', fill: 'forwards' }).onfinish = () => { f.remove(); zaehlen(); };
 }
 
-// Kleine Meldungen oben, eine nach der anderen
-const meldungen = [];
-let meldungLaeuft = false;
-function meldung(symbol, titel, text, beimZeigen, warte) {
-  // Eine neue Stufe macht ältere, noch wartende Stufen-Meldungen überflüssig
-  if (symbol === 'stern') {
-    for (let i = meldungen.length - 1; i >= 0; i--) if (meldungen[i].symbol === 'stern') meldungen.splice(i, 1);
-  }
-  meldungen.push({ symbol, titel, text, beimZeigen, warte: warte || 0 });
-  if (!meldungLaeuft) naechsteMeldung();
-}
-function naechsteMeldung() {
-  const m = meldungen.shift();
-  if (!m) { meldungLaeuft = false; return; }
-  meldungLaeuft = true;
-  setTimeout(() => {
-    const vb = { stern: '0 0 40 40', 'f-schmetterling': '0 0 60 50', 'f-vogel': '0 0 44 36', 'f-schildkroete': '0 0 72 46', 'f-frosch': '0 0 60 50', 'f-ente': '0 0 58 48', 'f-baby': '0 0 80 74' }[m.symbol];
-    $('toastIc').innerHTML = `<svg viewBox="${vb}"><use href="#${m.symbol}"/></svg>`;
-    $('toastT').textContent = m.titel;
-    $('toastS').textContent = m.text;
-    $('toast').classList.add('show');
-    if (m.beimZeigen) m.beimZeigen();
-    setTimeout(() => {
-      $('toast').classList.remove('show');
-      setTimeout(naechsteMeldung, 550);
-    }, 2800);
-  }, m.warte);
+// Kleine Meldung oben (neue Stufe, neuer Freund), die Capy vorliest.
+// Erfüllt sich mit false, wenn eine andere Ansage dazwischenkam.
+async function meldung(symbol, titel, text, saetze) {
+  const vb = { stern: '0 0 40 40', 'f-schmetterling': '0 0 60 50', 'f-vogel': '0 0 44 36', 'f-schildkroete': '0 0 72 46', 'f-frosch': '0 0 60 50', 'f-ente': '0 0 58 48', 'f-baby': '0 0 80 74' }[symbol];
+  $('toastIc').innerHTML = `<svg viewBox="${vb}"><use href="#${symbol}"/></svg>`;
+  $('toastT').textContent = titel;
+  $('toastS').textContent = text;
+  $('toast').classList.add('show');
+  const start = Date.now();
+  const ganz = await Stimme.sprechen(saetze);
+  if (ganz) await pause(Math.max(0, 2000 - (Date.now() - start)));
+  $('toast').classList.remove('show');
+  if (ganz) await pause(450);
+  return ganz;
 }
 
 function freundeZeigen(neu) {
-  for (const f of FRIENDS) {
+  for (const f of FREUNDE) {
     const an = stand.solved >= f.at;
     document.querySelectorAll(`[data-f="${f.id}"]`).forEach(el => {
       el.classList.toggle('on', an);
@@ -1614,31 +1833,43 @@ function stufeZeigen() {
 
 function tonZeigen() {
   $('sound').querySelector('use').setAttribute('href', stand.ton ? '#i-ton' : '#i-stumm');
-  $('sound').setAttribute('aria-label', stand.ton ? 'Ton ausschalten' : 'Ton einschalten');
+  $('sound').setAttribute('aria-label', stand.ton ? 'Geräusche ausschalten' : 'Geräusche einschalten');
+  $('stimme').querySelector('use').setAttribute('href', stand.stimme ? '#i-stimme' : '#i-stimme-aus');
+  $('stimme').setAttribute('aria-label', stand.stimme ? 'Vorlesen ausschalten' : 'Vorlesen einschalten');
 }
 
-/* ---------- Hilfe / Start ---------- */
+/* ---------- Start, Begrüssung und «So geht's» ---------- */
 let resetScharf = false;
-function hilfe(zeigen) {
+// karte: 'regeln' oder 'willkommen'; null schliesst
+function karte(welche) {
   const o = $('intro');
-  if (zeigen) {
+  $('regeln').hidden = welche !== 'regeln';
+  $('willkommen').hidden = welche !== 'willkommen';
+  o.hidden = !welche;
+  if (welche) Stimme.stopp();
+  if (welche === 'regeln') {
     $('stats').textContent = stand.solved
       ? `Gelöste Pyramiden: ${stand.solved} · Stufe ${stufe() + 1} von ${LEVELS.length}`
       : '';
     resetScharf = false;
     $('reset').textContent = 'Fortschritt löschen';
     $('reset').hidden = !stand.solved;
-    o.hidden = false;
-  } else {
-    o.hidden = true;
-    if (!stand.intro) { stand.intro = true; speichern(); }
   }
+  if (welche === 'willkommen') {
+    $('bilanzM').textContent = stand.solved;
+    $('bilanzS').textContent = stufe() + 1;
+  }
+}
+
+function gruss() {
+  const h = new Date().getHours();
+  return zieh(h < 11 ? 'gruss_morgen' : h < 17 ? 'gruss_tag' : 'gruss_abend');
 }
 
 /* ---------- Ereignisse ---------- */
 pyrEl.addEventListener('click', e => {
   const b = e.target.closest('.cell');
-  if (!b || !P || P.done || sperre) return;
+  if (!b || !P || P.done) return;
   const c = +b.dataset.c;
   if (P.known[c]) return;
   if (c !== sel) { waehle(c); Ton.tipp(); }
@@ -1653,14 +1884,35 @@ $('pad').addEventListener('click', e => {
 });
 $('tipp').addEventListener('click', tipp);
 $('next').addEventListener('click', weiter);
+$('bubble').addEventListener('click', () => Stimme.nochmal());
 $('sound').addEventListener('click', () => {
   stand.ton = !stand.ton;
   speichern();
   tonZeigen();
   if (stand.ton) Ton.richtig();
 });
-$('help').addEventListener('click', () => hilfe(true));
-$('go').addEventListener('click', () => hilfe(false));
+$('stimme').addEventListener('click', () => {
+  stand.stimme = !stand.stimme;
+  speichern();
+  tonZeigen();
+  if (stand.stimme) sag(zieh('stimme_an'));
+  else Stimme.stopp();
+});
+$('help').addEventListener('click', () => karte('regeln'));
+$('vorlesen').addEventListener('click', () => { audio(); Stimme.sprechen([sprechtext(ANLEITUNG)]); });
+$('go').addEventListener('click', () => {
+  const erstesMal = !stand.intro;
+  karte(null);
+  if (erstesMal) { stand.intro = true; speichern(); }
+  // Der Tipp gibt den Ton frei; jetzt kann Capy den Auftrag vorlesen
+  audio();
+  if (erstesMal || stand.solved < 2) sag(zieh('erste'));
+});
+$('los').addEventListener('click', () => {
+  karte(null);
+  audio();
+  sag(gruss());
+});
 $('reset').addEventListener('click', () => {
   if (!resetScharf) {
     resetScharf = true;
@@ -1669,12 +1921,14 @@ $('reset').addEventListener('click', () => {
   }
   stand.skill = 0;
   stand.solved = 0;
+  stand.fakten = [];
   speichern();
   zaehlen();
-  freundeZeigen();
-  hilfe(false);
+  karte(null);
   neuePyramide();
 });
+// Jeder Tipp irgendwo zählt als «Yuna ist noch da»
+document.addEventListener('pointerdown', () => wachHalten(), { passive: true });
 // Zahlen kommen nur über die Tasten oben. Absichtlich gibt es kein Textfeld
 // und keine Tastatur-Abfrage: so geht die Bildschirmtastatur des Tablets nie auf.
 
@@ -1684,13 +1938,18 @@ else window.addEventListener('resize', einpassen);
 /* ---------- Los ---------- */
 $('solved').textContent = stand.solved;
 tonZeigen();
-freundeZeigen();
 neuePyramide();
-if (!stand.intro) hilfe(true);
+karte(stand.intro ? 'willkommen' : 'regeln');
 
-// Als App installierbar und ohne Internet spielbar (siehe sw.js)
+// Als App installierbar und ohne Internet spielbar (siehe sw.js). Danach
+// holt der Service Worker im Hintergrund alle Aufnahmen für unterwegs.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(() => navigator.serviceWorker.ready)
+      .then(r => r.active && r.active.postMessage('vorladen'))
+      .catch(() => {});
+  });
 }
 </script>
 </body>
