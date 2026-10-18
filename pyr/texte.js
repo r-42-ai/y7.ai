@@ -91,7 +91,7 @@ const TEXTE = {
   // Richtig
   ok: [
     'Super!', 'Richtig!', 'Genau!', 'Toll!', 'Prima!', 'Juhu!', 'Klasse!', 'Stimmt!',
-    'Sehr gut!', 'Spitze!', 'Bravo!', 'Perfekt!', 'Wunderbar!', 'Stark!', 'Ganz genau!',
+    'Sehr gut!', 'Spitze!', { t: 'Bravo!', s: 'Brawo!' }, 'Perfekt!', 'Wunderbar!', 'Stark!', 'Ganz genau!',
     'Das passt!', 'Volltreffer!', 'Hervorragend!', 'Grossartig!', 'Sauber gerechnet!',
     'Bingo!', 'Jawohl!', 'Ausgezeichnet!', 'Richtig gerechnet!', 'Genau so!',
     'Läuft bei dir!', 'Treffer!', 'Super, weiter so!',
@@ -177,7 +177,7 @@ const TEXTE = {
   // Pyramide fertig
   fertig: [
     'Geschafft, Yuna!', 'Pyramide fertig!', 'Wunderbar!', 'Super gemacht!',
-    'Bravo, Yuna!', 'Die Pyramide steht!', 'Fertig gebaut! Toll!', 'Hurra, geschafft!',
+    { t: 'Bravo, Yuna!', s: 'Brawo, Yuna!' }, 'Die Pyramide steht!', 'Fertig gebaut! Toll!', 'Hurra, geschafft!',
     'Die Mandarine gehört dir!', 'Juhu, die Pyramide ist fertig!',
   ],
   fertig_perfekt: [
@@ -427,8 +427,14 @@ const LEBHAFT = ['gruss_morgen', 'gruss_tag', 'gruss_abend', 'start', 'start_hoe
 
 function alleSaetze() {
   const liste = [];
-  const dazu = (s, vorher, nachher, lebhaft) =>
-    liste.push({ s, vorher: vorher || '', nachher: nachher || '', lebhaft: !!lebhaft });
+  // Ganz kurze Ausrufe («Prima!», «Super!») hält die Stimme sonst leicht für
+  // Italienisch oder Englisch. Ein gedachter deutscher Satz drumherum (nicht
+  // mitgesprochen) sagt ihr, welche Sprache gemeint ist.
+  const DEUTSCH = ['Juna hat die Aufgabe gelöst, und Capy ruft fröhlich:', 'Das hast du wirklich toll gemacht.'];
+  const dazu = (s, vorher, nachher, lebhaft) => {
+    const kurz = !!lebhaft && !vorher && !nachher && s.split(/\s+/).length <= 3;
+    liste.push({ s, vorher: kurz ? DEUTSCH[0] : vorher || '', nachher: kurz ? DEUTSCH[1] : nachher || '', lebhaft: !!lebhaft, kurz });
+  };
   const umfeld = { tipp_vor: ['', 'zwölf plus sieben.'], loesung_nach: ['Zwölf plus sieben gibt neunzehn.', ''] };
   for (const [name, pool] of Object.entries(TEXTE)) {
     const [vorher, nachher] = umfeld[name] || [];

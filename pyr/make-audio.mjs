@@ -15,6 +15,7 @@
  *   --voice <id>   andere Stimme (Standard: STIMME unten)
  *   --speed <n>    Sprechtempo 0.7–1.2 (Standard: 1)
  *   --nur-lebhaft  nur die jubelnden Sätze (Lob, Feier, Grüsse, Tiere)
+ *   --nur-kurz     nur die ganz kurzen Ausrufe (bekommen deutschen Kontext)
  *   --ausdrucksstark  jubelnde Sätze mit eleven_v3 und «[excited]» statt
  *                  eleven_multilingual_v2 (zusammen mit --force --nur-lebhaft)
  *
@@ -55,7 +56,7 @@ if (verwaist.length) {
   }
 }
 
-const todo = saetze.filter(x => (has('--force') || !vorhanden.has(x.id)) && (!has('--nur-lebhaft') || x.lebhaft));
+const todo = saetze.filter(x => (has('--force') || !vorhanden.has(x.id)) && (!has('--nur-lebhaft') || x.lebhaft) && (!has('--nur-kurz') || x.kurz));
 const zeichen = todo.reduce((n, x) => n + x.s.length, 0);
 console.log(saetze.length + ' Sätze, davon ' + todo.length + ' zu vertonen (' + zeichen + ' Zeichen).');
 if (has('--dry')) {

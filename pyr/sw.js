@@ -10,8 +10,8 @@ importScripts('texte.js');
 // Service Worker die fehlenden Aufnahmen nach, ohne alles neu zu laden.
 // Wurden bestehende Aufnahmen neu gesprochen (gleiche Dateinamen, z.B. andere
 // Stimme), stattdessen CACHE hochzählen, damit alte Aufnahmen verschwinden.
-// Stand: Stimme «Sandra Squirrel»
-const CACHE = 'pyr-v3';
+// Stand: kurze Ausrufe auf Deutsch neu gesprochen
+const CACHE = 'pyr-v4';
 const FILES = [
   './',
   'texte.js',
