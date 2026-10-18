@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#A4DAF5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Pyramiden">
+<title>Zahlenpyramiden · Yuna</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  :root {
+    --ink: #4A3121;            /* Capybara-Dunkelbraun, für Text */
+    --soft: #8A6A52;
+    --cream: #FFFBF0;
+    --stone: #F7E2B2;
+    --stone-2: #F0D193;
+    --stone-edge: #D6AC67;
+    --stone-ink: #5A3A1C;
+    --leaf: #CDF2B4;
+    --leaf-2: #ADE58C;
+    --leaf-edge: #78C056;
+    --leaf-ink: #2C5A19;
+    --hole: rgba(255, 253, 246, 0.94);
+    --hole-edge: #E0BE82;
+    --sel: #FFC21F;
+    --err: #FF8C7A;
+    --orange: #FF9F1C;
+    --water-1: #93DAF0;
+    --water-2: #5DBCDF;
+    --green: #6CC955;
+    --green-edge: #4EA63A;
+    --font: ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", "Quicksand", "Arial Rounded MT Bold", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: #A4DAF5;
+    color: var(--ink);
+    font-family: var(--font);
+    font-weight: 700;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;   /* kein Zoom bei schnellem Doppeltipp */
+  }
+  button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  button:focus-visible { outline: 3px solid #2E86AB; outline-offset: 3px; }
+  svg { display: block; }
+
+  /* ---------- Landschaft im Hintergrund ---------- */
+  .scene {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: linear-gradient(180deg, #A4DAF5 0%, #C9EDFC 26%, #EEF9F2 40%, #F6FBE4 46%);
+  }
+  .meadow {
+    position: absolute;
+    left: 0; right: 0; top: 45%; bottom: 0;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,.18) 0 2px, transparent 3px) 0 0 / 46px 38px,
+      radial-gradient(circle at 70% 70%, rgba(80,150,50,.12) 0 2px, transparent 3px) 0 0 / 58px 44px,
+      linear-gradient(180deg, #ABDD88 0%, #93D16E 45%, #82C65E 100%);
+  }
+  .hills { position: absolute; left: 0; width: 100%; top: 31%; height: 15%; }
+  .sun {
+    position: absolute;
+    top: 7%;
+    right: 4%;
+    width: clamp(70px, 13vw, 130px);
+  }
+  .sun .rays { transform-origin: 60px 60px; animation: spin 40s linear infinite; }
+  .cloud { position: absolute; fill: #fff; opacity: .95; }
+  .cloud.c1 { top: 10%; width: clamp(90px, 16vw, 170px); animation: drift 70s linear infinite; animation-delay: -20s; }
+  .cloud.c2 { top: 20%; width: clamp(70px, 11vw, 120px); opacity: .85; animation: drift 95s linear infinite; animation-delay: -70s; }
+  .cloud.c3 { top: 4%; width: clamp(60px, 9vw, 100px); opacity: .75; animation: drift 120s linear infinite; animation-delay: -35s; }
+  .tree { position: absolute; left: 3%; top: calc(45% - clamp(64px, 12vw, 130px) * 1.1); width: clamp(64px, 12vw, 130px); }
+  .tree.t2 { left: auto; right: 9%; top: calc(43% - clamp(40px, 7vw, 76px) * 1.1); width: clamp(40px, 7vw, 76px); opacity: .9; }
+  .deco { position: absolute; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes drift { from { transform: translateX(-30vw); } to { transform: translateX(130vw); } }
+
+  /* ---------- Aufbau ---------- */
+  .app {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: "bar" "stage" "dock";
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  }
+
+  /* Kopfzeile */
+  .bar {
+    grid-area: bar;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px 4px;
+  }
+  .pill {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 999px;
+    box-shadow: 0 3px 0 rgba(60, 120, 150, 0.12), 0 8px 18px -10px rgba(40, 90, 120, 0.5);
+  }
+  .level { display: flex; align-items: center; gap: 9px; padding: 5px 14px 5px 5px; }
+  .level .num {
+    min-width: 36px; height: 36px; padding: 0 6px;
+    border-radius: 999px;
+    display: grid; place-items: center;
+    background: var(--green);
+    color: #fff;
+    font-size: 19px; font-weight: 800;
+    box-shadow: inset 0 -3px 0 var(--green-edge);
+  }
+  .level .lbl { display: flex; flex-direction: column; gap: 3px; line-height: 1; }
+  .level .lbl small { font-size: 13px; color: var(--soft); font-weight: 800; letter-spacing: .02em; }
+  .track { width: clamp(54px, 15vw, 120px); height: 9px; border-radius: 99px; background: #E4F2D9; overflow: hidden; }
+  .track i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #A6E488, #5DB84B); transition: width .9s cubic-bezier(.3,1.3,.5,1); }
+  .title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    text-align: center;
+    font-size: 22px;
+    font-weight: 800;
+    color: #2F7FA8;
+    text-shadow: 0 2px 0 rgba(255, 255, 255, 0.8);
+    letter-spacing: .01em;
+    visibility: hidden;
+  }
+  .count { display: flex; align-items: center; gap: 5px; padding: 3px 14px 3px 5px; font-size: 21px; font-weight: 800; }
+  .count svg { width: 34px; height: 34px; }
+  .count.bump { animation: bump .5s ease-out; }
+  .round {
+    width: 44px; height: 44px; flex: none;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    color: var(--soft);
+  }
+  .round svg { width: 24px; height: 24px; }
+  @media (min-width: 560px) { .title { visibility: visible; } }
+
+  /* Bühne mit der Pyramide */
+  .stage {
+    grid-area: stage;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0 16px;
+  }
+  /* Pyramide und Boden mit den Freunden bilden eine Gruppe, mittig im freien Platz */
+  .pyr-box {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-top: 6px;
+  }
+  .pyr-wrap { display: flex; justify-content: center; }
+  .ground { flex: none; height: clamp(30px, 6.5vh, 62px); position: relative; margin-top: 4px; }
+
+  .pyramid {
+    --bw: 80px; --bh: 58px; --gap: 6px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--gap);
+  }
+  .pyramid::after {
+    content: "";
+    position: absolute;
+    left: -6%; right: -6%;
+    bottom: calc(var(--bh) * -0.32);
+    height: calc(var(--bh) * 0.6);
+    background: radial-gradient(ellipse at center, rgba(52, 100, 30, 0.32), rgba(52, 100, 30, 0) 70%);
+    z-index: -1;
+  }
+  .crown { width: calc(var(--bh) * 0.9); height: calc(var(--bh) * 0.8); display: grid; place-items: end center; }
+  .crown svg { width: 100%; height: 100%; animation: sway 3s ease-in-out infinite; transform-origin: 50% 90%; }
+  .row { display: flex; gap: var(--gap); }
+  .cell {
+    position: relative;
+    width: var(--bw);
+    height: var(--bh);
+    border-radius: calc(var(--bw) * 0.17);
+    display: grid;
+    place-items: center;
+    font-size: calc(var(--bw) * 0.43);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--stone-ink);
+  }
+  .cell.given {
+    background: linear-gradient(180deg, var(--stone) 0%, var(--stone-2) 100%);
+    box-shadow: inset 0 calc(var(--bh) * -0.09) 0 var(--stone-edge), inset 0 2px 0 rgba(255,255,255,.6), 0 3px 0 rgba(90, 58, 28, 0.15);
+    cursor: default;
+  }
+  .cell.solved {
+    background: linear-gradient(180deg, var(--leaf) 0%, var(--leaf-2) 100%);
+    color: var(--leaf-ink);
+    box-shadow: inset 0 calc(var(--bh) * -0.09) 0 var(--leaf-edge), inset 0 2px 0 rgba(255,255,255,.6), 0 3px 0 rgba(44, 90, 25, 0.15);
+    cursor: default;
+  }
+  .cell.blank {
+    background: var(--hole);
+    border: 3px dashed var(--hole-edge);
+    color: #2D6E8E;
+  }
+  .cell.blank.sel { background: #FFFDF0; border: 3px solid var(--sel); }
+  .cell.wrong { background: #FFE0DA !important; border-color: var(--err) !important; }
+  .cell::after {
+    content: "";
+    position: absolute;
+    inset: -7px;
+    border-radius: calc(var(--bw) * 0.22);
+    pointer-events: none;
+    opacity: 0;
+  }
+  .cell.sel::after { opacity: 1; border: 4px solid rgba(255, 194, 31, 0.55); animation: glow 1.3s ease-in-out infinite; }
+  .cell.hint::after { opacity: 1; border: 4px solid var(--orange); animation: nudge .9s ease-in-out infinite; }
+  .cell.hint { color: #B85A00; }
+  @keyframes nudge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+  .caret {
+    display: inline-block;
+    width: 3px;
+    height: .82em;
+    margin-left: 2px;
+    border-radius: 2px;
+    background: currentColor;
+    animation: blink 1s steps(1) infinite;
+  }
+  .cell .typed { display: inline-flex; align-items: center; }
+  .cell.build { animation: drop .55s cubic-bezier(.3, 1.4, .5, 1) both; animation-delay: var(--d, 0s); }
+  .cell.pop { animation: pop .45s ease-out; }
+  .cell.shake { animation: shake .45s ease-in-out; }
+  .pyramid.cheer .cell { animation: cheer .6s ease-in-out both; animation-delay: var(--w, 0s); }
+
+  @keyframes drop {
+    0% { transform: translateY(-80%) scale(.7); opacity: 0; }
+    60% { transform: translateY(5%) scale(1.03); opacity: 1; }
+    100% { transform: none; opacity: 1; }
+  }
+  @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 70% { transform: scale(.95); } 100% { transform: scale(1); } }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-8px) rotate(-3deg); }
+    40% { transform: translateX(7px) rotate(2deg); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(3px); }
+  }
+  @keyframes cheer { 0%, 100% { transform: none; } 40% { transform: translateY(-14%) scale(1.06); } }
+  @keyframes glow { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: .5; } }
+  @keyframes blink { 50% { opacity: 0; } }
+  @keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.25); } 100% { transform: scale(1); } }
+  @keyframes sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+
+  /* Freunde, die nach und nach dazukommen */
+  .friend { position: absolute; display: none; filter: drop-shadow(0 3px 0 rgba(52, 100, 30, 0.2)); }
+  .friend.on { display: block; }
+  .friend.arrive { animation: arrive .9s cubic-bezier(.3, 1.5, .5, 1) both; }
+  /* Grösse folgt der Höhe des Bodens, damit niemand in die Pyramide ragt */
+  .ground .friend { bottom: 0; width: auto; }
+  /* links bleibt Platz für Capy, rechts für den Frosch auf dem Seerosenblatt */
+  .f-schildkroete { left: 37%; height: 74%; aspect-ratio: 72 / 46; }
+  .f-ente { left: 55%; height: 80%; aspect-ratio: 58 / 48; }
+  .f-baby { right: 19%; height: 96%; aspect-ratio: 80 / 74; }
+  .lily .f-frosch { left: 24%; bottom: 46%; width: 56%; }
+  .f-schmetterling { top: 6%; left: 6%; width: clamp(36px, 6vw, 58px); }
+  .f-schmetterling.on { animation: flutter 9s ease-in-out infinite; }
+  .f-schmetterling svg { animation: flap .35s ease-in-out infinite alternate; }
+  @keyframes arrive { 0% { transform: translateY(40px) scale(.3); opacity: 0; } 100% { transform: none; opacity: 1; } }
+  @keyframes flap { from { transform: scaleX(1); } to { transform: scaleX(.55); } }
+  @keyframes flutter {
+    0%, 100% { transform: translate(0, 0) rotate(-6deg); }
+    25% { transform: translate(40px, 18px) rotate(8deg); }
+    50% { transform: translate(80px, -6px) rotate(-4deg); }
+    75% { transform: translate(30px, -14px) rotate(6deg); }
+  }
+
+  /* ---------- Teich unten: Capy, Sprechblase, Tasten ---------- */
+  .dock {
+    grid-area: dock;
+    position: relative;
+    padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
+    border-radius: 30px 30px 0 0;
+    background:
+      radial-gradient(ellipse 60px 8px at 18% 70%, rgba(255,255,255,.28), transparent 70%),
+      radial-gradient(ellipse 80px 9px at 78% 88%, rgba(255,255,255,.22), transparent 70%),
+      radial-gradient(ellipse 50px 7px at 62% 40%, rgba(255,255,255,.2), transparent 70%),
+      linear-gradient(180deg, var(--water-1) 0%, var(--water-2) 100%);
+    box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.45), 0 -6px 20px -12px rgba(30, 90, 120, 0.5);
+  }
+  .lily { position: absolute; right: 10px; top: -20px; width: clamp(64px, 12vw, 96px); pointer-events: none; }
+  .lily > svg:first-child { width: 100%; height: auto; }
+  .buddy {
+    --capy: clamp(104px, 29vw, 136px);
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-left: calc(var(--capy) - 8px);
+  }
+  /* Capy sitzt im Teich und schaut über den Rand */
+  .capy {
+    position: absolute;
+    left: -6px;
+    bottom: calc(100% - var(--capy) * 0.42);
+    width: var(--capy);
+    overflow: visible;
+    z-index: 1;
+  }
+  .capy .bob { animation: bob 3.2s ease-in-out infinite; }
+  .capy .eyes-open { transform-box: fill-box; transform-origin: center; animation: blinkeye 4.6s infinite; }
+  .capy .eyes-happy { display: none; }
+  .capy.happy .eyes-open { display: none; }
+  .capy.happy .eyes-happy { display: inline; }
+  .capy.happy .bob { animation: hop .5s ease-out 2; }
+  .capy.oops .bob { animation: tilt .7s ease-in-out; transform-origin: 70px 120px; }
+  .capy .vogel { display: none; }
+  .capy .vogel.on { display: inline; }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(2.5px); } }
+  @keyframes hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-16px); } }
+  @keyframes tilt { 25% { transform: rotate(-7deg); } 75% { transform: rotate(5deg); } }
+  @keyframes blinkeye { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.12); } }
+
+  .bubble {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    min-height: 66px;
+    padding: 10px 14px;
+    border-radius: 20px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    font-size: clamp(15px, 4.2vmin, 19px);
+    line-height: 1.25;
+    box-shadow: 0 4px 0 rgba(30, 90, 120, 0.15);
+    z-index: 2;
+  }
+  .bubble::before {
+    content: "";
+    position: absolute;
+    left: -8px;
+    top: 18px;
+    width: 18px; height: 18px;
+    background: #fff;
+    transform: rotate(45deg);
+    border-radius: 3px;
+  }
+  .bubble span { position: relative; }
+  .bubble.pop { animation: talk .35s ease-out; }
+  .bubble .op { color: #E07B00; white-space: nowrap; }
+  @keyframes talk { 0% { transform: scale(.94); } 60% { transform: scale(1.02); } 100% { transform: none; } }
+
+  .tipp {
+    flex: none;
+    width: 66px;
+    align-self: stretch;
+    min-height: 66px;
+    border-radius: 20px;
+    background: #FFF4C7;
+    color: #9A6A00;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    font-size: 14px; font-weight: 800;
+    box-shadow: 0 4px 0 #E8C969;
+  }
+  .tipp svg { width: 30px; height: 30px; }
+  .tipp:active { transform: translateY(3px); box-shadow: 0 1px 0 #E8C969; }
+
+  .controls { display: grid; }
+  .controls > * { grid-area: 1 / 1; }
+  .pad {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-areas: "k1 k2 k3 k4 k5 kb" "k6 k7 k8 k9 k0 ko";
+  }
+  .key {
+    height: clamp(50px, 7.4vh, 72px);
+    border-radius: 18px;
+    background: var(--cream);
+    color: var(--stone-ink);
+    font-size: clamp(25px, 3.9vh, 34px);
+    font-weight: 800;
+    display: grid; place-items: center;
+    box-shadow: 0 5px 0 #D8C39A, 0 8px 14px -6px rgba(20, 70, 100, 0.45);
+    transition: transform .06s;
+  }
+  .key:active { transform: translateY(4px); box-shadow: 0 1px 0 #D8C39A, 0 3px 8px -6px rgba(20, 70, 100, 0.45); }
+  .key svg { width: 30px; height: 30px; }
+  .key.back { background: #FFE2CF; color: #B4532A; box-shadow: 0 5px 0 #E9B697, 0 8px 14px -6px rgba(20, 70, 100, 0.45); }
+  .key.ok { background: var(--green); color: #fff; box-shadow: 0 5px 0 var(--green-edge), 0 8px 14px -6px rgba(20, 70, 100, 0.45); }
+  .key.back:active { box-shadow: 0 1px 0 #E9B697; }
+  .key.ok:active { box-shadow: 0 1px 0 var(--green-edge); }
+  .key[data-k="1"] { grid-area: k1; } .key[data-k="2"] { grid-area: k2; } .key[data-k="3"] { grid-area: k3; }
+  .key[data-k="4"] { grid-area: k4; } .key[data-k="5"] { grid-area: k5; } .key[data-k="6"] { grid-area: k6; }
+  .key[data-k="7"] { grid-area: k7; } .key[data-k="8"] { grid-area: k8; } .key[data-k="9"] { grid-area: k9; }
+  .key[data-k="0"] { grid-area: k0; } .key.back { grid-area: kb; } .key.ok { grid-area: ko; }
+
+  .next {
+    visibility: hidden;
+    border-radius: 22px;
+    background: var(--green);
+    color: #fff;
+    font-size: clamp(22px, 3.6vh, 30px);
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    box-shadow: 0 6px 0 var(--green-edge), 0 10px 18px -8px rgba(20, 70, 100, 0.5);
+  }
+  .next svg { width: 34px; height: 34px; }
+  .next:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--green-edge); }
+  .dock.done .pad { visibility: hidden; }
+  .dock.done .next { visibility: visible; animation: popin .5s cubic-bezier(.3, 1.5, .5, 1) both; }
+  .dock.done .tipp { visibility: hidden; }
+  @keyframes popin { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* Querformat: Teich rechts als eigene Spalte */
+  @media (orientation: landscape) and (min-width: 700px) {
+    .app {
+      max-width: 1320px;
+      grid-template-columns: minmax(0, 1fr) clamp(310px, 31vw, 410px);
+      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-areas: "bar bar" "stage dock";
+    }
+    .dock {
+      margin: 6px 16px calc(16px + env(safe-area-inset-bottom)) 0;
+      padding: 18px 16px 18px;
+      border-radius: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    /* In der schmalen Spalte sitzt Capy über der Sprechblase statt daneben */
+    .buddy { --capy: clamp(84px, 11.5vw, 150px); padding-left: 0; padding-top: calc(var(--capy) * 0.8); }
+    .f-schildkroete { left: 5%; }
+    .f-ente { left: 22%; }
+    .f-baby { right: 6%; }
+    .capy { left: 4px; top: 0; bottom: auto; }
+    .bubble::before { left: calc(var(--capy) * 0.5 - 4px); top: -8px; }
+    .lily { top: -22px; right: 4px; width: clamp(56px, 6vw, 84px); }
+  }
+  @media (orientation: landscape) and (min-width: 700px) and (min-height: 620px) {
+    .pad {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-areas: "k1 k2 k3" "k4 k5 k6" "k7 k8 k9" "kb k0 ko";
+      gap: 10px;
+    }
+    .key { height: clamp(58px, 9.6vh, 88px); font-size: clamp(26px, 4.2vh, 38px); }
+    .buddy { margin-bottom: 18px; }
+    .bubble { font-size: clamp(16px, 2.4vh, 20px); }
+    .lily { top: auto; bottom: -14px; right: -12px; width: clamp(64px, 7vw, 96px); }
+  }
+
+  /* ---------- Einblendungen ---------- */
+  .toast {
+    position: fixed;
+    left: 50%;
+    top: calc(10px + env(safe-area-inset-top));
+    z-index: 30;
+    display: flex; align-items: center; gap: 12px;
+    max-width: calc(100% - 32px);
+    padding: 10px 20px 10px 12px;
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: 0 6px 0 rgba(60, 120, 150, 0.15), 0 16px 30px -12px rgba(30, 80, 110, 0.55);
+    transform: translate(-50%, -160%);
+    transition: transform .5s cubic-bezier(.3, 1.4, .5, 1);
+    pointer-events: none;
+  }
+  .toast.show { transform: translate(-50%, 0); }
+  .toast .ic { width: 58px; height: 58px; flex: none; }
+  .toast .ic svg { width: 100%; height: 100%; }
+  .toast b { display: block; font-size: 19px; font-weight: 800; }
+  .toast span { display: block; font-size: 15px; color: var(--soft); }
+
+  .fx { position: fixed; inset: 0; z-index: 25; pointer-events: none; overflow: hidden; }
+  .fx svg { position: absolute; top: 0; }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    grid-template-columns: minmax(0, 460px);
+    place-content: center;
+    padding: 16px;
+    background: rgba(110, 185, 220, 0.5);
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+  }
+  .overlay[hidden] { display: none; }
+  .card {
+    width: 100%;
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+    overflow: auto;
+    padding: 20px 22px 18px;
+    border-radius: 30px;
+    background: var(--cream);
+    text-align: center;
+    box-shadow: 0 8px 0 rgba(60, 120, 150, 0.18), 0 26px 50px -20px rgba(30, 80, 110, 0.6);
+    animation: popin .45s cubic-bezier(.3, 1.4, .5, 1) both;
+  }
+  .card .capy-big { width: 120px; margin: -4px auto 4px; }
+  .card h1 { margin: 0 0 4px; font-size: 30px; font-weight: 800; }
+  .card p { margin: 6px 0; font-size: 17px; line-height: 1.35; font-weight: 700; }
+  .card .lead { color: var(--soft); }
+  .demos { display: flex; justify-content: center; gap: 22px; margin: 16px 0 6px; flex-wrap: wrap; }
+  .demo { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .demo .cell { --bw: 54px; --bh: 40px; }
+  .demo .row + .row { margin-top: 4px; }
+  .demo .row { gap: 4px; justify-content: center; }
+  .demo .eq { margin-top: 6px; font-size: 18px; font-weight: 800; color: #E07B00; }
+  .go {
+    margin-top: 14px;
+    width: 100%;
+    height: 62px;
+    border-radius: 22px;
+    background: var(--green);
+    color: #fff;
+    font-size: 24px;
+    font-weight: 800;
+    box-shadow: 0 6px 0 var(--green-edge);
+  }
+  .go:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--green-edge); }
+  .parents {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 2px dashed #EBDDBF;
+    font-size: 13px;
+    color: var(--soft);
+    display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; align-items: center;
+  }
+  .parents button { font-size: 13px; font-weight: 800; color: #B4532A; text-decoration: underline; text-underline-offset: 3px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Bausteine, die mehrfach vorkommen -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="mandarine" viewBox="0 0 40 40">
+      <circle cx="20" cy="23" r="15" fill="#FF9F1C"/>
+      <ellipse cx="20" cy="31" rx="11.5" ry="6" fill="#F07F0C" opacity=".35"/>
+      <circle cx="14" cy="18" r="4.2" fill="#FFD08A" opacity=".9"/>
+      <path d="M20 9.5 C20 7.5 20.4 6.2 21.5 5" stroke="#7A4B22" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+      <path d="M21 8.5 C25 2.5 33 2 36.5 6 C31.5 10.5 25 11 21 8.5 Z" fill="#5DBB4A"/>
+      <path d="M22.5 8 C27 6.4 31 5.6 35 6" stroke="#3E9A36" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="blatt" viewBox="0 0 30 30">
+      <path d="M4 26 C4 12 14 4 27 3 C26 16 18 26 4 26 Z" fill="#6CC551"/>
+      <path d="M6.5 23.5 C12 17 18 11 24 6" stroke="#4A9E3A" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="bluete" viewBox="0 0 30 30">
+      <g fill="#FF9EC4">
+        <circle cx="15" cy="7.6" r="6"/><circle cx="22" cy="12.7" r="6"/><circle cx="19.4" cy="20.9" r="6"/>
+        <circle cx="10.6" cy="20.9" r="6"/><circle cx="8" cy="12.7" r="6"/>
+      </g>
+      <circle cx="15" cy="15" r="4.6" fill="#FFD43B"/>
+    </symbol>
+    <symbol id="bluete-weiss" viewBox="0 0 30 30">
+      <g fill="#fff">
+        <circle cx="15" cy="7.6" r="6"/><circle cx="22" cy="12.7" r="6"/><circle cx="19.4" cy="20.9" r="6"/>
+        <circle cx="10.6" cy="20.9" r="6"/><circle cx="8" cy="12.7" r="6"/>
+      </g>
+      <circle cx="15" cy="15" r="4.6" fill="#FFC21F"/>
+    </symbol>
+    <symbol id="herz" viewBox="0 0 30 30">
+      <path d="M15 26 C6 19.5 2 14.5 2 9.5 C2 5.5 5 3 8.5 3 C11.5 3 13.5 5 15 7 C16.5 5 18.5 3 21.5 3 C25 3 28 5.5 28 9.5 C28 14.5 24 19.5 15 26 Z" fill="#FF7FA8"/>
+      <ellipse cx="8.5" cy="9" rx="2.6" ry="1.8" fill="#fff" opacity=".6"/>
+    </symbol>
+    <symbol id="stern" viewBox="0 0 40 40">
+      <path d="M20 3 L25 14.5 L37.5 15.6 L28 24 L30.8 36.3 L20 29.8 L9.2 36.3 L12 24 L2.5 15.6 L15 14.5 Z" fill="#FFC21F" stroke="#F5A300" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M15.5 21.5 Q17 23.5 18.5 21.5 M21.5 21.5 Q23 23.5 24.5 21.5" stroke="#A86A00" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="seerose" viewBox="0 0 60 44">
+      <path d="M30 24 L58 24 A28 17 0 1 1 55.4 16.8 Z" fill="#5DBB4A"/>
+      <path d="M30 24 L12 14 M30 24 L10 30 M30 24 L30 40 M30 24 L48 34" stroke="#7FD06A" stroke-width="1.6" stroke-linecap="round"/>
+      <use href="#bluete" x="14" y="0" width="24" height="24"/>
+    </symbol>
+
+    <!-- Freunde -->
+    <symbol id="f-schmetterling" viewBox="0 0 60 50">
+      <path d="M29 22 C22 6 6 2 4 12 C2 22 14 26 29 24 Z" fill="#FF8FB8"/>
+      <path d="M31 22 C38 6 54 2 56 12 C58 22 46 26 31 24 Z" fill="#FF8FB8"/>
+      <path d="M29 25 C18 26 10 34 14 41 C18 47 26 40 29 28 Z" fill="#FFB65C"/>
+      <path d="M31 25 C42 26 50 34 46 41 C42 47 34 40 31 28 Z" fill="#FFB65C"/>
+      <g fill="#fff" opacity=".85">
+        <circle cx="13" cy="13" r="3.2"/><circle cx="47" cy="13" r="3.2"/>
+        <circle cx="19" cy="37" r="2.2"/><circle cx="41" cy="37" r="2.2"/>
+      </g>
+      <rect x="27.6" y="14" width="4.8" height="26" rx="2.4" fill="#6B4423"/>
+      <path d="M29 15 C27 9 24 6 21 5 M31 15 C33 9 36 6 39 5" stroke="#6B4423" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+      <circle cx="21" cy="5" r="1.8" fill="#6B4423"/><circle cx="39" cy="5" r="1.8" fill="#6B4423"/>
+    </symbol>
+    <symbol id="f-vogel" viewBox="0 0 44 36">
+      <path d="M8 20 L1 15 L3 25 Z" fill="#F2B705"/>
+      <ellipse cx="20" cy="22" rx="14" ry="11" fill="#FFD43B"/>
+      <circle cx="29" cy="13" r="9" fill="#FFD43B"/>
+      <path d="M11 20 C16 15 24 17 26 23 C21 27 15 26 11 20 Z" fill="#F2B705"/>
+      <path d="M37 11.5 L43.5 14.2 L37 17 Z" fill="#FF8A1C"/>
+      <circle cx="31.5" cy="11" r="2" fill="#2B1A10"/>
+      <circle cx="32.2" cy="10.3" r=".7" fill="#fff"/>
+      <ellipse cx="32" cy="16.2" rx="2.4" ry="1.4" fill="#FF9E9E" opacity=".7"/>
+      <path d="M17 32 V35 M23 32 V35" stroke="#E07B00" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="f-schildkroete" viewBox="0 0 72 46">
+      <ellipse cx="16" cy="39" rx="6.5" ry="5" fill="#8BD17C"/>
+      <ellipse cx="45" cy="39" rx="6.5" ry="5" fill="#8BD17C"/>
+      <path d="M8 33 L1 31 L6 37 Z" fill="#8BD17C"/>
+      <circle cx="60" cy="25" r="10" fill="#8BD17C"/>
+      <circle cx="63.5" cy="22" r="2" fill="#2B1A10"/>
+      <circle cx="64.1" cy="21.4" r=".7" fill="#fff"/>
+      <path d="M59 29 Q62.5 31.5 66 29" stroke="#2F6B2A" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+      <ellipse cx="66.5" cy="26" rx="2" ry="1.2" fill="#FF9E9E" opacity=".7"/>
+      <path d="M6 34 C6 16 18 6 30 6 C43 6 54 16 54 34 Z" fill="#5FA84A"/>
+      <path d="M30 10.5 L38 16 L36 26 L24 26 L22 16 Z" fill="#7CC35F"/>
+      <path d="M14 27 L19 19 M46 27 L41 19" stroke="#7CC35F" stroke-width="4" stroke-linecap="round"/>
+      <rect x="4" y="31" width="52" height="6" rx="3" fill="#3F8A34"/>
+    </symbol>
+    <symbol id="f-frosch" viewBox="0 0 60 50">
+      <ellipse cx="14" cy="45" rx="9" ry="4" fill="#5DB84B"/>
+      <ellipse cx="46" cy="45" rx="9" ry="4" fill="#5DB84B"/>
+      <ellipse cx="30" cy="32" rx="24" ry="15" fill="#7ED36B"/>
+      <circle cx="17" cy="15" r="9.5" fill="#7ED36B"/>
+      <circle cx="43" cy="15" r="9.5" fill="#7ED36B"/>
+      <circle cx="17" cy="14" r="6" fill="#fff"/>
+      <circle cx="43" cy="14" r="6" fill="#fff"/>
+      <circle cx="18" cy="15" r="3.3" fill="#2B1A10"/>
+      <circle cx="42" cy="15" r="3.3" fill="#2B1A10"/>
+      <circle cx="19" cy="13.8" r="1" fill="#fff"/><circle cx="43" cy="13.8" r="1" fill="#fff"/>
+      <ellipse cx="30" cy="38.5" rx="14" ry="7" fill="#B8EDA6"/>
+      <path d="M20 29 Q30 36 40 29" stroke="#2F6B2A" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <ellipse cx="12.5" cy="29" rx="4" ry="2.4" fill="#FF9E9E" opacity=".65"/>
+      <ellipse cx="47.5" cy="29" rx="4" ry="2.4" fill="#FF9E9E" opacity=".65"/>
+    </symbol>
+    <symbol id="f-ente" viewBox="0 0 58 48">
+      <path d="M9 28 L2 21 L4 32 Z" fill="#FFD43B"/>
+      <ellipse cx="24" cy="32" rx="19" ry="13" fill="#FFE066"/>
+      <circle cx="38" cy="17" r="11" fill="#FFE066"/>
+      <path d="M47 15.5 C55 14.5 57.5 18.5 54.5 20.5 C51.5 22 48 22 46 21 Z" fill="#FF9F1C"/>
+      <circle cx="41" cy="14" r="2.1" fill="#2B1A10"/><circle cx="41.7" cy="13.3" r=".7" fill="#fff"/>
+      <ellipse cx="40" cy="21" rx="2.6" ry="1.5" fill="#FF9E9E" opacity=".7"/>
+      <path d="M13 30 C19 24 28 25 32 31 C26 37 18 36 13 30 Z" fill="#FFD43B"/>
+      <path d="M17 43.5 l-3.5 3.5 h7 Z M28 43.5 l-3.5 3.5 h7 Z" fill="#FF9F1C"/>
+    </symbol>
+    <symbol id="f-baby" viewBox="0 0 80 74">
+      <ellipse cx="22" cy="21" rx="7.5" ry="6.5" fill="#A86E40"/>
+      <ellipse cx="58" cy="21" rx="7.5" ry="6.5" fill="#A86E40"/>
+      <ellipse cx="22" cy="22" rx="3.8" ry="3" fill="#7A4A28"/>
+      <ellipse cx="58" cy="22" rx="3.8" ry="3" fill="#7A4A28"/>
+      <path d="M40 17 C60 17 72 28 72 46 L72 56 C72 67 64 72 54 72 L26 72 C16 72 8 67 8 56 L8 46 C8 28 20 17 40 17 Z" fill="#D29A66"/>
+      <ellipse cx="28" cy="70.5" rx="7" ry="3.5" fill="#A86E40"/>
+      <ellipse cx="52" cy="70.5" rx="7" ry="3.5" fill="#A86E40"/>
+      <ellipse cx="28" cy="42" rx="3.2" ry="3.9" fill="#2B1A10"/>
+      <ellipse cx="52" cy="42" rx="3.2" ry="3.9" fill="#2B1A10"/>
+      <circle cx="29.1" cy="40.6" r="1.1" fill="#fff"/><circle cx="53.1" cy="40.6" r="1.1" fill="#fff"/>
+      <rect x="26" y="47" width="28" height="19" rx="9.5" fill="#B57A48"/>
+      <ellipse cx="35" cy="52.5" rx="2.4" ry="1.9" fill="#3B2415"/>
+      <ellipse cx="45" cy="52.5" rx="2.4" ry="1.9" fill="#3B2415"/>
+      <path d="M36.5 60 Q40 62.5 43.5 60" stroke="#3B2415" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <ellipse cx="17" cy="53" rx="5" ry="3.2" fill="#F59E95" opacity=".6"/>
+      <ellipse cx="63" cy="53" rx="5" ry="3.2" fill="#F59E95" opacity=".6"/>
+      <use href="#bluete" x="31" y="4" width="18" height="18"/>
+    </symbol>
+
+    <!-- Bedienelemente -->
+    <symbol id="i-back" viewBox="0 0 32 32">
+      <path d="M11 7 H26 a3 3 0 0 1 3 3 V22 a3 3 0 0 1 -3 3 H11 L3 16 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M15 12 L22 20 M22 12 L15 20" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-ok" viewBox="0 0 32 32">
+      <path d="M6 17 L13 24 L27 9" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-weiter" viewBox="0 0 32 32">
+      <path d="M6 16 H25 M17 8 L25 16 L17 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-birne" viewBox="0 0 32 32">
+      <path d="M16 3 C10 3 6 7.5 6 12.8 C6 16.5 8 18.6 9.6 20.4 C10.7 21.6 11 22.8 11 24 H21 C21 22.8 21.3 21.6 22.4 20.4 C24 18.6 26 16.5 26 12.8 C26 7.5 22 3 16 3 Z" fill="#FFD43B" stroke="#E0A800" stroke-width="2" stroke-linejoin="round"/>
+      <rect x="11" y="24.5" width="10" height="4.5" rx="2" fill="#C9B79A"/>
+      <path d="M12 12 Q13 8.5 16 8" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-ton" viewBox="0 0 24 24">
+      <path d="M4 9 H8 L13 5 V19 L8 15 H4 Z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M16.5 9 Q18.5 12 16.5 15 M19 6.5 Q22.5 12 19 17.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-stumm" viewBox="0 0 24 24">
+      <path d="M4 9 H8 L13 5 V19 L8 15 H4 Z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M16.5 9.5 L21.5 14.5 M21.5 9.5 L16.5 14.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-frage" viewBox="0 0 24 24">
+      <path d="M8.5 9 C8.5 6.5 10 5 12 5 C14 5 15.5 6.4 15.5 8.4 C15.5 11 12 11.4 12 14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+      <circle cx="12" cy="18.6" r="1.7" fill="currentColor"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- Landschaft -->
+<div class="scene" aria-hidden="true">
+  <svg class="cloud c1" viewBox="0 0 120 56"><path d="M24 50 C10 50 4 42 6 34 C8 26 16 22 24 24 C26 12 38 6 50 10 C56 2 72 0 80 10 C90 6 102 12 102 24 C112 24 118 32 116 40 C114 48 106 50 100 50 Z"/></svg>
+  <svg class="cloud c2" viewBox="0 0 120 56"><path d="M24 50 C10 50 4 42 6 34 C8 26 16 22 24 24 C26 12 38 6 50 10 C56 2 72 0 80 10 C90 6 102 12 102 24 C112 24 118 32 116 40 C114 48 106 50 100 50 Z"/></svg>
+  <svg class="cloud c3" viewBox="0 0 120 56"><path d="M24 50 C10 50 4 42 6 34 C8 26 16 22 24 24 C26 12 38 6 50 10 C56 2 72 0 80 10 C90 6 102 12 102 24 C112 24 118 32 116 40 C114 48 106 50 100 50 Z"/></svg>
+  <svg class="sun" viewBox="0 0 120 120">
+    <path class="rays" d="M100 60H112 M94.6 80L105 86 M80 94.6L86 105 M60 100V112 M40 94.6L34 105 M25.4 80L15 86 M20 60H8 M25.4 40L15 34 M40 25.4L34 15 M60 20V8 M80 25.4L86 15 M94.6 40L105 34" stroke="#FFD43B" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="60" cy="60" r="32" fill="#FFD43B"/>
+    <circle cx="60" cy="60" r="32" fill="none" stroke="#FFE680" stroke-width="4" opacity=".7"/>
+    <path d="M46 59 Q50 54.5 54 59 M66 59 Q70 54.5 74 59" stroke="#C98A00" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M53 68 Q60 74 67 68" stroke="#C98A00" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse cx="44" cy="67" rx="5" ry="3" fill="#FF9E6E" opacity=".5"/>
+    <ellipse cx="76" cy="67" rx="5" ry="3" fill="#FF9E6E" opacity=".5"/>
+  </svg>
+  <svg class="hills" viewBox="0 0 400 100" preserveAspectRatio="none">
+    <path d="M0 44 C50 10 110 14 170 38 C230 62 300 6 400 26 V100 H0 Z" fill="#C6E9A6"/>
+    <path d="M0 74 C70 44 150 56 220 70 C290 84 340 56 400 62 V100 H0 Z" fill="#ABDD88"/>
+  </svg>
+  <svg class="tree" viewBox="0 0 80 100">
+    <rect x="35" y="55" width="10" height="42" rx="5" fill="#A0703F"/>
+    <circle cx="40" cy="38" r="28" fill="#79C35C"/>
+    <circle cx="22" cy="52" r="17" fill="#79C35C"/>
+    <circle cx="58" cy="52" r="17" fill="#79C35C"/>
+    <circle cx="32" cy="28" r="9" fill="#8FD371" opacity=".8"/>
+    <g fill="#FF9F1C">
+      <circle cx="28" cy="34" r="5"/><circle cx="52" cy="28" r="5"/><circle cx="42" cy="50" r="5"/>
+      <circle cx="62" cy="48" r="5"/><circle cx="18" cy="54" r="5"/>
+    </g>
+  </svg>
+  <svg class="tree t2" viewBox="0 0 80 100">
+    <rect x="35" y="55" width="10" height="42" rx="5" fill="#A0703F"/>
+    <circle cx="40" cy="38" r="28" fill="#86C966"/>
+    <circle cx="22" cy="52" r="17" fill="#86C966"/>
+    <circle cx="58" cy="52" r="17" fill="#86C966"/>
+    <g fill="#FFB347"><circle cx="30" cy="36" r="5"/><circle cx="54" cy="44" r="5"/><circle cx="44" cy="22" r="5"/></g>
+  </svg>
+  <div class="meadow"></div>
+  <svg class="deco" style="left:7%;top:52%;width:22px" viewBox="0 0 30 30"><use href="#bluete"/></svg>
+  <svg class="deco" style="left:15%;top:60%;width:16px" viewBox="0 0 30 30"><use href="#bluete-weiss"/></svg>
+  <svg class="deco" style="right:8%;top:56%;width:20px" viewBox="0 0 30 30"><use href="#bluete-weiss"/></svg>
+  <svg class="deco" style="right:16%;top:50%;width:16px" viewBox="0 0 30 30"><use href="#bluete"/></svg>
+  <svg class="deco" style="left:44%;top:49%;width:14px" viewBox="0 0 30 30"><use href="#bluete-weiss"/></svg>
+  <svg class="deco" style="right:30%;top:66%;width:18px" viewBox="0 0 30 30"><use href="#bluete"/></svg>
+  <svg class="deco" style="left:28%;top:72%;width:18px" viewBox="0 0 30 30"><use href="#bluete-weiss"/></svg>
+</div>
+
+<main class="app">
+  <header class="bar">
+    <div class="level pill" id="level">
+      <span class="num" id="lvl">1</span>
+      <span class="lbl"><small>Stufe</small><span class="track"><i id="lvlbar"></i></span></span>
+    </div>
+    <div class="title">Zahlenpyramiden</div>
+    <div class="count pill" id="count" aria-label="Mandarinen">
+      <svg viewBox="0 0 40 40" id="countIcon"><use href="#mandarine"/></svg>
+      <span id="solved">0</span>
+    </div>
+    <button class="round pill" id="sound" type="button" aria-label="Ton ausschalten"><svg viewBox="0 0 24 24"><use href="#i-ton"/></svg></button>
+    <button class="round pill" id="help" type="button" aria-label="So geht's"><svg viewBox="0 0 24 24"><use href="#i-frage"/></svg></button>
+  </header>
+
+  <section class="stage" id="stage">
+    <div class="friend f-schmetterling" data-f="schmetterling"><svg viewBox="0 0 60 50"><use href="#f-schmetterling"/></svg></div>
+    <div class="pyr-box" id="pyrbox">
+      <div class="pyr-wrap"><div class="pyramid" id="pyramid" role="group" aria-label="Zahlenpyramide"></div></div>
+      <div class="ground" id="ground">
+        <svg class="friend f-schildkroete" data-f="schildkroete" viewBox="0 0 72 46"><use href="#f-schildkroete"/></svg>
+        <svg class="friend f-ente" data-f="ente" viewBox="0 0 58 48"><use href="#f-ente"/></svg>
+        <svg class="friend f-baby" data-f="baby" viewBox="0 0 80 74"><use href="#f-baby"/></svg>
+      </div>
+    </div>
+  </section>
+
+  <section class="dock" id="dock">
+    <div class="lily" aria-hidden="true">
+      <svg viewBox="0 0 60 44"><use href="#seerose"/></svg>
+      <svg class="friend f-frosch" data-f="frosch" viewBox="0 0 60 50"><use href="#f-frosch"/></svg>
+    </div>
+    <div class="buddy">
+      <svg class="capy" id="capy" viewBox="0 0 140 132" aria-hidden="true">
+        <g class="bob">
+          <ellipse cx="38" cy="34" rx="11" ry="9" fill="#A86E40"/>
+          <ellipse cx="102" cy="34" rx="11" ry="9" fill="#A86E40"/>
+          <ellipse cx="38" cy="35" rx="5.5" ry="4.2" fill="#7A4A28"/>
+          <ellipse cx="102" cy="35" rx="5.5" ry="4.2" fill="#7A4A28"/>
+          <path d="M70 29 C104 29 124 47 124 79 L124 104 C124 122 110 132 90 132 L50 132 C30 132 16 122 16 104 L16 79 C16 47 36 29 70 29 Z" fill="#C88D5A"/>
+          <path d="M38 47 C47 39 58 36 69 35.5" stroke="#DCA877" stroke-width="5" stroke-linecap="round" fill="none" opacity=".75"/>
+          <g class="eyes-open">
+            <ellipse cx="48" cy="66" rx="4.6" ry="5.6" fill="#2B1A10"/>
+            <ellipse cx="92" cy="66" rx="4.6" ry="5.6" fill="#2B1A10"/>
+            <circle cx="49.6" cy="64" r="1.6" fill="#fff"/>
+            <circle cx="93.6" cy="64" r="1.6" fill="#fff"/>
+          </g>
+          <g class="eyes-happy" fill="none" stroke="#2B1A10" stroke-width="3.2" stroke-linecap="round">
+            <path d="M42 68 Q48 60 54 68"/>
+            <path d="M86 68 Q92 60 98 68"/>
+          </g>
+          <rect x="46" y="74" width="48" height="32" rx="16" fill="#A86E40"/>
+          <ellipse cx="62" cy="83" rx="3.6" ry="2.8" fill="#3B2415"/>
+          <ellipse cx="78" cy="83" rx="3.6" ry="2.8" fill="#3B2415"/>
+          <path d="M64 96 Q70 100.5 76 96" stroke="#3B2415" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+          <ellipse cx="31" cy="84" rx="8" ry="5" fill="#F59E95" opacity=".55"/>
+          <ellipse cx="109" cy="84" rx="8" ry="5" fill="#F59E95" opacity=".55"/>
+          <use href="#mandarine" x="52" y="-1" width="36" height="36"/>
+          <use class="vogel friend-in" data-f="vogel" href="#f-vogel" x="92" y="3" width="36" height="30"/>
+        </g>
+        <path d="M0 116 Q6 110 18 116 T42 116 T66 116 T90 116 T114 116 T138 116 Q140 116 140 115 V140 H0 Z" fill="#93DAF0" opacity=".95"/>
+        <path d="M10 121 Q20 118 30 121 M98 123 Q108 120 118 123" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".7"/>
+      </svg>
+      <div class="bubble" id="bubble" aria-live="polite"><span id="say">Hallo Yuna!</span></div>
+      <button class="tipp" id="tipp" type="button" aria-label="Tipp">
+        <svg viewBox="0 0 32 32"><use href="#i-birne"/></svg>Tipp
+      </button>
+    </div>
+    <div class="controls">
+      <div class="pad" id="pad">
+        <button class="key" type="button" data-k="1">1</button>
+        <button class="key" type="button" data-k="2">2</button>
+        <button class="key" type="button" data-k="3">3</button>
+        <button class="key" type="button" data-k="4">4</button>
+        <button class="key" type="button" data-k="5">5</button>
+        <button class="key" type="button" data-k="6">6</button>
+        <button class="key" type="button" data-k="7">7</button>
+        <button class="key" type="button" data-k="8">8</button>
+        <button class="key" type="button" data-k="9">9</button>
+        <button class="key" type="button" data-k="0">0</button>
+        <button class="key back" type="button" data-k="back" aria-label="Löschen"><svg viewBox="0 0 32 32"><use href="#i-back"/></svg></button>
+        <button class="key ok" type="button" data-k="ok" aria-label="Prüfen"><svg viewBox="0 0 32 32"><use href="#i-ok"/></svg></button>
+      </div>
+      <button class="next" id="next" type="button">Nächste Pyramide <svg viewBox="0 0 32 32"><use href="#i-weiter"/></svg></button>
+    </div>
+  </section>
+</main>
+
+<div class="fx" id="fx" aria-hidden="true"></div>
+<div class="toast" id="toast" role="status"><div class="ic" id="toastIc"></div><div><b id="toastT"></b><span id="toastS"></span></div></div>
+
+<div class="overlay" id="intro" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="introT">
+    <svg class="capy-big" viewBox="0 0 140 132" aria-hidden="true">
+      <ellipse cx="38" cy="34" rx="11" ry="9" fill="#A86E40"/>
+      <ellipse cx="102" cy="34" rx="11" ry="9" fill="#A86E40"/>
+      <ellipse cx="38" cy="35" rx="5.5" ry="4.2" fill="#7A4A28"/>
+      <ellipse cx="102" cy="35" rx="5.5" ry="4.2" fill="#7A4A28"/>
+      <path d="M70 29 C104 29 124 47 124 79 L124 104 C124 122 110 132 90 132 L50 132 C30 132 16 122 16 104 L16 79 C16 47 36 29 70 29 Z" fill="#C88D5A"/>
+      <g fill="none" stroke="#2B1A10" stroke-width="3.2" stroke-linecap="round"><path d="M42 68 Q48 60 54 68"/><path d="M86 68 Q92 60 98 68"/></g>
+      <rect x="46" y="74" width="48" height="32" rx="16" fill="#A86E40"/>
+      <ellipse cx="62" cy="83" rx="3.6" ry="2.8" fill="#3B2415"/>
+      <ellipse cx="78" cy="83" rx="3.6" ry="2.8" fill="#3B2415"/>
+      <path d="M64 96 Q70 100.5 76 96" stroke="#3B2415" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      <ellipse cx="31" cy="84" rx="8" ry="5" fill="#F59E95" opacity=".55"/>
+      <ellipse cx="109" cy="84" rx="8" ry="5" fill="#F59E95" opacity=".55"/>
+      <use href="#mandarine" x="52" y="-1" width="36" height="36"/>
+    </svg>
+    <h1 id="introT">Hallo Yuna!</h1>
+    <p class="lead">Ich bin Capy. Hilfst du mir, Zahlenpyramiden zu bauen?</p>
+    <div class="demos">
+      <div class="demo">
+        <div class="row"><div class="cell solved">7</div></div>
+        <div class="row"><div class="cell given">3</div><div class="cell given">4</div></div>
+        <div class="eq">3 + 4 = 7</div>
+      </div>
+      <div class="demo">
+        <div class="row"><div class="cell given">7</div></div>
+        <div class="row"><div class="cell given">3</div><div class="cell solved">4</div></div>
+        <div class="eq">7 − 3 = 4</div>
+      </div>
+    </div>
+    <p>Zwei Steine nebeneinander ergeben zusammen den Stein darüber.</p>
+    <p class="lead">Fehlt unten ein Stein? Dann rechnest du minus.</p>
+    <button class="go" id="go" type="button">Los geht's!</button>
+    <div class="parents">
+      <span id="stats"></span>
+      <button id="reset" type="button">Fortschritt löschen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* =====================================================================
+   STUFEN
+   Die Schwierigkeit wächst über diese Tabelle. Felder:
+     n      Stockwerke (Steine in der Grundreihe)
+     max    grösste Zahl, die in der Pyramide vorkommen darf
+     leer   wie viele Steine fehlen [mindestens, höchstens]
+     minus  wie viele davon sich nur mit Minus ausrechnen lassen
+     unten  true = die Grundreihe steht immer da, es reicht Plus
+   ===================================================================== */
+const LEVELS = [
+  { n: 3, max: 10, leer: [2, 3],   minus: [0, 0], unten: true },
+  { n: 3, max: 20, leer: [3, 3],   minus: [0, 0], unten: true },
+  { n: 3, max: 20, leer: [3, 3],   minus: [1, 1] },
+  { n: 4, max: 20, leer: [4, 6],   minus: [0, 0], unten: true },
+  { n: 3, max: 30, leer: [3, 3],   minus: [1, 3] },
+  { n: 4, max: 30, leer: [5, 6],   minus: [1, 2] },
+  { n: 4, max: 50, leer: [6, 6],   minus: [2, 6] },
+  { n: 5, max: 40, leer: [7, 10],  minus: [0, 0], unten: true },
+  { n: 5, max: 50, leer: [8, 10],  minus: [1, 3] },
+  { n: 5, max: 50, leer: [10, 10], minus: [3, 10] },
+  { n: 6, max: 50, leer: [10, 15], minus: [0, 0], unten: true },
+  { n: 6, max: 50, leer: [13, 15], minus: [2, 15] },
+];
+
+// Freunde, die nach so vielen gelösten Pyramiden dazukommen
+const FRIENDS = [
+  { id: 'schmetterling', at: 2,  name: 'Schmetterling', text: 'Ein Schmetterling ist zu Besuch!' },
+  { id: 'vogel',         at: 4,  name: 'Vogel',         text: 'Ein Vogel setzt sich zu Capy.' },
+  { id: 'schildkroete',  at: 7,  name: 'Schildkröte',   text: 'Eine Schildkröte kommt vorbei.' },
+  { id: 'frosch',        at: 11, name: 'Frosch',        text: 'Ein Frosch hüpft herbei!' },
+  { id: 'ente',          at: 16, name: 'Ente',          text: 'Eine Ente watschelt herbei.' },
+  { id: 'baby',          at: 22, name: 'Capybara-Baby', text: 'Ein Capybara-Baby will mitspielen!' },
+];
+
+const TEXT = {
+  start: ['Los geht\'s! Welche Zahlen fehlen?', 'Neue Pyramide! Du schaffst das.', 'Hier kommt die nächste Pyramide!', 'Bereit? Dann los!', 'Auf geht\'s, Yuna!'],
+  first: 'Welche Zahl gehört in den leuchtenden Stein? Tippe sie ein und drücke ✓.',
+  ok: ['Super!', 'Richtig!', 'Genau!', 'Toll!', 'Prima!', 'Juhu!', 'Klasse!', 'Stimmt!', 'Sehr gut!'],
+  wrong: ['Hmm, das stimmt noch nicht. Probier\'s nochmal!', 'Fast! Rechne nochmal nach.', 'Nicht ganz. Du schaffst das!'],
+  tricky: 'Dieser Stein ist noch knifflig. Fang hier an!',
+  done: ['Geschafft, Yuna!', 'Pyramide fertig!', 'Wunderbar!', 'Super gemacht!', 'Bravo, Yuna!'],
+  facts: [
+    'Wusstest du? Capybaras sind die grössten Nagetiere der Welt.',
+    'Wusstest du? Capybaras leben in Südamerika, immer nahe am Wasser.',
+    'Wusstest du? Capybaras können sehr gut schwimmen.',
+    'Wusstest du? Capybaras haben kleine Schwimmhäute zwischen den Zehen.',
+    'Wusstest du? Capybaras können bis zu fünf Minuten tauchen.',
+    'Wusstest du? Capybaras fressen Gras und Wasserpflanzen.',
+    'Wusstest du? Capybaras leben gern in Gruppen zusammen.',
+    'Wusstest du? Vögel sitzen oft auf dem Rücken von Capybaras.',
+    'Wusstest du? Ein anderer Name für Capybara ist Wasserschwein.',
+    'Wusstest du? Augen, Ohren und Nase sitzen oben am Kopf. So schaut Capy auch beim Schwimmen.',
+    'Wusstest du? In Japan baden Capybaras im Winter in warmen Quellen, mit Zitrusfrüchten im Wasser.',
+  ],
+};
+
+/* ===== Hilfsfunktionen ===== */
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const range = n => Array.from({ length: n }, (_, i) => i);
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/* =====================================================================
+   PYRAMIDE
+   Stein (r, i): Reihe r von unten (0 = Grundreihe), Platz i von links.
+   Reihe r hat n − r Steine; alle liegen in einem flachen Array.
+   Jedes «Dreieck» ist ein Stein mit den zwei Steinen darunter:
+   oben = links + rechts.
+   ===================================================================== */
+const shapes = {};
+function shape(n) {
+  if (shapes[n]) return shapes[n];
+  const cells = [], at = [];
+  for (let r = 0; r < n; r++) {
+    at.push([]);
+    for (let i = 0; i < n - r; i++) { at[r].push(cells.length); cells.push({ r, i }); }
+  }
+  const tris = [];
+  for (let r = 1; r < n; r++) {
+    for (let i = 0; i < n - r; i++) tris.push({ top: at[r][i], left: at[r - 1][i], right: at[r - 1][i + 1] });
+  }
+  return (shapes[n] = { n, cells, at, tris });
+}
+
+function pascal(m) {
+  const row = [1];
+  for (let k = 1; k <= m; k++) row.push(row[k - 1] * (m - k + 1) / k);
+  return row;
+}
+
+// Würfelt eine Grundreihe, bei der die Spitze (und damit jeder Stein)
+// höchstens max ist, aber auch nicht viel kleiner – sonst bleibt der
+// Zahlenraum ungenutzt.
+function grundreihe(n, max) {
+  const coef = pascal(n - 1);
+  const minTop = Math.round(max * 0.55);
+  for (let t = 0; t < 500; t++) {
+    const b = new Array(n).fill(1);
+    // Bei sechs Stockwerken wird es unten sehr eng: ein Stein darf auch mal 0 sein
+    if (n >= 6 && Math.random() < 0.5) b[rnd(1, n - 2)] = 0;
+    let top = b.reduce((s, x, i) => s + x * coef[i], 0);
+    for (const i of shuffle(range(n))) {
+      const add = rnd(0, Math.floor((max - top) / coef[i]));
+      b[i] += add;
+      top += add * coef[i];
+    }
+    if (top >= minTop) return b;
+  }
+  return new Array(n).fill(1);
+}
+
+function werte(geo, bottom) {
+  const v = new Array(geo.cells.length);
+  bottom.forEach((x, i) => { v[geo.at[0][i]] = x; });
+  for (const t of geo.tris) v[t.top] = v[t.left] + v[t.right];
+  return v;
+}
+
+// Alle Steine, die sich mit dem jetzigen Wissen in einem Schritt ausrechnen lassen
+function schritte(geo, known) {
+  const plus = [], minus = [];
+  for (const t of geo.tris) {
+    const a = known[t.top], b = known[t.left], c = known[t.right];
+    if (a + b + c !== 2) continue;
+    if (!a) plus.push({ cell: t.top, from: [t.left, t.right], op: '+' });
+    else if (!b) minus.push({ cell: t.left, from: [t.top, t.right], op: '−' });
+    else minus.push({ cell: t.right, from: [t.top, t.left], op: '−' });
+  }
+  return { plus, minus };
+}
+
+// Löst so, wie ein Kind es täte: alles mit Plus, und Minus nur, wenn es
+// anders nicht weitergeht. ok = lösbar ohne Raten; minus = Minus-Schritte.
+function analyse(geo, known) {
+  const k = known.slice();
+  let open = k.filter(x => !x).length, minus = 0;
+  while (open > 0) {
+    const s = schritte(geo, k);
+    if (s.plus.length) {
+      for (const st of s.plus) if (!k[st.cell]) { k[st.cell] = true; open--; }
+      continue;
+    }
+    if (!s.minus.length) return { ok: false, minus };
+    k[s.minus[0].cell] = true;
+    open--;
+    minus++;
+  }
+  return { ok: true, minus };
+}
+
+const abstand = (x, [lo, hi]) => (x < lo ? lo - x : x > hi ? x - hi : 0);
+
+// Baut eine Pyramide für eine Stufe: Zahlen würfeln, dann so lange Steine
+// herausnehmen, wie sie sich noch Schritt für Schritt ausrechnen lässt.
+// Von vielen Versuchen gewinnt der, der am besten zur Stufe passt.
+function baue(level) {
+  const L = LEVELS[level], geo = shape(L.n);
+  const values = werte(geo, grundreihe(L.n, L.max));
+  let best = null;
+  for (let t = 0; t < 300 && !(best && best.cost === 0); t++) {
+    const ziel = rnd(L.leer[0], L.leer[1]);
+    const known = new Array(geo.cells.length).fill(true);
+    let leer = 0;
+    for (const c of shuffle(range(geo.cells.length))) {
+      if (leer === ziel) break;
+      if (L.unten && geo.cells[c].r === 0) continue;
+      known[c] = false;
+      if (analyse(geo, known).ok) leer++;
+      else known[c] = true;
+    }
+    const minus = analyse(geo, known).minus;
+    const cost = 2 * abstand(leer, L.leer) + abstand(minus, L.minus);
+    if (!best || cost < best.cost) best = { known, leer, minus, cost };
+  }
+  return { level, geo, values, given: best.known, leer: best.leer, minus: best.minus };
+}
+
+/* =====================================================================
+   SPEICHER
+   ===================================================================== */
+const STORE = 'y7.pyr.';
+const stand = laden();
+function laden() {
+  const s = { skill: 0, solved: 0, ton: true, intro: false };
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE + 'stand') || 'null');
+    if (raw && typeof raw === 'object') {
+      if (Number.isFinite(raw.skill)) s.skill = clamp(raw.skill, 0, LEVELS.length - 0.01);
+      if (Number.isInteger(raw.solved) && raw.solved >= 0) s.solved = raw.solved;
+      if (typeof raw.ton === 'boolean') s.ton = raw.ton;
+      if (raw.intro === true) s.intro = true;
+    }
+  } catch (e) { /* privater Modus o.ä. */ }
+  return s;
+}
+function speichern() {
+  try { localStorage.setItem(STORE + 'stand', JSON.stringify(stand)); } catch (e) { /* privater Modus o.ä. */ }
+}
+const stufe = () => Math.min(LEVELS.length - 1, Math.floor(stand.skill));
+
+// Passt die Schwierigkeit an. q = Anteil der Steine, die ohne Fehler und
+// ohne Tipp gelöst wurden. Um 70 % herum bleibt die Stufe, darüber geht es
+// hoch, darunter wieder runter. Grosse Pyramiden zählen etwas mehr.
+function anpassen(q, leer) {
+  const vorher = stufe();
+  let s = stand.skill + clamp((q - 0.7) * (0.9 + 0.03 * leer), -0.6, 0.45);
+  s = clamp(s, 0, LEVELS.length - 0.01);
+  const nachher = Math.min(LEVELS.length - 1, Math.floor(s));
+  if (nachher > vorher) s = nachher + 0.15;       // frisch aufgestiegen: kleiner Puffer
+  else if (nachher < vorher) s = nachher + 0.6;   // zurückgestuft: bald wieder hoch
+  stand.skill = s;
+  return nachher - vorher;
+}
+
+/* =====================================================================
+   TÖNE (selbst erzeugt, keine Dateien)
+   ===================================================================== */
+const Ton = (() => {
+  let ctx = null;
+  function ac() {
+    if (!stand.ton) return null;
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  function note(f, t0, dur, type = 'sine', vol = 0.12, to = 0) {
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime + t0;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f, t);
+    if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g);
+    g.connect(c.destination);
+    o.start(t);
+    o.stop(t + dur + 0.05);
+  }
+  return {
+    tipp() { note(700, 0, 0.06, 'triangle', 0.05); },
+    richtig() { note(784, 0, 0.12, 'triangle', 0.12); note(1175, 0.09, 0.22, 'triangle', 0.1); },
+    falsch() { note(330, 0, 0.28, 'sine', 0.13, 210); },
+    fertig() {
+      [523, 659, 784, 1047].forEach((f, i) => note(f, i * 0.11, 0.3, 'triangle', 0.11));
+      note(1319, 0.5, 0.55, 'sine', 0.08);
+    },
+    stufe() { [659, 784, 988, 1319, 1568].forEach((f, i) => note(f, i * 0.09, 0.28, 'square', 0.035)); },
+    freund() { [1047, 1319, 1568, 2093].forEach((f, i) => note(f, i * 0.08, 0.4, 'sine', 0.07)); },
+  };
+})();
+
+/* =====================================================================
+   OBERFLÄCHE
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const SVGNS = 'http://www.w3.org/2000/svg';
+const pyrEl = $('pyramid'), boxEl = $('pyrbox'), capyEl = $('capy'), dockEl = $('dock');
+const sayEl = $('say'), bubbleEl = $('bubble');
+const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let P = null;          // die aktuelle Pyramide
+let zellen = [];       // Knöpfe der Steine, Index wie in P.values
+let sel = -1;          // ausgewählter Stein
+let getippt = '';      // bisher getippte Ziffern
+let sperre = false;    // kurz gesperrt, während geprüft wird
+let crownEl = null;
+let letzte = '';
+
+function neuePyramide() {
+  const lvl = stufe();
+  let p, key;
+  do {
+    p = baue(lvl);
+    key = p.values.join(',') + '|' + p.given.join(',');
+  } while (key === letzte);
+  letzte = key;
+  P = Object.assign(p, {
+    known: p.given.slice(),
+    fails: new Map(),    // Fehlversuche pro Stein
+    hinted: new Set(),   // Steine mit Tipp
+    done: false,
+  });
+  sel = -1;
+  getippt = '';
+  sperre = false;
+  dockEl.classList.remove('done');
+  aufbauen();
+  waehle(naechster(-1));
+  sagen(stand.solved < 2 ? TEXT.first : pick(TEXT.start));
+  stufeZeigen();
+}
+
+function aufbauen() {
+  const geo = P.geo, n = geo.n;
+  pyrEl.innerHTML = '';
+  pyrEl.classList.remove('cheer');
+  zellen = [];
+  crownEl = document.createElement('div');
+  crownEl.className = 'crown';
+  crownEl.innerHTML = '<svg viewBox="0 0 40 40"><use href="#mandarine"/></svg>';
+  pyrEl.appendChild(crownEl);
+  for (let r = n - 1; r >= 0; r--) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    for (const c of geo.at[r]) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cell';
+      b.dataset.c = c;
+      if (!reduce) {
+        b.classList.add('build');
+        b.style.setProperty('--d', (r * 0.11 + geo.cells[c].i * 0.035).toFixed(3) + 's');
+        b.addEventListener('animationend', () => b.classList.remove('build'), { once: true });
+      }
+      b.style.setProperty('--w', ((n - 1 - r) * 0.06 + geo.cells[c].i * 0.03).toFixed(3) + 's');
+      row.appendChild(b);
+      zellen[c] = b;
+    }
+    pyrEl.appendChild(row);
+  }
+  einpassen();
+  zellen.forEach((_, c) => zeichne(c));
+}
+
+// Grösse der Steine an den Platz anpassen
+function einpassen() {
+  if (!P) return;
+  const n = P.geo.n;
+  const W = boxEl.clientWidth, H = boxEl.clientHeight - $('ground').offsetHeight - 10;
+  const ratio = 0.72;
+  const gap = clamp(Math.round(Math.min(W, H) / 80), 4, 9);
+  const byW = (W - (n - 1) * gap) / n;
+  const byH = (H - n * gap) / ((n + 0.8) * ratio);
+  const bw = Math.floor(clamp(Math.min(byW, byH, 150), 30, 150));
+  pyrEl.style.setProperty('--bw', bw + 'px');
+  pyrEl.style.setProperty('--bh', Math.round(bw * ratio) + 'px');
+  pyrEl.style.setProperty('--gap', gap + 'px');
+}
+
+function zeichne(c) {
+  const b = zellen[c];
+  if (!b) return;
+  const bekannt = P.known[c], gegeben = P.given[c];
+  b.classList.toggle('given', gegeben);
+  b.classList.toggle('solved', bekannt && !gegeben);
+  b.classList.toggle('blank', !bekannt);
+  b.classList.toggle('sel', c === sel && !bekannt);
+  b.tabIndex = bekannt ? -1 : 0;
+  if (bekannt) {
+    b.textContent = P.values[c];
+    b.setAttribute('aria-label', String(P.values[c]));
+  } else if (c === sel) {
+    b.innerHTML = '';
+    const t = document.createElement('span');
+    t.className = 'typed';
+    t.textContent = getippt;
+    if (getippt.length < 2) {
+      const k = document.createElement('span');
+      k.className = 'caret';
+      t.appendChild(k);
+    }
+    b.appendChild(t);
+    b.setAttribute('aria-label', 'Leerer Stein, ausgewählt' + (getippt ? ': ' + getippt : ''));
+  } else {
+    b.textContent = '';
+    b.setAttribute('aria-label', 'Leerer Stein');
+  }
+}
+
+function hinweiseWeg() {
+  zellen.forEach(z => z.classList.remove('hint'));
+}
+
+function waehle(c) {
+  if (c < 0 || !P || P.known[c]) return;
+  const alt = sel;
+  sel = c;
+  getippt = '';
+  hinweiseWeg();
+  if (alt >= 0) zeichne(alt);
+  zeichne(c);
+}
+
+// Position eines Steins auf dem Bildschirm, in Steinbreiten
+const lage = c => { const z = P.geo.cells[c]; return { x: z.i + z.r / 2, y: z.r }; };
+function naechsterVon(pool, von) {
+  if (!pool.length) return -1;
+  if (von < 0) return pool.slice().sort((a, b) => lage(a).y - lage(b).y || lage(a).x - lage(b).x)[0];
+  const p = lage(von);
+  let best = pool[0], bd = Infinity;
+  for (const c of pool) {
+    const q = lage(c), d = Math.abs(q.x - p.x) + Math.abs(q.y - p.y) * 1.2;
+    if (d < bd) { bd = d; best = c; }
+  }
+  return best;
+}
+// Der nächste Stein, den man jetzt ausrechnen kann – am liebsten mit Plus
+function naechster(von) {
+  const s = schritte(P.geo, P.known);
+  let pool = (s.plus.length ? s.plus : s.minus).map(x => x.cell);
+  if (!pool.length) pool = range(P.values.length).filter(c => !P.known[c]);
+  return naechsterVon(pool, von);
+}
+
+function schrittFuer(c) {
+  const s = schritte(P.geo, P.known);
+  return s.plus.find(x => x.cell === c) || s.minus.find(x => x.cell === c) || null;
+}
+
+/* ---------- Sprechblase und Capy ---------- */
+function sagen(text, html) {
+  if (html) sayEl.innerHTML = html; else sayEl.textContent = text;
+  bubbleEl.classList.remove('pop');
+  void bubbleEl.offsetWidth;
+  bubbleEl.classList.add('pop');
+}
+let moodTimer = 0;
+function stimmung(m, ms) {
+  capyEl.classList.remove('happy', 'oops');
+  void capyEl.getBoundingClientRect();
+  clearTimeout(moodTimer);
+  if (!m) return;
+  capyEl.classList.add(m);
+  if (ms) moodTimer = setTimeout(() => capyEl.classList.remove(m), ms);
+}
+
+/* ---------- Eingabe ---------- */
+function ziffer(d) {
+  if (!P || P.done || sperre) return;
+  if (sel < 0) waehle(naechster(-1));
+  if (getippt.length >= 2) return;
+  if (getippt === '0') getippt = '';
+  getippt += d;
+  Ton.tipp();
+  zeichne(sel);
+  // Zwei Ziffern sind immer eine ganze Zahl (alles bleibt unter 100)
+  if (getippt.length === 2) {
+    sperre = true;
+    setTimeout(() => { sperre = false; pruefen(); }, 260);
+  }
+}
+
+function loeschen() {
+  if (!P || P.done || sperre || sel < 0 || !getippt) return;
+  getippt = getippt.slice(0, -1);
+  Ton.tipp();
+  zeichne(sel);
+}
+
+function pruefen() {
+  if (!P || P.done || sperre || sel < 0) return;
+  if (!getippt) {
+    zellen[sel].classList.remove('shake');
+    void zellen[sel].offsetWidth;
+    zellen[sel].classList.add('shake');
+    return;
+  }
+  const c = sel, b = zellen[c];
+  if (parseInt(getippt, 10) === P.values[c]) {
+    P.known[c] = true;
+    getippt = '';
+    hinweiseWeg();
+    zeichne(c);
+    b.classList.remove('pop', 'shake');
+    void b.offsetWidth;
+    b.classList.add('pop');
+    Ton.richtig();
+    if (P.known.every(Boolean)) { fertig(); return; }
+    stimmung('happy', 900);
+    sagen(pick(TEXT.ok));
+    waehle(naechster(c));
+    return;
+  }
+  // falsch
+  const f = (P.fails.get(c) || 0) + 1;
+  P.fails.set(c, f);
+  getippt = '';
+  Ton.falsch();
+  stimmung('oops', 800);
+  b.classList.remove('shake', 'pop');
+  void b.offsetWidth;
+  b.classList.add('shake', 'wrong');
+  setTimeout(() => b.classList.remove('wrong'), 450);
+  zeichne(c);
+  if (f === 1) { sagen(pick(TEXT.wrong)); return; }
+  const st = schrittFuer(c);
+  if (!st) {
+    // Dieser Stein geht noch gar nicht – zu einem führen, der geht
+    const k = naechster(c);
+    waehle(k);
+    zeigeSchritt(schrittFuer(k), TEXT.tricky);
+    return;
+  }
+  if (f === 2) zeigeSchritt(st);
+  else {
+    zeigeSchritt(st, null, true);
+  }
+}
+
+// Markiert die zwei Steine, mit denen man rechnet, und sagt die Rechnung
+function zeigeSchritt(st, vorne, loesung) {
+  if (!st) return;
+  hinweiseWeg();
+  st.from.forEach(x => zellen[x].classList.add('hint'));
+  const a = P.values[st.from[0]], b = P.values[st.from[1]];
+  const rechnung = `${a} ${st.op} ${b}`;
+  let html = (vorne ? esc(vorne) + ' ' : '') + 'Rechne: <span class="op">' + rechnung + '</span>';
+  if (loesung) html = 'Rechne: <span class="op">' + rechnung + ' = ' + P.values[st.cell] + '</span>. Tippe es ein!';
+  sagen('', html);
+}
+const esc = s => s.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+
+function tipp() {
+  if (!P || P.done) return;
+  let st = sel >= 0 ? schrittFuer(sel) : null;
+  if (!st) {
+    const k = naechster(sel);
+    waehle(k);
+    st = schrittFuer(k);
+  }
+  if (!st) return;
+  P.hinted.add(st.cell);
+  Ton.tipp();
+  zeigeSchritt(st);
+}
+
+/* ---------- Geschafft ---------- */
+function fertig() {
+  P.done = true;
+  const alt = sel;
+  sel = -1;
+  if (alt >= 0) zeichne(alt);
+  hinweiseWeg();
+  // Fehler zählen: höchstens zwei pro Stein, ein Tipp zählt wie ein Fehler
+  let fehler = 0;
+  range(P.values.length).forEach(c => {
+    if (P.given[c]) return;
+    fehler += Math.min(2, (P.fails.get(c) || 0) + (P.hinted.has(c) ? 1 : 0));
+  });
+  const q = Math.max(0, 1 - fehler / P.leer);
+  const sprung = anpassen(q, P.leer);
+  stand.solved++;
+  speichern();
+
+  Ton.fertig();
+  stimmung('happy', 1800);
+  sagen(pick(TEXT.done));
+  konfetti();
+  // Alles Spätere nur, solange noch diese Pyramide zu sehen ist
+  const diese = P;
+  const spaeter = (fn, ms) => setTimeout(() => { if (P === diese) fn(); }, ms);
+  spaeter(() => pyrEl.classList.add('cheer'), 200);
+  spaeter(mandarineFliegt, 350);
+  spaeter(() => sagen(pick(TEXT.facts)), 2600);
+  // «Weiter» erst nach einem Moment, damit ein Doppeltipp die Feier nicht überspringt
+  spaeter(() => { P.bereit = true; dockEl.classList.add('done'); }, 700);
+
+  const freund = FRIENDS.find(f => f.at === stand.solved);
+  if (sprung > 0) {
+    meldung('stern', 'Stufe ' + (stufe() + 1) + '!', 'Du wirst immer besser!', () => Ton.stufe(), 1500);
+  }
+  if (freund) {
+    meldung('f-' + freund.id, 'Neuer Freund: ' + freund.name, freund.text, () => {
+      Ton.freund();
+      freundeZeigen(freund.id);
+    }, sprung > 0 ? 0 : 1500);
+  }
+  setTimeout(stufeZeigen, 1200);
+}
+
+function weiter() {
+  if (!P || !P.bereit) return;
+  zaehlen();
+  neuePyramide();
+}
+
+/* ---------- Effekte ---------- */
+function konfetti() {
+  if (reduce) return;
+  const fx = $('fx');
+  const arten = ['mandarine', 'blatt', 'bluete', 'herz', 'mandarine', 'bluete-weiss'];
+  for (let i = 0; i < 30; i++) {
+    const s = document.createElementNS(SVGNS, 'svg');
+    const art = pick(arten);
+    s.setAttribute('viewBox', art === 'mandarine' ? '0 0 40 40' : '0 0 30 30');
+    const u = document.createElementNS(SVGNS, 'use');
+    u.setAttribute('href', '#' + art);
+    s.appendChild(u);
+    const size = rnd(18, 36);
+    s.style.width = s.style.height = size + 'px';
+    s.style.left = (Math.random() * 100) + 'vw';
+    fx.appendChild(s);
+    const drift = rnd(-80, 80), rot = rnd(-400, 400);
+    s.animate([
+      { transform: 'translate(0, -60px) rotate(0deg)' },
+      { transform: `translate(${drift}px, calc(100vh + 60px)) rotate(${rot}deg)` },
+    ], { duration: rnd(1800, 3000), delay: rnd(0, 500), easing: 'cubic-bezier(.35,.1,.6,1)', fill: 'both' })
+      .onfinish = () => s.remove();
+  }
+}
+
+// Zähler oben nachführen; mehrfach aufrufen schadet nicht
+function zaehlen() {
+  const s = $('solved');
+  if (s.textContent === String(stand.solved)) return;
+  s.textContent = stand.solved;
+  const k = $('count');
+  k.classList.remove('bump');
+  void k.offsetWidth;
+  k.classList.add('bump');
+}
+
+function mandarineFliegt() {
+  const ziel = $('countIcon');
+  // Falls die Animation hängt (z.B. Tab im Hintergrund), zählt es trotzdem
+  setTimeout(zaehlen, 1300);
+  if (!crownEl || reduce) { zaehlen(); return; }
+  const a = crownEl.getBoundingClientRect(), z = ziel.getBoundingClientRect();
+  if (!a.width) { zaehlen(); return; }
+  const f = document.createElementNS(SVGNS, 'svg');
+  f.setAttribute('viewBox', '0 0 40 40');
+  f.innerHTML = '<use href="#mandarine"/>';
+  Object.assign(f.style, { position: 'fixed', left: a.left + 'px', top: a.top + 'px', width: a.width + 'px', height: a.height + 'px', zIndex: 26, pointerEvents: 'none' });
+  document.body.appendChild(f);
+  crownEl.style.visibility = 'hidden';
+  const dx = z.left + z.width / 2 - (a.left + a.width / 2);
+  const dy = z.top + z.height / 2 - (a.top + a.height / 2);
+  const sc = z.width / a.width;
+  f.animate([
+    { transform: 'translate(0, 0) scale(1) rotate(0deg)' },
+    { transform: `translate(${dx * 0.35}px, ${dy * 0.35 - 70}px) scale(1.35) rotate(160deg)`, offset: 0.45 },
+    { transform: `translate(${dx}px, ${dy}px) scale(${sc}) rotate(360deg)` },
+  ], { duration: 950, easing: 'ease-in-out', fill: 'forwards' }).onfinish = () => { f.remove(); zaehlen(); };
+}
+
+// Kleine Meldungen oben, eine nach der anderen
+const meldungen = [];
+let meldungLaeuft = false;
+function meldung(symbol, titel, text, beimZeigen, warte) {
+  // Eine neue Stufe macht ältere, noch wartende Stufen-Meldungen überflüssig
+  if (symbol === 'stern') {
+    for (let i = meldungen.length - 1; i >= 0; i--) if (meldungen[i].symbol === 'stern') meldungen.splice(i, 1);
+  }
+  meldungen.push({ symbol, titel, text, beimZeigen, warte: warte || 0 });
+  if (!meldungLaeuft) naechsteMeldung();
+}
+function naechsteMeldung() {
+  const m = meldungen.shift();
+  if (!m) { meldungLaeuft = false; return; }
+  meldungLaeuft = true;
+  setTimeout(() => {
+    const vb = { stern: '0 0 40 40', 'f-schmetterling': '0 0 60 50', 'f-vogel': '0 0 44 36', 'f-schildkroete': '0 0 72 46', 'f-frosch': '0 0 60 50', 'f-ente': '0 0 58 48', 'f-baby': '0 0 80 74' }[m.symbol];
+    $('toastIc').innerHTML = `<svg viewBox="${vb}"><use href="#${m.symbol}"/></svg>`;
+    $('toastT').textContent = m.titel;
+    $('toastS').textContent = m.text;
+    $('toast').classList.add('show');
+    if (m.beimZeigen) m.beimZeigen();
+    setTimeout(() => {
+      $('toast').classList.remove('show');
+      setTimeout(naechsteMeldung, 550);
+    }, 2800);
+  }, m.warte);
+}
+
+function freundeZeigen(neu) {
+  for (const f of FRIENDS) {
+    const an = stand.solved >= f.at;
+    document.querySelectorAll(`[data-f="${f.id}"]`).forEach(el => {
+      el.classList.toggle('on', an);
+      if (f.id === neu && !reduce) {
+        el.classList.remove('arrive');
+        void el.getBoundingClientRect();
+        el.classList.add('arrive');
+      }
+    });
+  }
+}
+
+function stufeZeigen() {
+  const l = stufe();
+  $('lvl').textContent = l + 1;
+  $('level').setAttribute('aria-label', 'Stufe ' + (l + 1));
+  const anteil = l === LEVELS.length - 1 && stand.skill >= LEVELS.length - 0.02 ? 1 : stand.skill - l;
+  $('lvlbar').style.width = Math.round(clamp(anteil, 0, 1) * 100) + '%';
+}
+
+function tonZeigen() {
+  $('sound').querySelector('use').setAttribute('href', stand.ton ? '#i-ton' : '#i-stumm');
+  $('sound').setAttribute('aria-label', stand.ton ? 'Ton ausschalten' : 'Ton einschalten');
+}
+
+/* ---------- Hilfe / Start ---------- */
+let resetScharf = false;
+function hilfe(zeigen) {
+  const o = $('intro');
+  if (zeigen) {
+    $('stats').textContent = stand.solved
+      ? `Gelöste Pyramiden: ${stand.solved} · Stufe ${stufe() + 1} von ${LEVELS.length}`
+      : '';
+    resetScharf = false;
+    $('reset').textContent = 'Fortschritt löschen';
+    $('reset').hidden = !stand.solved;
+    o.hidden = false;
+  } else {
+    o.hidden = true;
+    if (!stand.intro) { stand.intro = true; speichern(); }
+  }
+}
+
+/* ---------- Ereignisse ---------- */
+pyrEl.addEventListener('click', e => {
+  const b = e.target.closest('.cell');
+  if (!b || !P || P.done || sperre) return;
+  const c = +b.dataset.c;
+  if (P.known[c]) return;
+  if (c !== sel) { waehle(c); Ton.tipp(); }
+});
+$('pad').addEventListener('click', e => {
+  const k = e.target.closest('.key');
+  if (!k) return;
+  const v = k.dataset.k;
+  if (v === 'back') loeschen();
+  else if (v === 'ok') pruefen();
+  else ziffer(v);
+});
+$('tipp').addEventListener('click', tipp);
+$('next').addEventListener('click', weiter);
+$('sound').addEventListener('click', () => {
+  stand.ton = !stand.ton;
+  speichern();
+  tonZeigen();
+  if (stand.ton) Ton.richtig();
+});
+$('help').addEventListener('click', () => hilfe(true));
+$('go').addEventListener('click', () => hilfe(false));
+$('reset').addEventListener('click', () => {
+  if (!resetScharf) {
+    resetScharf = true;
+    $('reset').textContent = 'Wirklich alles löschen? Nochmal tippen.';
+    return;
+  }
+  stand.skill = 0;
+  stand.solved = 0;
+  speichern();
+  zaehlen();
+  freundeZeigen();
+  hilfe(false);
+  neuePyramide();
+});
+// Zahlen kommen nur über die Tasten oben. Absichtlich gibt es kein Textfeld
+// und keine Tastatur-Abfrage: so geht die Bildschirmtastatur des Tablets nie auf.
+
+if (window.ResizeObserver) new ResizeObserver(einpassen).observe(boxEl);
+else window.addEventListener('resize', einpassen);
+
+/* ---------- Los ---------- */
+$('solved').textContent = stand.solved;
+tonZeigen();
+freundeZeigen();
+neuePyramide();
+if (!stand.intro) hilfe(true);
+</script>
+</body>
+</html>
