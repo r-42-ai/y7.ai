@@ -758,14 +758,6 @@ body.im-training #rang { display: none; }
   box-shadow: 0 6px 0 var(--green-d);
 }
 .los:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--green-d); }
-.pw input {
-  width: 100%; height: 56px; margin-bottom: 12px; padding: 0 14px;
-  border: 3px solid var(--card-edge); border-radius: 18px; background: #fff;
-  font: inherit; font-size: 22px; text-align: center; color: var(--ink);
-  -webkit-user-select: text; user-select: text;
-}
-.pw input:focus { outline: none; border-color: var(--orange); }
-.pw-err { min-height: 22px; margin-top: 8px; color: #B8322A; font-size: 15px; }
 .start.aufwachen .start-karte { animation: wegschweben .6s ease-in both; }
 @keyframes wegschweben { to { opacity: 0; transform: translateY(-30px) scale(.94); } }
 

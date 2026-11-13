@@ -86,19 +86,6 @@ Fehlt eine Aufnahme, zeigt die App den Text trotzdem an; Fakten mit Ton kommen z
 (`audio/vorhanden.json`). Zahlen in Fakten liest die Stimme automatisch als Wörter,
 Schweizer «ss» nach langem Vokal wird für die Stimme zu «ß» (siehe `texte.js`).
 
-## Passwort
-- Wird gehasht (SHA-256), nicht im Klartext gespeichert
-- Nach Eingabe 30 Tage gemerkt (pro Gerät & Browser)
-- Gleicher Hash wie Yunas Mathe-Training auf 42.ai/yuna (Repo r-42-ai/www); seit dem
-  Umzug ist die Session aber nicht mehr geteilt (andere Domain)
-
-## Passwort ändern
-1. Neuen Hash erzeugen: `echo -n "neuespasswort" | sha256sum`
-2. In `pieks/app.js` die Konstante `PW_HASH` aktualisieren (und, falls gleich bleiben
-   soll, in `yuna/index.html` im Repo r-42-ai/www)
-3. Push → GitHub Pages deployt automatisch
-4. Auf allen Geräten neu eingeben (alte Session wird ungültig nach 30T)
-
 ## Statistik und Fortschritt
 - Die Tages-Statistik liegt unter `bruchrechnen_stats_v1`. Ansehen und löschen im
   Elternbereich.

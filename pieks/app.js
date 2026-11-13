@@ -1287,7 +1287,7 @@ const Besuch = (() => {
     timer = setTimeout(() => kommen(), ms !== undefined ? ms : wartezeit(38000));
   }
   function kommen(wunsch) {
-    if (document.hidden || !$('fenster').hidden || !$('start').hidden || !$('pwOvl').hidden) { planen(wartezeit(12000)); return; }
+    if (document.hidden || !$('fenster').hidden || !$('start').hidden) { planen(wartezeit(12000)); return; }
     const b = boden();
     const bodenOk = b && b.offsetParent && b.clientHeight >= 46;
     const frei = Object.keys(BESUCHER).filter(k => k !== letzter && besucherMoeglich(k) && !unterwegs[spurVon(k)] && (spurVon(k) === 'himmel' || bodenOk));
@@ -1786,33 +1786,8 @@ document.addEventListener('pointerdown', e => {
 }, true);
 
 /* =====================================================================
-   START: Passwort, dann Pieks wecken
+   START: Pieks wecken
    ===================================================================== */
-const PW_HASH = '692dfc7c3ba3d913cd882cb48c33c54150937ed7af35c77d4da28688a9de442b';
-const PW_KEY = 'mathe_pw_unlocked_at';
-async function pwSha256(t) {
-  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
-  return Array.from(new Uint8Array(h)).map(x => x.toString(16).padStart(2, '0')).join('');
-}
-function pwOk() {
-  try { const t = parseInt(localStorage.getItem(PW_KEY) || '0', 10); return t > 0 && Date.now() - t < 30 * 86400000; } catch (e) { return false; }
-}
-$('pwForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const i = $('pwInput');
-  if (!window.crypto || !crypto.subtle) { $('pwErr').textContent = 'Dieser Browser kann das Passwort nicht prüfen.'; return; }
-  if ((await pwSha256(i.value)) === PW_HASH) {
-    try { localStorage.setItem(PW_KEY, Date.now().toString()); } catch (err) { /* privater Modus */ }
-    i.blur();
-    $('pwOvl').hidden = true;
-    startZeigen();
-  } else {
-    $('pwErr').textContent = 'Hmm, das war nicht das Zauberwort.';
-    i.value = '';
-    i.focus();
-  }
-});
-
 function startZeigen() {
   $('startKugel').innerHTML = kugelSVG();
   $('startText').textContent = tageszeit() === 'nacht' ? 'Pieks ist nachtaktiv, aber gerade döst er.' : 'Pieks hält gerade ein Nickerchen.';
@@ -1945,8 +1920,7 @@ themenZeichnen();
 zeigeBildschirm('lichtung');
 kopfZeigen();
 $('blaseHome').querySelector('.say').textContent = 'Hoi Nea!';
-if (pwOk()) startZeigen();
-else { $('pwKugel').innerHTML = kugelSVG(); $('pwOvl').hidden = false; setTimeout(() => $('pwInput').focus(), 60); }
+startZeigen();
 
 // Als App installierbar und ohne Internet nutzbar (siehe sw.js). Danach
 // holt der Service Worker im Hintergrund die wichtigsten Aufnahmen.
