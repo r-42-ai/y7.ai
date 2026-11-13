@@ -10,7 +10,7 @@
    Stimme etwas anderes lesen soll (Zahlen ausgeschrieben, ✓ als Wort …).
 
    Neue Sätze oder Fakten einfach ergänzen und danach
-     node pyr/make-audio.mjs
+     node capy/make-audio.mjs
    laufen lassen: es vertont nur, was noch fehlt.
    Schweizer Schreibweise: ss statt ß.
    ===================================================================== */

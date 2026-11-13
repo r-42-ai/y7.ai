@@ -11,7 +11,7 @@ importScripts('texte.js');
 // Wurden bestehende Aufnahmen neu gesprochen (gleiche Dateinamen, z.B. andere
 // Stimme), stattdessen CACHE hochzählen, damit alte Aufnahmen verschwinden.
 // Stand: Symbol Zahlenpyramide 3 + 4 = 7
-const CACHE = 'pyr-v4';
+const CACHE = 'capy-v1';
 const FILES = [
   './',
   'texte.js',
@@ -29,10 +29,11 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  // Nur eigene, ältere Speicher aufräumen; die anderen Apps auf y7.ai nicht anfassen
+  // Nur eigene, ältere Speicher aufräumen (auch die von früher unter /pyr/);
+  // die anderen Apps auf y7.ai nicht anfassen
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k.startsWith('pyr-') && k !== CACHE).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => /^(capy|pyr)-/.test(k) && k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });

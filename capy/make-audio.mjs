@@ -6,7 +6,7 @@
  * entsteht eine neue Datei, und die alte wird als verwaist gemeldet.
  *
  * Nutzung:
- *   ELEVENLABS_API_KEY=... node pyr/make-audio.mjs     fehlende Aufnahmen erzeugen
+ *   ELEVENLABS_API_KEY=... node capy/make-audio.mjs     fehlende Aufnahmen erzeugen
  *
  * Optionen:
  *   --dry          nur zeigen, was erzeugt würde (und wie viele Zeichen)
@@ -112,7 +112,7 @@ async function arbeiter() {
 }
 try {
   await Promise.all(Array.from({ length: GLEICHZEITIG }, arbeiter));
-  console.log('Fertig. Neue Dateien in pyr/audio/ committen.');
+  console.log('Fertig. Neue Dateien in capy/audio/ committen.');
 } catch (e) {
   console.error(e.message);
   console.error('Abgebrochen; ' + fertig + ' Aufnahmen sind gespeichert. Nochmal starten macht beim Rest weiter.');
