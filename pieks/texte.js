@@ -23,7 +23,9 @@ const SPRECHNAME = 'Nea';
 // Pieks' Freundin, das Eichhörnchen aus Frankreich (ihre Texte: franz-texte.js).
 // Einzige Stelle für ihren Namen: Texte schreiben {H}. Angezeigt wird name,
 // gesprochen sprich, falls die Stimme einen Namen einmal anders lesen muss.
-const HOERNCHEN = { name: 'Pirouette', sprich: 'Pirouette' };
+// «Pirouette» lesen die deutschen Stimmen deutsch (Pi-ru-et-te); so geschrieben sagen
+// Pieks und sie den Namen französisch. Nach Gehör ausgewählt (Hörprobe, 15.11.2026).
+const HOERNCHEN = { name: 'Pirouette', sprich: 'Piruett' };
 
 const TEXTE = {
   /* ---------- Begrüssung nach dem Aufwecken ---------- */
@@ -592,7 +594,12 @@ const SCHARFES_S = [
   [/([Ää])usserst/g, '$1ußerst'], // äusserst
   [/\b([Aa])usser/g, '$1ußer'],   // ausser, Ausserirdische (nicht: aussehen)
 ];
-const aussprache = s => SCHARFES_S.reduce((t, [muster, ersatz]) => t.replace(muster, ersatz), s);
+// Französische Wörter in deutschen Sätzen: So geschrieben liest die deutsche Stimme sie
+// französisch. Nach Gehör ausgewählt (Hörprobe, 15.11.2026). Nur für die Stimme.
+const FREMDWOERTER = [
+  [/Unité/g, 'Ünité'],
+];
+const aussprache = s => FREMDWOERTER.concat(SCHARFES_S).reduce((t, [muster, ersatz]) => t.replace(muster, ersatz), s);
 
 // Zahlen als Wörter, für die Stimme. Wird nie angezeigt, darum mit ß.
 const EINER = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun',
