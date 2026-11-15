@@ -20,6 +20,11 @@
 // So spricht die Stimme Neas Namen aus
 const SPRECHNAME = 'Nea';
 
+// Pieks' Freundin, das Eichhörnchen aus Frankreich (ihre Texte: franz-texte.js).
+// Einzige Stelle für ihren Namen: Texte schreiben {H}. Angezeigt wird name,
+// gesprochen sprich, falls die Stimme einen Namen einmal anders lesen muss.
+const HOERNCHEN = { name: 'Pirouette', sprich: 'Pirouette' };
+
 const TEXTE = {
   /* ---------- Begrüssung nach dem Aufwecken ---------- */
   aufwachen: [
@@ -530,12 +535,35 @@ const ERFOLGE = {
   mode: { name: 'Modebewusst', text: 'Das erste Teil für Pieks gekauft.', bonus: 10 },
   modeAlle: { name: 'Mode-Ikone', text: 'Die ganze Garderobe gekauft.', bonus: 0 },
   kitzel: { name: 'Kitzel-Alarm', text: 'Pieks zum Einrollen gebracht.', bonus: 5 },
+  // Französisch: Bedingungen in franz.js (Franz.erfolgBedingungen). Die Namen spricht
+  // Pieks, darum sind sie deutsch: kein französisches Wort, auch nicht «Unité».
+  fr_erstes: { name: 'Erstes Wort', text: 'Das erste französische Wort kennengelernt.', bonus: 5 },
+  fr_runden10: { name: 'Fleissige Sammlerin', text: '10 Französisch-Runden gespielt.', bonus: 20 },
+  fr_25: { name: 'Wörter-Sammlerin', text: '25 Wörter mit Erdbeere.', bonus: 20 },
+  fr_100: { name: 'Wörter-Schatz', text: '100 Wörter mit Erdbeere.', bonus: 50 },
+  fr_reif1: { name: 'Erste Ernte', text: 'Das erste Wort ist reif.', bonus: 10 },
+  fr_reif50: { name: 'Körbchen voll', text: '50 reife Wörter.', bonus: 50 },
+  fr_reifAlle: { name: 'Wortschatz komplett', text: 'Alle 210 Wörter sind reif.', bonus: 200 },
+  fr_unite: { name: 'Kapitel geschafft', text: 'Alle Grundwörter einer Unité mit Erdbeere.', bonus: 40 },
+  fr_saetze10: { name: 'Satzbaumeisterin', text: '10 Sätze beim ersten Versuch gebaut.', bonus: 25 },
+  fr_ohr25: { name: 'Feines Ohr', text: '25 Hör-Aufgaben beim ersten Versuch.', bonus: 20 },
+  fr_lela20: { name: 'Artikel-Profi', text: '20 Artikel in Folge richtig.', bonus: 20 },
+  fr_akzent20: { name: 'Akzent-Künstlerin', text: '20 Akzent-Aufgaben richtig.', bonus: 20 },
+  fr_schreiben25: { name: 'Schreibmeisterin', text: '25 Wörter fehlerfrei geschrieben.', bonus: 25 },
+  fr_perfekt: { name: 'Fehlerfrei', text: 'Eine Runde ohne Fehler.', bonus: 15 },
+  fr_zwei: { name: 'Doppelstunde', text: 'An einem Tag gerechnet und Französisch geübt.', bonus: 10 },
+  fr_partner: { name: 'Partnerlook', text: 'Pieks und seine Freundin tragen dasselbe.', bonus: 10 },
 };
 
 /* =====================================================================
    HILFSFUNKTIONEN (gelten in der App, in make-audio.mjs und in sw.js)
    ===================================================================== */
-const anzeigetext = e => (typeof e === 'string' ? e : e.t);
+// Angezeigt wird der Name des Hörnchens statt {H}. Französische Stellen stehen in ihren
+// Texten in geschweiften Klammern, geschrieben wie aufgenommen («{Bravo !} Genau.»). In der
+// Blase fallen die Klammern weg und mit ihnen das französische Leerzeichen vor ! und ?.
+const anzeigetext = e => (typeof e === 'string' ? e : e.t)
+  .replace(/\{H\}/g, HOERNCHEN.name)
+  .replace(/\{([^{}]*)\}/g, (m, fr) => fr.replace(/\s+([!?])/g, '$1'));
 
 // Die Schweizer Schreibweise hat ss, wo im Hochdeutschen ß steht. Nach langem
 // Vokal liest die Stimme ss aber kurz («Grossartig» wie «Ross»). Für die Stimme
@@ -623,10 +651,26 @@ function zahlenSprechen(s) {
 const zusammenschreiben = s => s.replace(/([a-zäöüß])-([A-ZÄÖÜ])(?=[a-zäöü])/g,
   (m, a, b) => (/[aeiouäöü]/.test(a) && /[AEIOUÄÖÜ]/.test(b) ? m : a + b.toLowerCase()));
 const sprechtext = e => {
-  let s = (typeof e === 'string' ? e : e.s || e.t).replace(/Nea/g, SPRECHNAME);
+  let s = (typeof e === 'string' ? e : e.s || e.t).replace(/\{H\}/g, HOERNCHEN.sprich).replace(/Nea/g, SPRECHNAME);
   if (!(e && typeof e === 'object' && e.k)) s = zusammenschreiben(s);
   return aussprache(zahlenSprechen(s));
 };
+
+// Eine Zeile des Hörnchens in ihre Aufnahmen teilen. Die Stimme entscheidet sich pro Text
+// für eine Sprache (ein «Salut» mitten im deutschen Satz kam deutsch heraus), darum ist
+// jedes Stück in einer Sprache eine eigene Aufnahme: {…} französisch und wörtlich, der
+// Rest deutsch und durch sprechtext(). Eine Zeile ohne Klammern ist ein deutsches Stück.
+function segmente(e) {
+  const zeile = (typeof e === 'string' ? e : e.s || e.t).replace(/\{H\}/g, HOERNCHEN.sprich);
+  const liste = [];
+  // split mit Fanggruppe: an den ungeraden Stellen stehen die Klammern
+  zeile.split(/(\{[^{}]*\})/).forEach((stueck, i) => {
+    const fr = i % 2 === 1;
+    const s = fr ? stueck.slice(1, -1).trim() : sprechtext(stueck.trim());
+    if (s) liste.push({ s, sprache: fr ? 'fr' : 'de' });
+  });
+  return liste;
+}
 
 // Kennung einer Aufnahme: FNV-1a über den gesprochenen Text
 function kennung(s) {
@@ -637,6 +681,17 @@ function kennung(s) {
   }
   return h.toString(16).padStart(8, '0');
 }
+
+// Dateiname einer Aufnahme ohne Endung. Ein Clip ist ein Text (Pieks) oder { s, v } mit der
+// Stimme v: 'p' Pieks, 'hd' und 'hf' das Hörnchen deutsch und französisch, 'f' und 'fl'
+// Vokabeln normal und langsam. Pieks' Dateien heissen weiter nur nach der Kennung; alle
+// anderen tragen die Stimme vorn, damit derselbe Text in zwei Sprachen, Stimmen oder Tempi
+// nie dieselbe Datei trifft.
+function clipDatei(c) {
+  if (typeof c === 'string') return kennung(c);
+  return (c.v && c.v !== 'p' ? c.v + '-' : '') + kennung(c.s);
+}
+const clipText = c => (typeof c === 'string' ? c : c.s);
 
 // Listen, die jubeln und loben (lebhaft); der Rest erklärt und darf ruhiger sein
 const LEBHAFT = ['aufwachen', 'gruss_morgen', 'gruss_tag', 'gruss_abend', 'gruss_nacht', 'gruss_wieder', 'gruss_serie', 'gruss_winter',
@@ -674,8 +729,9 @@ function alleSaetze() {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { TEXTE, SERIE, TIPPS, BESUCHER, ITEMS, PLAETZE, RAENGE, ERFOLGE, SPRECHNAME,
-    anzeigetext, sprechtext, aussprache, zahlenSprechen, zahlwortGross, kennung, alleSaetze, LEBHAFT,
+  module.exports = { TEXTE, SERIE, TIPPS, BESUCHER, ITEMS, PLAETZE, RAENGE, ERFOLGE, SPRECHNAME, HOERNCHEN,
+    anzeigetext, sprechtext, segmente, aussprache, zahlenSprechen, zahlwortGross, kennung, clipDatei, clipText,
+    alleSaetze, LEBHAFT,
     setFakten: f => { FAKTEN = f; } };
 }
 // In Node kommen die Fakten über setFakten() herein, im Browser aus fakten.js

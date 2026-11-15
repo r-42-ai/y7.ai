@@ -3,7 +3,10 @@
 /* =====================================================================
    MATHE-IGEL: Ablauf der App
    Aufgaben kommen aus aufgaben.js, alles Gesprochene aus texte.js und
-   fakten.js, die Zeichnungen aus grafik.js.
+   fakten.js, die Zeichnungen aus grafik.js. Das Französisch mit dem
+   Hörnchen steckt in franz.js und seinen Nachbarn; hier sind nur die
+   Stellen, an denen beide Fächer sich treffen: Bildschirme, Kopfzeile,
+   Kasse, Fenster.
    ===================================================================== */
 
 const $ = id => document.getElementById(id);
@@ -30,6 +33,20 @@ const THEMEN = {
   dreisatz: { name: 'Dreisätze', icon: 't-dreisatz', info: 'direkt und umgekehrt' },
   mix: { name: 'Wald-Mix', icon: 't-mix', info: 'alles gemischt' },
 };
+// Französisch gibt es nur, wenn alle sechs Dateien ganz geladen sind. Bricht
+// eine beim Laden ab, bleiben ihre const-Namen unbelegt und werfen schon beim
+// Lesen: darum try. Geprüft wird je Datei ihr letzter const (langsamGibt in
+// vokabeln.js, H_LEBHAFT in franz-texte.js, FRANZ_SYMBOLE in hoernchen.js), nie eine
+// function: die gibt es auch nach einem Abbruch.
+// franzAus: das Einrichten beim Start ist gescheitert (siehe ganz unten).
+let franzAus = false;
+function franzDa() {
+  try { return !franzAus && !!(Franz && Lernen && Uebungen && VOKABELN && langsamGibt && HTEXTE && H_LEBHAFT && HOERNCHEN_DEFS && FRANZ_SYMBOLE); } catch (e) { return false; }
+}
+// Steht das Hörnchen schon auf der Lichtung? Vor dem ersten Treffen zeigt nichts auf sie.
+const hoernchenDa = () => franzDa() && !!frStand && frStand.vorgestellt;
+// So heisst die App, sobald sie installiert ist (ihr Name steht nur in texte.js)
+const APP_NAME = 'Pieks & ' + HOERNCHEN.name;
 
 /* =====================================================================
    SPEICHER
@@ -46,6 +63,7 @@ function laden() {
     geloest: { brueche: 0, volumen: 0, dreisatz: 0 },
     schwer: 0, besterLauf: 0,
     besucher: {}, fakten: [], items: [], an: { kopf: null, augen: null, hals: null, pfote: null },
+    anH: { kopf: null, augen: null, hals: null, pfote: null },   // was das Hörnchen trägt; gekauft ist alles für beide
     erfolge: {}, ton: true, stimme: true, ziel: 10,
     vorgestellt: false, ersteTraining: false, ersterBesuch: false, zuletzt: 0, zielTage: {},
     nachRichtig: 0,
@@ -62,6 +80,7 @@ function laden() {
       if (Array.isArray(raw.fakten)) s.fakten = raw.fakten.filter(k => typeof k === 'string').slice(-2000);
       if (Array.isArray(raw.items)) s.items = raw.items.filter(k => ITEMS[k]);
       if (raw.an) for (const p in s.an) if (ITEMS[raw.an[p]] && s.items.includes(raw.an[p])) s.an[p] = raw.an[p];
+      if (raw.anH) for (const p in s.anH) if (ITEMS[raw.anH[p]] && s.items.includes(raw.anH[p])) s.anH[p] = raw.anH[p];
       if (raw.erfolge && typeof raw.erfolge === 'object') for (const k in raw.erfolge) if (ERFOLGE[k]) s.erfolge[k] = raw.erfolge[k];
       if (raw.zielTage && typeof raw.zielTage === 'object') s.zielTage = raw.zielTage;
     }
@@ -77,11 +96,18 @@ function statsLaden() { try { return JSON.parse(localStorage.getItem(STATS_KEY))
 function statsSpeichern(s) { try { localStorage.setItem(STATS_KEY, JSON.stringify(s)); } catch (e) { /* voll o.ä. */ } }
 const dateKey = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const heuteKey = () => dateKey(new Date());
-function ergebnisMerken(richtig, ersterVersuch) {
+// Ein Prüfversuch. fach 'fr' zählt zusätzlich den Französisch-Anteil (fr fehlt in
+// alten Einträgen und gilt dann als 0). zaehlt false: richtig, aber nicht fürs
+// Tagesziel (im Französisch zählt jede Karte nur einmal pro Runde).
+function ergebnisMerken(richtig, ersterVersuch, fach, zaehlt) {
   const s = statsLaden(), k = heuteKey();
   if (!s[k]) s[k] = { total: 0, correct: 0, firstTry: 0, attempts: 0 };
   s[k].attempts++;
-  if (richtig) { s[k].total++; s[k].correct++; if (ersterVersuch) s[k].firstTry++; }
+  if (richtig) {
+    s[k].correct++;
+    if (ersterVersuch) s[k].firstTry++;
+    if (zaehlt !== false) { s[k].total++; if (fach === 'fr') s[k].fr = (s[k].fr || 0) + 1; }
+  }
   statsSpeichern(s);
 }
 const heuteGeloest = () => (statsLaden()[heuteKey()] || {}).total || 0;
@@ -125,7 +151,8 @@ function audio() {
     if (!AC) return null;
     audioCtx = new AC();
   }
-  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  // Safari meldet nach einem Anruf oder Sperrbildschirm auch «interrupted»
+  if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') audioCtx.resume().catch(() => {});
   return audioCtx;
 }
 // Auf iPad und iPhone sonst stumm, sobald der Lautlos-Schalter an ist
@@ -189,46 +216,349 @@ const Ton = (() => {
 })();
 
 /* =====================================================================
-   STIMME: Pieks spricht. Jeder Satz liegt als audio/<kennung>.mp3 bereit
-   (siehe texte.js und make-audio.mjs). Mehrere Sätze werden nahtlos
-   aneinandergehängt. Eine neue Ansage unterbricht immer die laufende.
-   Ein Analyser misst die Lautstärke, damit Pieks' Mund mitgeht.
+   STIMME: Pieks und das Hörnchen sprechen. Jede Aufnahme liegt als
+   audio/<kennung>.mp3 bereit (siehe texte.js und make-audio.mjs). Ein
+   Teil ist ein gesprochener Text (Pieks' Stimme) oder { s, v, pause }:
+   v nennt die Stimme und steht vorn im Dateinamen, pause die Lücke davor.
+   Mehrere Teile werden nahtlos aneinandergehängt. Eine neue Ansage
+   unterbricht immer die laufende. Ein Analyser misst die Lautstärke,
+   damit der Mund der Figur mitgeht.
    ===================================================================== */
-const Stimme = (() => {
-  const roh = new Map(), fertig = new Map();
-  let laeuft = [], nummer = 0, wecker = null, letzte = [], analyser = null, mundFrame = 0;
-  let aktiv = false;     // spricht Pieks gerade (oder wartet die Lesezeit ab)?
-  let mundZiel = null;   // das <svg> von Pieks, das gerade spricht
+// Welche Aufnahmen es gibt (make-audio.mjs schreibt die Liste)
+let aufnahmen = null;
+fetch('audio/vorhanden.json').then(r => (r.ok ? r.json() : null)).then(l => { if (Array.isArray(l)) aufnahmen = new Set(l); }).catch(() => {});
 
-  function holen(satz) {
-    const id = kennung(satz);
-    if (!roh.has(id)) roh.set(id, fetch('audio/' + id + '.mp3').then(r => (r.ok ? r.arrayBuffer() : null)).catch(() => null));
-    return roh.get(id);
+const Stimme = (() => {
+  const roh = new Map(), fertig = new Map(), werdend = new Map();
+  let laeuft = [], nummer = 0, wecker = null, letzte = {}, analyser = null, mundFrame = 0;
+  let aktiv = false;     // spricht gerade jemand (oder wartet die Lesezeit ab)?
+  let mundZiel = null;   // das <svg> der Figur, die gerade spricht
+
+  // Jede aufbereitete Aufnahme hält etwa 0.3 MB. Eine Sitzung, die auf dem iPad
+  // tagelang offen bleibt, hörte sonst nach und nach Hunderte Aufnahmen in den
+  // Speicher. Darum bleiben höchstens MAX, und es geht zuerst, was am längsten
+  // nicht gebraucht wurde (eine Map behält die Reihenfolge, Gebrauchtes kommt
+  // wieder ans Ende). Was weg ist, wird beim nächsten Mal neu aufbereitet.
+  const MAX = 200;
+  let spielt = new Set();   // was die laufende Ansage spielt oder noch holt
+  const vorgemerkt = [];    // zuletzt mit bereit() vorbereitet: die Aufgabe jetzt und die nächste
+  function kuerzen(karte, bleibt) {
+    for (const id of karte.keys()) {
+      if (karte.size <= MAX) break;
+      if (!bleibt(id)) karte.delete(id);
+    }
   }
-  // Stille am Anfang und Ende abschneiden, damit Teile ohne Lücke klingen
-  function trimmen(c, buf) {
-    const d = buf.getChannelData(0), n = d.length, rand = Math.floor(buf.sampleRate * 0.025);
+  function gebraucht(karte, id) {
+    const x = karte.get(id);
+    karte.delete(id);
+    karte.set(id, x);
+    return x;
+  }
+
+  // Gibt es die Aufnahme? null, solange die Liste noch nicht da ist. Nur eine
+  // Abkürzung: false heisst, gar nicht erst holen.
+  const hat = clip => (!clip ? false : aufnahmen ? aufnahmen.has(clipDatei(clip)) : null);
+  function holen(clip) {
+    if (hat(clip) === false) return Promise.resolve(null);
+    const id = clipDatei(clip);
+    // Ohne Netz kann statt der Aufnahme die Seite zurückkommen: das gilt als fehlend.
+    // Was nicht kam, wird gleich wieder vergessen (auch nach dem Vorladen): so
+    // holt schon die nächste Ansage neu, statt einmal stumm zu bleiben.
+    if (roh.has(id)) return gebraucht(roh, id);
+    // Ein Abruf, der hängt, wird nach 20 s abgebrochen: sonst bliebe die Aufnahme
+    // bis zum Neuladen stumm, weil jede Ansage auf denselben Abruf wartete
+    const ab = typeof AbortController === 'function' ? new AbortController() : null;
+    const uhr = ab ? setTimeout(() => ab.abort(), 20000) : 0;
+    const p = fetch('audio/' + id + '.mp3', ab ? { signal: ab.signal } : undefined)
+      .then(r => (r.ok && (r.headers.get('Content-Type') || '').startsWith('audio/') ? r.arrayBuffer() : null)).catch(() => null)
+      .then(daten => { clearTimeout(uhr); if (!daten && roh.get(id) === p) roh.delete(id); return daten; });
+    roh.set(id, p);
+    // Auch die geholten Dateien nicht ohne Ende: wer sie gerade braucht, hält sein Versprechen selbst
+    kuerzen(roh, x => x === id);
+    return p;
+  }
+
+  /* ---------- Aufbereiten ----------
+     Vor dem ersten Abspielen wird jede Aufnahme auf Pieks' Lautstärke gebracht
+     und am Rand von Stille befreit. Die Aufnahmen des Hörnchens sind 12 bis
+     22 dB leiser und rauschen: unbehandelt wäre sie neben Pieks kaum zu hören,
+     und ihr Mund ginge fast nicht auf. Alles hier ist nach Gehör abgestimmt;
+     die Zahlen bleiben, wie sie sind. */
+  const ZIEL = -17.5;   // mittlere Lautheit von Pieks' 869 Aufnahmen (LUFS)
+  // Gerechnet wird in Scheiben: nach 8 ms am Stück kommt erst die Seite wieder
+  // dran, damit auch auf einem Tablet nichts stockt. Wer rechnet, fragt
+  // zwischendurch «if ((w = luft())) await w;». Die Pause läuft über einen
+  // Nachrichtenkanal: setTimeout würde jede Runde um 4 ms bremsen.
+  let seit = 0;
+  const kanal = new MessageChannel(), wartet = [];
+  kanal.port1.onmessage = () => { const weiter = wartet.shift(); seit = performance.now(); if (weiter) weiter(); };
+  const luft = () => (performance.now() - seit < 8 ? null
+    : new Promise(res => { wartet.push(res); kanal.port2.postMessage(0); }));
+
+  // Lautheit nach ITU-R BS.1770
+  async function kGewichtet(x, sr) {
+    const y = new Float32Array(x.length);
+    let K = Math.tan(Math.PI * 1681.974450955533 / sr), Q = 0.7071752369554196;
+    const Vh = Math.pow(10, 3.999843853973347 / 20), Vb = Math.pow(Vh, 0.4996667741545416);
+    let a0 = 1 + K / Q + K * K;
+    const b0 = (Vh + Vb * K / Q + K * K) / a0, b1 = 2 * (K * K - Vh) / a0, b2 = (Vh - Vb * K / Q + K * K) / a0;
+    const a1 = 2 * (K * K - 1) / a0, a2 = (1 - K / Q + K * K) / a0;
+    K = Math.tan(Math.PI * 38.13547087602444 / sr); Q = 0.5003270373238773;
+    a0 = 1 + K / Q + K * K;
+    const c1 = 2 * (K * K - 1) / a0, c2 = (1 - K / Q + K * K) / a0;
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0, u1 = 0, u2 = 0, v1 = 0, v2 = 0, w;
+    for (let i = 0; i < x.length;) {
+      if ((w = luft())) await w;
+      for (const bis = Math.min(x.length, i + 65536); i < bis; i++) {
+        const s = x[i];
+        const u = b0 * s + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+        x2 = x1; x1 = s; y2 = y1; y1 = u;
+        const v = u - 2 * u1 + u2 - c1 * v1 - c2 * v2;
+        u2 = u1; u1 = u; v2 = v1; v1 = v;
+        y[i] = v;
+      }
+    }
+    return y;
+  }
+  async function lautheit(x, sr) {
+    const y = await kGewichtet(x, sr);
+    const block = Math.round(0.4 * sr), schritt = Math.round(0.1 * sr), z = [];
+    let w;
+    if (y.length <= block) {
+      let q = 0; for (let i = 0; i < y.length; i++) q += y[i] * y[i];
+      z.push(q / Math.max(1, y.length));
+    } else {
+      for (let a = 0; a + block <= y.length; a += schritt) {
+        if ((w = luft())) await w;
+        let q = 0; for (let i = a; i < a + block; i++) q += y[i] * y[i];
+        z.push(q / block);
+      }
+    }
+    const L = q => -0.691 + 10 * Math.log10(q + 1e-12);
+    const mittel = arr => arr.reduce((s, q) => s + q, 0) / arr.length;
+    const laut = z.filter(q => L(q) > -70);
+    if (!laut.length) return -70;
+    const schwelle = L(mittel(laut)) - 10;
+    const rest = laut.filter(q => L(q) > schwelle);
+    return L(mittel(rest.length ? rest : laut));
+  }
+
+  // Grundrauschen entfernen (Wiener-Filter im Frequenzbereich)
+  function fftPlan(n) {
+    const bits = Math.log2(n), rev = new Uint32Array(n), cos = new Float32Array(n / 2), sin = new Float32Array(n / 2);
+    for (let i = 0; i < n; i++) { let r = 0; for (let b = 0; b < bits; b++) r |= ((i >> b) & 1) << (bits - 1 - b); rev[i] = r; }
+    for (let i = 0; i < n / 2; i++) { cos[i] = Math.cos(2 * Math.PI * i / n); sin[i] = Math.sin(2 * Math.PI * i / n); }
+    return { n, rev, cos, sin };
+  }
+  function fft(plan, re, im, invers) {
+    const { n, rev, cos, sin } = plan;
+    for (let i = 0; i < n; i++) { const j = rev[i]; if (j > i) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+    for (let size = 2; size <= n; size <<= 1) {
+      const half = size >> 1, step = n / size;
+      for (let a = 0; a < n; a += size) {
+        for (let k = 0, w = 0; k < half; k++, w += step) {
+          const wr = cos[w], wi = invers ? sin[w] : -sin[w], i = a + k, j = i + half;
+          const tr = re[j] * wr - im[j] * wi, ti = re[j] * wi + im[j] * wr;
+          re[j] = re[i] - tr; im[j] = im[i] - ti; re[i] += tr; im[i] += ti;
+        }
+      }
+    }
+    if (invers) for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+  }
+  const N = 1024, H = 256, K = N / 2 + 1;
+  let PLAN = null, FENSTER = null;
+  // Liefert null, wenn es nichts zu entrauschen gibt (zu kurz oder keine ruhige Stelle)
+  async function entrauschen(x) {
+    const alpha = 0.97, beta = 2, gmin = 0.05, abstand = 100;
+    if (!PLAN) { PLAN = fftPlan(N); FENSTER = new Float32Array(N); for (let i = 0; i < N; i++) FENSTER[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / N); }
+    const n = x.length, T = Math.floor((n + N) / H) + 1;
+    if (n < 4 * N) return null;
+    const RE = new Float32Array(T * K), IM = new Float32Array(T * K), P = new Float32Array(T * K), E = new Float32Array(T);
+    const re = new Float32Array(N), im = new Float32Array(N);
+    let w;
+    for (let t = 0; t < T; t++) {
+      if (!(t & 3) && (w = luft())) await w;
+      const a = t * H - N;
+      for (let i = 0; i < N; i++) { const j = a + i; re[i] = j >= 0 && j < n ? x[j] * FENSTER[i] : 0; im[i] = 0; }
+      fft(PLAN, re, im, false);
+      let e = 0;
+      for (let k = 0, o = t * K; k < K; k++, o++) { RE[o] = re[k]; IM[o] = im[k]; const p = re[k] * re[k] + im[k] * im[k]; P[o] = p; if (k > 2) e += p; }
+      E[t] = e;
+    }
+    // Rauschmuster: Mittel über die leisesten Blöcke, die ganz in der Aufnahme liegen
+    const innen = [];
+    for (let t = 0; t < T; t++) { const a = t * H - N; if (a >= 0 && a + N <= n && E[t] > 1e-9) innen.push(t); }
+    if (innen.length < 12) return null;
+    const sortiert = innen.slice().sort((a, b) => E[a] - E[b]);
+    const n0 = Math.max(4, Math.floor(innen.length * 0.08));
+    let e0 = 0; for (let i = 0; i < n0; i++) e0 += E[sortiert[i]]; e0 /= n0;
+    const ruhe = innen.filter(t => E[t] < e0 * 2.5);
+    const n1 = Math.max(4, Math.floor(innen.length * 0.3));
+    let eLaut = 0; for (let i = 0; i < n1; i++) eLaut += E[sortiert[sortiert.length - 1 - i]]; eLaut /= n1;
+    // Liegt das «Rauschen» zu nah an der Sprache, gab es keine ruhige Stelle: lieber nichts tun
+    if (e0 * abstand > eLaut) return null;
+    const leise = new Float32Array(K), rauschen = new Float32Array(K);
+    for (const t of ruhe) for (let k = 0, o = t * K; k < K; k++, o++) leise[k] += P[o];
+    for (let k = 0; k < K; k++) leise[k] /= ruhe.length;
+    for (let k = 0; k < K; k++) { let s = 0, m = 0; for (let d = -3; d <= 3; d++) { const j = k + d; if (j >= 0 && j < K) { s += leise[j]; m++; } } rauschen[k] = s / m; }
+    // Wiener-Filter, über die Zeit geglättet
+    const out = new Float32Array(n + 2 * N), G1 = new Float32Array(K).fill(1), g1 = new Float32Array(K).fill(1), G = new Float32Array(K);
+    for (let t = 0; t < T; t++) {
+      if (!(t & 3) && (w = luft())) await w;
+      for (let k = 0, o = t * K; k < K; k++, o++) {
+        const gam = P[o] / (beta * rauschen[k] + 1e-20);
+        const xi = alpha * G1[k] * G1[k] * g1[k] + (1 - alpha) * Math.max(gam - 1, 0);
+        let g = xi / (1 + xi); if (g < gmin) g = gmin;
+        G1[k] = g; g1[k] = gam; G[k] = g;
+      }
+      for (let k = 0, o = t * K; k < K; k++, o++) {
+        const g = k < 2 ? 0 : (G[Math.max(0, k - 1)] + 2 * G[k] + G[Math.min(K - 1, k + 1)]) / 4;
+        re[k] = RE[o] * g; im[k] = IM[o] * g;
+        if (k > 0 && k < N / 2) { re[N - k] = re[k]; im[N - k] = -im[k]; }
+      }
+      fft(PLAN, re, im, true);
+      const a = t * H;
+      for (let i = 0; i < N; i++) out[a + i] += re[i] * FENSTER[i];
+    }
+    const y = new Float32Array(n);
+    for (let i = 0; i < n; i++) y[i] = out[i + N] / 1.5;
+    return y;
+  }
+  // Stille am Anfang und Ende abschneiden, damit Teile ohne Lücke klingen. Die
+  // Schwelle gilt für die angeglichene Lautstärke: mit einer festen fehlte bei
+  // ihren leisen Aufnahmen bis zu einer halben Sekunde Sprache.
+  function trimmen(c, d, sr, faktor) {
+    const n = d.length, rand = Math.floor(sr * 0.025), schwelle = 0.012 / faktor;
     let a = 0, b = n - 1;
-    while (a < n && Math.abs(d[a]) < 0.012) a++;
-    while (b > a && Math.abs(d[b]) < 0.012) b--;
-    a = Math.max(0, a - rand);
-    b = Math.min(n - 1, b + rand);
-    if (b <= a || (a === 0 && b === n - 1)) return buf;
-    const out = c.createBuffer(buf.numberOfChannels, b - a + 1, buf.sampleRate);
-    for (let k = 0; k < buf.numberOfChannels; k++) out.getChannelData(k).set(buf.getChannelData(k).subarray(a, b + 1));
+    while (a < n && Math.abs(d[a]) < schwelle) a++;
+    while (b > a && Math.abs(d[b]) < schwelle) b--;
+    a = Math.max(0, a - rand); b = Math.min(n - 1, b + rand);
+    if (b <= a) { a = 0; b = n - 1; }
+    const out = c.createBuffer(1, b - a + 1, sr);
+    out.getChannelData(0).set(d.subarray(a, b + 1));
     return out;
   }
-  async function dekodieren(c, satz) {
-    const id = kennung(satz);
-    if (fertig.has(id)) return fertig.get(id);
-    const daten = await holen(satz);
-    if (!daten) { roh.delete(id); return null; }
-    try {
-      const buf = await new Promise((ok, nein) => c.decodeAudioData(daten.slice(0), ok, nein));
-      const t = trimmen(c, buf);
-      fertig.set(id, t);
-      return t;
-    } catch (e) { return null; }
+  // Spitzen, die mit der Verstärkung über die Vollaussteuerung kämen, drückt ein
+  // Begrenzer, statt die ganze Aufnahme leiser zu machen: Mit einer harten Kappe
+  // klang ein kurzer Hinweis bis 4 LU leiser als der Satz davor in derselben Blase.
+  // Er schaut 5 ms voraus, damit die Absenkung schon anliegt, wenn die Spitze kommt
+  // (ohne Knacken), und lässt mit 60 ms los, damit der Pegel nicht flattert.
+  const VOLL = 0.98, TIEFE = Math.pow(10, 9 / 20);   // nie tiefer als 9 dB: das klänge gepresst
+  async function begrenzen(d, sr, faktor) {
+    const n = d.length, L = Math.max(1, Math.round(sr * 0.005)), grenze = VOLL / faktor;
+    const los = 1 - Math.exp(-1 / (sr * 0.06));
+    // r: nötige Absenkung je Wert. Ihr Minimum über die Vorschau [i, i + L] hält eine
+    // monotone Schlange q (so bleibt es O(n)); e kehrt davon nur langsam zu 1 zurück.
+    const r = new Float32Array(n), e = new Float32Array(n), q = new Int32Array(n);
+    let a = 0, b = 0, h = 1, w;
+    for (let j = 0; j < n + L;) {
+      if ((w = luft())) await w;
+      for (const bis = Math.min(n + L, j + 65536); j < bis; j++) {
+        if (j < n) {
+          const x = Math.abs(d[j]), v = x > grenze ? grenze / x : 1;
+          r[j] = v;
+          while (b > a && r[q[b - 1]] >= v) b--;
+          q[b++] = j;
+        }
+        const i = j - L;
+        if (i < 0) continue;
+        if (q[a] < i) a++;
+        const m = r[q[a]], zurueck = h + (1 - h) * los;
+        h = m < zurueck ? m : zurueck;
+        e[i] = h;
+      }
+    }
+    // Gleitendes Mittel über die L + 1 Werte bis i: Die Absenkung setzt über die
+    // Vorschau weich ein und bleibt doch überall unter dem, was dort nötig ist.
+    // Vor dem Anfang gilt e[0], damit auch eine Spitze ganz vorn gedrückt wird.
+    // In einen neuen Puffer: d können die Kanaldaten der dekodierten Aufnahme sein.
+    const y = new Float32Array(n), v0 = 1 - e[0];
+    let summe = v0 * L, unter = v0 > 0 ? L : 0;   // Summe der Absenkungen im Fenster, wie viele nicht 0
+    let vorher = 0, nachher = 0;                  // Energie: was die Absenkung an Lautheit kostet
+    for (let i = 0; i < n;) {
+      if ((w = luft())) await w;
+      for (const bis = Math.min(n, i + 65536); i < bis; i++) {
+        const neu = 1 - e[i];
+        if (neu > 0) { summe += neu; unter++; }
+        if (i > 0) {
+          const alt = i > L ? 1 - e[i - L - 1] : v0;
+          if (alt > 0) { summe -= alt; unter--; }
+        }
+        // Ohne Absenkung im Fenster bleibt der Wert, wie er ist (und die Summe ohne Rundungsrest)
+        const x = d[i], z = unter ? x * (1 - summe / (L + 1)) : x;
+        if (!unter) summe = 0;
+        y[i] = z;
+        vorher += x * x; nachher += z * z;
+      }
+    }
+    return { y, anteil: vorher > 0 ? nachher / vorher : 1 };
+  }
+  // Aus der dekodierten Aufnahme wird { buf, faktor }: buf ist entrauscht (nur
+  // ihre Stimme), wo nötig begrenzt und beschnitten, faktor die Verstärkung beim Abspielen
+  async function aufbereiten(c, buf, clip) {
+    const sr = buf.sampleRate, ihre = typeof clip !== 'string' && !!clip.v && clip.v !== 'p';
+    let d = buf.getChannelData(0), w = luft();
+    if (w) await w;
+    if (ihre) d = (await entrauschen(d)) || d;
+    if ((w = luft())) await w;
+    let spitze = 0; for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > spitze) spitze = a; }
+    const lufs = await lautheit(d, sr);
+    // Verstärkung bis zur Ziel-Lautheit (höchstens 16-fach)
+    const soll = Math.min(Math.pow(10, (ZIEL - lufs) / 20), 16);
+    // So hoch ging es ohne Begrenzer: daran misst das Abschneiden der Stille, sonst
+    // behielte die höhere Verstärkung leises Rauschen am Ende (bis über eine halbe Sekunde)
+    const ohne = Math.min(soll, VOLL / Math.max(spitze, 1e-4));
+    let faktor = soll;
+    // Pieks bleibt beim harten Deckel: Seine kurzen Rufe («Tipp:», «Faktenfan!») würde der
+    // Begrenzer um bis zu 7 dB drücken, und er liegt ohnehin auf der Ziel-Lautheit.
+    // Ihre Stimme hat einzelne scharfe Spitzen (Zischlaute), die sonst ganze Sätze leiser machten.
+    if (!ihre) faktor = ohne;
+    else if (spitze * faktor > VOLL) {
+      // Über tief bräuchte die Spitze mehr als 9 dB: dann wird die ganze Aufnahme um den Rest leiser
+      const tief = VOLL * TIEFE / spitze, roh = d;
+      faktor = Math.min(soll, tief);
+      // Gedrückte Spitzen kosten etwas Lautheit (wo sie dicht kommen, fast 2 dB). Was
+      // fehlt, kommt als Verstärkung dazu und wird wieder begrenzt, bis weniger als
+      // 0.2 dB fehlen: meist reicht ein Durchgang, nie mehr als vier
+      for (let runde = 0; ; runde++) {
+        if ((w = luft())) await w;
+        const b = await begrenzen(roh, sr, faktor);
+        d = b.y;
+        const mehr = Math.min(soll / Math.sqrt(b.anteil), 16, tief);
+        if (runde === 3 || mehr < faktor * 1.023) break;
+        faktor = mehr;
+      }
+    }
+    if ((w = luft())) await w;
+    return { buf: trimmen(c, d, sr, ohne), faktor };
+  }
+  // Holen, dekodieren, aufbereiten: einmal je Aufnahme, erst wenn sie gebraucht
+  // wird. Was nicht klappt, wird nicht gemerkt und beim nächsten Mal neu
+  // versucht, statt stumm zu bleiben.
+  function dekodieren(c, clip) {
+    const id = clipDatei(clip);
+    if (fertig.has(id)) return Promise.resolve(gebraucht(fertig, id));
+    if (!werdend.has(id)) {
+      werdend.set(id, holen(clip)
+        .then(daten => daten && new Promise((ok, nein) => {
+          // Neuere Browser geben zusätzlich ein Versprechen zurück; sein Scheitern ist mit «nein» schon gemeldet
+          const p = c.decodeAudioData(daten.slice(0), ok, nein);
+          if (p && p.catch) p.catch(() => {});
+        }))
+        .then(buf => buf && aufbereiten(c, buf, clip))
+        .catch(() => null)
+        .then(x => {
+          werdend.delete(id);
+          if (!x) roh.delete(id);
+          else {
+            fertig.set(id, x);
+            // Was spielt, wartet oder für die nächste Aufgabe bereitliegt, bleibt (und das Neue sowieso)
+            kuerzen(fertig, k => k === id || spielt.has(k) || vorgemerkt.includes(k));
+          }
+          return x;
+        }));
+    }
+    return werdend.get(id);
   }
   function schlafen(ms) {
     return new Promise(res => {
@@ -264,25 +594,48 @@ const Stimme = (() => {
     aktiv = false;
     laeuft.forEach(q => { try { q.stop(); } catch (e) { /* schon zu Ende */ } });
     laeuft = [];
+    spielt = new Set();
     mundZu();
     if (wecker) { wecker(); wecker = null; }
   }
   // Ungefähre Lesezeit, wenn nichts zu hören ist (Stimme aus, offline …)
-  const lesezeit = saetze => clamp(saetze.join(' ').length * 55, 1000, 9000);
+  const lesezeit = teile => clamp(teile.map(clipText).join(' ').length * 55, 1000, 9000);
+  // So lange wartet eine Ansage höchstens auf ihre Aufnahmen. Was Nea selbst antippt
+  // (opt.tipp), darf länger brauchen: lieber spät als gar nicht.
+  const FRIST = 2500, FRIST_TIPP = 8000;
 
-  // Spricht die Sätze nacheinander. Erfüllt sich, wenn alles gesagt ist
+  // Spricht die Teile nacheinander. Erfüllt sich, wenn alles gesagt ist
   // (true) oder eine neuere Ansage dazwischenkam (false).
-  async function sprechen(saetze, opt = {}) {
+  async function sprechen(teile, opt = {}) {
     stopp();
     const meine = nummer;
     aktiv = true;
     try {
-      if (!opt.einwurf) letzte = { saetze, svg: opt.svg };
+      spielt = new Set(teile.filter(Boolean).map(clipDatei));
+      if (!opt.einwurf) letzte = { teile, svg: opt.svg };
       const c = stand.stimme ? audio() : null;
-      const bufs = c ? await Promise.all(saetze.map(s => dekodieren(c, s))) : [];
+      // Lädt eine Aufnahme noch (langsames Netz), wartet die Ansage darauf, aber nicht
+      // ewig: Nach der Frist spielt, was schon bereit ist, der Rest fällt diesmal weg
+      // (er lädt weiter, fürs nächste Mal). Später nachschieben ginge nicht: dann käme
+      // etwa ihr Satz erst nach dem Wort. Wer auf die Ansage wartet («Weiter» beim
+      // Kennenlernen), wartet so nie länger als die Frist. Kommt inzwischen eine neue
+      // oder stopp(), gilt sie sofort als unterbrochen.
+      let fristUhr = 0;
+      const clips = !c ? [] : await Promise.race([
+        Promise.all(teile.map(t => dekodieren(c, t))),
+        new Promise(res => { wecker = () => res(null); }),
+        new Promise(res => { fristUhr = setTimeout(() => res(teile.map(t => fertig.get(clipDatei(t)) || null)), opt.tipp ? FRIST_TIPP : FRIST); }),
+      ]);
+      clearTimeout(fristUhr);
       if (meine !== nummer) return false;
-      if (!c || c.state !== 'running' || !bufs.some(Boolean)) {
-        await schlafen((opt.warte || 0) * 1000 + lesezeit(saetze));
+      // Nach Sperrbildschirm oder App-Wechsel ist der Kontext ausgesetzt, und audio() bittet
+      // nur um resume(). Darauf kurz warten, sonst bliebe die erste Ansage danach stumm.
+      if (c && c.state !== 'running' && clips.some(Boolean)) {
+        await Promise.race([c.resume().catch(() => {}), pause(300)]);
+        if (meine !== nummer) return false;
+      }
+      if (!c || c.state !== 'running' || !clips.some(Boolean)) {
+        await schlafen((opt.warte || 0) * 1000 + lesezeit(teile));
         return meine === nummer;
       }
       if (!analyser) {
@@ -290,24 +643,46 @@ const Stimme = (() => {
         analyser.fftSize = 512;
         analyser.connect(c.destination);
       }
-      let t = c.currentTime + 0.04 + (opt.warte || 0);
+      let t = c.currentTime + 0.04 + (opt.warte || 0), erster = true;
       const start = t;
-      bufs.forEach((b, i) => {
-        if (!b) return;
-        const q = c.createBufferSource();
-        q.buffer = b;
-        q.connect(analyser);
+      clips.forEach((x, i) => {
+        if (!x) return;
+        // Lücke vor dem Teil: eine kurze zwischen zwei Teilen, vor dem ersten keine
+        t += teile[i].pause !== undefined ? teile[i].pause : erster ? 0 : 0.12;
+        erster = false;
+        // Der Analyser hört die angeglichene Lautstärke, damit der Mund bei beiden gleich weit aufgeht
+        const q = c.createBufferSource(), g = c.createGain();
+        q.buffer = x.buf;
+        g.gain.value = x.faktor;
+        q.connect(g);
+        g.connect(analyser);
         q.start(t);
         laeuft.push(q);
-        t += b.duration + (i < bufs.length - 1 ? 0.12 : 0);
+        t += x.buf.duration;
       });
       setTimeout(() => { if (meine === nummer) mundLos(opt.svg); }, Math.max(0, (start - c.currentTime) * 1000));
       await schlafen((t - c.currentTime) * 1000 + 120);
-      if (meine === nummer) mundZu();
+      // Zu Ende gespielt: die Quellen loslassen, sonst hielten sie ihre Puffer bis zur nächsten Ansage
+      if (meine === nummer) { mundZu(); laeuft = []; }
       return meine === nummer;
     } finally {
-      if (meine === nummer) aktiv = false;
+      if (meine === nummer) { aktiv = false; spielt = new Set(); }
     }
+  }
+  // Holt und bereitet Aufnahmen vor, bevor sie gebraucht werden (die nächste
+  // Aufgabe). Meldet je Teil, ob er spielen kann. Was nach anderthalb Sekunden
+  // noch nicht so weit ist, gilt als nicht bereit und lädt im Hintergrund weiter.
+  function bereit(teile) {
+    const c = stand.stimme ? audio() : null;
+    // Gemerkt werden die letzten acht (je Aufgabe zwei): Sie gehen nicht aus dem Speicher, bevor sie spielen
+    for (const t of teile) {
+      if (!t) continue;
+      const id = clipDatei(t), i = vorgemerkt.indexOf(id);
+      if (i >= 0) vorgemerkt.splice(i, 1);
+      vorgemerkt.push(id);
+    }
+    if (vorgemerkt.length > 8) vorgemerkt.splice(0, vorgemerkt.length - 8);
+    return Promise.all(teile.map(t => (t && c ? Promise.race([dekodieren(c, t).then(Boolean), pause(1500).then(() => false)]) : false)));
   }
   return {
     sprechen,
@@ -315,35 +690,85 @@ const Stimme = (() => {
     // Automatische Ansagen fragen vorher: nie jemandem ins Wort fallen.
     // Nur was Nea selbst antippt, darf unterbrechen.
     istStill: () => !aktiv,
-    vorladen: saetze => saetze.forEach(holen),
-    nochmal: () => (letzte.saetze && letzte.saetze.length ? sprechen(letzte.saetze, { svg: letzte.svg }) : null),
+    vorladen: teile => teile.forEach(t => { if (t) holen(t); }),
+    nochmal: () => (letzte.teile && letzte.teile.length ? sprechen(letzte.teile, { svg: letzte.svg, tipp: true }) : null),
     // Zwischenruf (z.B. zu einem Tier): ein Tipp auf die Blase wiederholt danach trotzdem den Blasentext
-    einwurf: (saetze, svg) => sprechen(saetze, { einwurf: true, svg }),
+    einwurf: (teile, svg) => sprechen(teile, { einwurf: true, svg, tipp: true }),
+    hat,
+    bereit,
   };
 })();
 
 /* =====================================================================
-   WAS PIEKS SAGT
+   WAS DIE FIGUREN SAGEN
    Aus jeder Liste in zufälliger Reihenfolge, ohne Wiederholung, bis alle
-   einmal dran waren.
+   einmal dran waren. Pieks' Listen stehen in TEXTE; die des Hörnchens
+   (HTEXTE) und Pieks' Sätze fürs Französisch (PTEXTE) in franz-texte.js.
    ===================================================================== */
 const beutel = {}, zuletzt = {};
-function zieh(name) {
-  if (!beutel[name] || !beutel[name].length) {
-    const b = shuffle(TEXTE[name].slice());
-    if (b.length > 1 && b[b.length - 1] === zuletzt[name]) b.unshift(b.pop());
-    beutel[name] = b;
+// Eine Liste, die es nicht gibt oder die leer ist, ergibt null: dann wird nichts gesagt
+function zieh(name, quelle = TEXTE) {
+  const liste = quelle[name], fach = quelle === TEXTE ? name : 'x:' + name;
+  if (!liste || !liste.length) return null;
+  if (!beutel[fach] || !beutel[fach].length) {
+    const b = shuffle(liste.slice());
+    if (b.length > 1 && b[b.length - 1] === zuletzt[fach]) b.unshift(b.pop());
+    beutel[fach] = b;
   }
-  return (zuletzt[name] = beutel[name].pop());
+  return (zuletzt[fach] = beutel[fach].pop());
 }
 
-// Wohin Pieks gerade spricht: Blase und Zeichnung des sichtbaren Bildschirms
-let ziel = { say: null, blase: null, svg: null };
-function sprechZiel(blase, svg) { ziel = { blase, say: blase.querySelector('.say'), svg }; }
+// Wohin gerade gesprochen wird: Blase und Zeichnung der Figur, die dran ist
+// (wer: 'p' Pieks, 'h' das Hörnchen)
+let ziel = { say: null, blase: null, svg: null, wer: 'p' };
+function sprechZiel(blase, svg, wer = 'p') {
+  ziel = { blase, say: blase.querySelector('.say'), svg, wer };
+  // Die Blase zeigt, wem sie gehört: Zipfel und Farbe über die Klasse, im
+  // gestapelten Layout zusätzlich ein kleiner Kopf in der Ecke
+  blase.classList.toggle('von-hoernchen', wer === 'h');
+  blase.classList.toggle('von-pieks', wer !== 'h');
+  const kopf = blase.querySelector('.blase-wer');
+  if (kopf && franzDa()) kopf.innerHTML = `<svg viewBox="0 0 24 24"><use href="#${wer === 'h' ? 't-franz' : 'i-pieks-kopf'}"/></svg>`;
+}
+// Blase und Figur am Ort, der gerade zu sehen ist. null: diese Figur ist dort
+// nicht da (das Hörnchen im Rechentraining, vor dem ersten Treffen …)
+function sprecher(wer) {
+  const h = wer === 'h', fr = franzDa() ? Franz.svg || {} : null;
+  let blase, svg;
+  if (h && !fr) return null;
+  if (fensterArt === 'garderobe' && garderobeSVG && garderobeSVG.isConnected) {
+    // In der Garderobe gehört die Blase der Figur, die gerade anprobiert
+    if (garderobeSVG.classList.contains('hoernchen') !== h) return null;
+    blase = $('blaseGarderobe'); svg = garderobeSVG;
+  } else if (bildschirm === 'franz') {
+    if (!fr) return null;
+    blase = $('blaseFranz'); svg = h ? fr.buehne : fr.gast;
+  } else if (bildschirm === 'training') {
+    if (h) return null;
+    blase = $('blase'); svg = dockSVG;
+  } else {
+    blase = $('blaseHome'); svg = h ? fr.held : heldSVG;
+  }
+  if (!blase || (h && (!svg || svg.closest('[hidden]')))) return null;
+  return { blase, svg: svg || null };
+}
+// Richtet das Ziel auf die Figur; false, wenn sie gerade nicht zu sehen ist
+function zielAuf(wer) {
+  const s = sprecher(wer);
+  if (s) sprechZiel(s.blase, s.svg, wer);
+  return !!s;
+}
+// Pieks' Mund am sichtbaren Ort: Meldungen und Fakten gehören immer ihm,
+// auch wenn die Blase gerade dem Hörnchen gehört
+function pieksMund() {
+  if (fensterArt === 'garderobe' && garderobeSVG && garderobeSVG.isConnected && garderobeSVG.classList.contains('pieks')) return garderobeSVG;
+  if (bildschirm === 'franz') return (franzDa() && Franz.svg && Franz.svg.gast) || null;
+  return bildschirm === 'training' ? dockSVG : heldSVG;
+}
 
 // Zeigt etwas in der Sprechblase und liest es vor. html ist die Anzeige,
-// saetze sind die gesprochenen Teile.
-function ansage(html, saetze, opt = {}) {
+// teile sind die gesprochenen Teile.
+function ansage(html, teile, opt = {}) {
   if (ziel.say) {
     ziel.say.innerHTML = html;
     ziel.blase.classList.remove('leer');
@@ -352,19 +777,45 @@ function ansage(html, saetze, opt = {}) {
     void ziel.blase.offsetWidth;
     ziel.blase.classList.add('pop');
   }
-  return Stimme.sprechen(saetze, Object.assign({ svg: ziel.svg }, opt));
+  return Stimme.sprechen(teile, Object.assign({ svg: ziel.svg }, opt));
 }
-const sag = (e, opt) => ansage(esc(anzeigetext(e)), [sprechtext(e)], opt);
-// Pieks schweigt: Blase ausblenden, Platz bleibt
+// Aus einem Text werden Aufnahmen: bei Pieks eine, beim Hörnchen eine je
+// Sprachstück, weil jede Aufnahme nur eine Sprache kennt
+function clipVon(e, wer) {
+  if (wer !== 'h') return [sprechtext(e)];
+  return segmente(e).map(x => ({ s: x.s, v: x.sprache === 'fr' ? 'hf' : 'hd' }));
+}
+// Eine Figur sagt etwas, in ihrer Blase und mit ihrem Mund. Ein Teil ist ein
+// Text aus den Listen oder { html, clip }: eine Vokabel-Aufnahme mit ihrer
+// Anzeige. Gibt es nichts zu sagen oder ist die Figur nicht zu sehen, gilt
+// es als gesagt (true).
+function sagMehrAls(wer, teile, opt) {
+  teile = teile.filter(Boolean);
+  if (!teile.length || !zielAuf(wer)) return Promise.resolve(true);
+  const html = [], clips = [];
+  for (const e of teile) {
+    // Ein Teil ohne Anzeige (etwa das Wort noch einmal langsam) spricht nur: sonst
+    // stünde ein doppelter oder hängender Leerschlag in der Blase
+    if (typeof e === 'object' && 'html' in e) { if (e.html) html.push(e.html); if (e.clip) clips.push(e.clip); }
+    else { html.push(esc(anzeigetext(e))); clips.push(...clipVon(e, wer)); }
+  }
+  return ansage(html.join(' '), clips, opt);
+}
+const sagAls = (wer, e, opt) => sagMehrAls(wer, [e], opt);
+// Pieks' Sätze laufen immer über ihn: so kommen sie nie aus ihrem Mund
+const sag = (e, opt) => sagAls('p', e, opt);
+const sagMehr = (teile, opt) => sagMehrAls('p', teile, opt);
+// Die Figur schweigt: Blase ausblenden, Platz bleibt
 function blaseLeeren() {
   if (!ziel.say) return;
   ziel.say.innerHTML = '';
   ziel.blase.classList.add('leer');
 }
-const sagMehr = (teile, opt) => ansage(teile.map(e => esc(anzeigetext(e))).join(' '), teile.map(sprechtext), opt);
 
 /* =====================================================================
    PIEKS ZEICHNEN UND ANZIEHEN
+   Das Hörnchen ist auf Pieks' Ankerpunkten gezeichnet: ihr passt jedes
+   Teil. Gekauft wird für beide, getragen wird getrennt (an und anH).
    ===================================================================== */
 function pieksEinsetzen(platz) {
   platz.innerHTML = pieksSVG();
@@ -373,21 +824,26 @@ function pieksEinsetzen(platz) {
   return svg;
 }
 function anziehen(svg) {
+  const h = svg.classList.contains('hoernchen'), an = h ? stand.anH : stand.an;
   for (const p of Object.keys(PLAETZE)) {
     const g = svg.querySelector('.slot-' + p);
-    if (g) g.innerHTML = stand.an[p] ? ITEM_SVG[stand.an[p]] : '';
+    if (!g) continue;
+    // Sitzt ein Teil bei ihr nicht ganz, rückt hoernchen.js es zurecht
+    const id = an[p], zurecht = h && id && franzDa() && ITEM_HOERNCHEN[id];
+    g.innerHTML = !id ? '' : zurecht ? `<g transform="${zurecht}">${ITEM_SVG[id]}</g>` : ITEM_SVG[id];
   }
 }
-function alleAnziehen() { document.querySelectorAll('svg.pieks').forEach(anziehen); }
-let moodTimer = 0;
+function alleAnziehen() { document.querySelectorAll('svg.pieks, svg.hoernchen').forEach(anziehen); }
+// Jede Figur hat ihren eigenen Wecker: sonst bliebe die eine froh, sobald die andere staunt
+const stimmungWecker = new WeakMap();
 function stimmung(svg, m, ms) {
   if (!svg) return;
   svg.classList.remove('froh', 'oops', 'kitzel');
   void svg.getBoundingClientRect();
-  clearTimeout(moodTimer);
+  clearTimeout(stimmungWecker.get(svg));
   if (!m) return;
   svg.classList.add(m);
-  if (ms) moodTimer = setTimeout(() => svg.classList.remove(m), ms);
+  if (ms) stimmungWecker.set(svg, setTimeout(() => svg.classList.remove(m), ms));
 }
 
 /* =====================================================================
@@ -469,9 +925,9 @@ function fallen() {
 }
 
 /* =====================================================================
-   OBERFLÄCHE: Lichtung und Training
+   OBERFLÄCHE: Lichtung, Rechentraining und Französisch
    ===================================================================== */
-let bildschirm = 'lichtung';
+let bildschirm = 'lichtung';   // 'lichtung' | 'training' | 'franz'
 let heldSVG = null, dockSVG = null;
 const sitzung = { thema: 'brueche', stufe: 'easy', nr: 0 };
 
@@ -479,10 +935,12 @@ function zeigeBildschirm(name) {
   bildschirm = name;
   $('lichtung').hidden = name !== 'lichtung';
   $('training').hidden = name !== 'training';
+  if ($('franz')) $('franz').hidden = name !== 'franz';
   document.body.classList.toggle('auf-lichtung', name === 'lichtung');
   document.body.classList.toggle('im-training', name === 'training');
-  if (name === 'lichtung') sprechZiel($('blaseHome'), heldSVG);
-  else sprechZiel($('blase'), dockSVG);
+  document.body.classList.toggle('im-franz', name === 'franz');
+  // Im Französisch gehört die Blase zuerst dem Hörnchen, sonst Pieks
+  zielAuf(name === 'franz' ? 'h' : 'p');
   Besuch.platzWechsel();
 }
 
@@ -545,14 +1003,18 @@ function trainingStarten(thema, stufe, still) {
   sagMehr(teile);
 }
 
-function zurLichtung() {
+// wer: wer auf der Lichtung etwas sagt. Genau eine Figur, denn zwei Sätze
+// hintereinander fielen einander ins Wort: nach dem Französisch das Hörnchen ('h').
+function zurLichtung(wer = 'p') {
   Stimme.stopp();
   notizZu();
   $('stufenMenue').hidden = true;
   zeigeBildschirm('lichtung');
   themenZeichnen();
   kopfZeigen();
-  sag(zieh('lichtung'));
+  if (wer === 'h' && franzDa()) return sagAls('h', zieh('h_lichtung', HTEXTE));
+  // Stehen sie zu zweit da, redet Pieks manchmal über beide
+  return sag(hoernchenDa() && Math.random() < 0.2 ? zieh('p_lichtung_zwei', PTEXTE) : zieh('lichtung'));
 }
 
 /* ---------- Kopfzeile ---------- */
@@ -563,23 +1025,35 @@ function kopfZeigen() {
   $('zielN').textContent = Math.min(h, z) + '/' + z;
   $('zielRing').style.strokeDashoffset = (88 * (1 - Math.min(1, h / z))).toFixed(1);
   $('ziel').classList.toggle('geschafft', h >= z);
-  $('ziel').title = `Tagesziel: ${z} Aufgaben (heute ${h} gelöst)`;
+  // Fürs Tagesziel zählt beides: eine Rechenaufgabe oder ein Wort (jede Karte einmal pro Runde)
+  $('ziel').title = franzDa() ? `Tagesziel: ${z} Aufgaben oder Wörter (heute ${h})` : `Tagesziel: ${z} Aufgaben (heute ${h} gelöst)`;
   const r = rangVon(stand.gesamt), nr = RAENGE.indexOf(r), naechster = RAENGE[nr + 1];
   $('rangNr').textContent = nr + 1;
   $('rangName').textContent = r.name;
   $('rangBalken').style.width = (naechster ? clamp((stand.gesamt - r.ab) / (naechster.ab - r.ab), 0, 1) * 100 : 100) + '%';
   $('rang').setAttribute('aria-label', `Rang ${nr + 1}: ${r.name}`);
-  const th = THEMEN[sitzung.thema];
-  $('themaIcon').querySelector('use').setAttribute('href', '#' + th.icon);
-  $('themaName').textContent = th.name;
-  $('stufeName').textContent = STUFEN[sitzung.stufe];
+  if (bildschirm === 'franz' && franzDa()) {
+    // Französisch kennt weder Thema noch Stufe: der Knopf zeigt, wo die Runde steht
+    const c = Franz.chip();
+    $('themaIcon').querySelector('use').setAttribute('href', '#t-franz');
+    $('themaName').textContent = c.name;
+    $('stufeName').textContent = c.klein;
+  } else {
+    const th = THEMEN[sitzung.thema];
+    $('themaIcon').querySelector('use').setAttribute('href', '#' + th.icon);
+    $('themaName').textContent = th.name;
+    $('stufeName').textContent = STUFEN[sitzung.stufe];
+  }
   serieZeigen();
   $('albumNeu').hidden = !neuImAlbum;
   const leistbar = Object.entries(ITEMS).some(([k, it]) => !stand.items.includes(k) && it.preis <= stand.aepfel);
   $('garderobeNeu').hidden = !leistbar;
+  // Die Französisch-Karte zeigt, was heute wartet
+  if (bildschirm === 'lichtung' && franzDa()) Franz.karteZeichnen();
 }
+// Die Serie gilt für beide Fächer und zeigt sich in beiden
 function serieZeigen() {
-  $('serie').hidden = serie < 2 || bildschirm !== 'training';
+  $('serie').hidden = serie < 2 || bildschirm === 'lichtung';
   $('serieN').textContent = serie;
   $('serie').classList.toggle('heiss', serie >= 5);
 }
@@ -759,10 +1233,8 @@ function pruefen() {
 
   // falsch (oder noch nicht gekürzt)
   A.fehler++;
-  serie = 0;
   hochZaehler = 0;
-  serieZeigen();
-  ergebnisMerken(false, false);
+  verfehlt('mathe');
   Ton.falsch();
   stimmung(dockSVG, 'oops', 1400);
   box.classList.remove('wackelt', 'pop');
@@ -882,7 +1354,6 @@ function geloest() {
   A.geloest = true;
   clearTimeout(warteTimer);
   const ersterVersuch = A.fehler === 0 && !A.loesungGezeigt;
-  ergebnisMerken(true, ersterVersuch);
   const box = $('antwort');
   box.classList.remove('wackelt', 'falsch');
   box.classList.add('richtig');
@@ -893,28 +1364,17 @@ function geloest() {
   stimmung(dockSVG, 'froh', 1600);
   $('loesungBtn').hidden = true;
 
-  // Zählen
-  const vorher = { rang: rangVon(stand.gesamt), heute: heuteGeloest() - 1 };
+  // Zuerst, was nur das Rechnen zählt: die Erfolge lesen es gleich in belohnen()
   const aepfel = belohnung();
   stand.geloest[A.t.topic] = (stand.geloest[A.t.topic] || 0) + 1;
   if (A.stufe === 'hard') stand.schwer++;
-  if (ersterVersuch) { serie++; if (A.tipps === 0) hochZaehler++; runterZaehler = 0; } else { serie = 0; hochZaehler = 0; }
+  if (ersterVersuch) { if (A.tipps === 0) hochZaehler++; runterZaehler = 0; } else hochZaehler = 0;
   if (!A.loesungGezeigt && A.fehler < 3) runterZaehler = 0;
-  stand.besterLauf = Math.max(stand.besterLauf, serie);
-  const serieBonus = { 5: 5, 10: 10, 15: 10, 20: 15, 25: 15, 30: 20, 40: 25, 50: 30 }[serie] || 0;
-  const zielJetzt = vorher.heute < stand.ziel && vorher.heute + 1 >= stand.ziel;
-  stand.nachRichtig++;
-  const erfolgsKontext = { durchhalten: A.fehler >= 2 && !A.loesungGezeigt, stunde: new Date().getHours(), ziel: zielJetzt };
-  if (zielJetzt) stand.zielTage[heuteKey()] = true;
-  apfelDazu(aepfel + serieBonus + (zielJetzt ? 15 : 0), box);
-  const neueErfolge = pruefeErfolge(erfolgsKontext);
-  const rangNeu = rangVon(stand.gesamt) !== vorher.rang;
-  speichern();
-  serieZeigen();
+  const f = belohnen({ aepfel, von: box, ersterVersuch, fach: 'mathe', kontext: { durchhalten: A.fehler >= 2 && !A.loesungGezeigt } });
 
   // «Weiter» erst nach einem Moment, damit ein Doppeltipp die Feier nicht überspringt
   setTimeout(() => { if (A === diese) $('dock').classList.add('fertig'); }, 450);
-  feiern(diese, { ersterVersuch, serieBonus, zielJetzt, rangNeu, neueErfolge });
+  feiern(diese, f);
 }
 
 // Nacheinander: Lob, Serie, Tagesziel, Rang, Erfolge, Vorschlag, Fakt.
@@ -927,21 +1387,7 @@ async function feiern(diese, f) {
   else if (diese.stufe === 'hard' && Math.random() < 0.3) lob = zieh('richtig_schwer');
   else lob = zieh('richtig');
   if (!(await sag(lob)) || !gilt()) return;
-  if (SERIE[serie]) {
-    Ton.serie();
-    if (!(await meldung(symbolHTML('flamme'), serie + ' in Folge!', f.serieBonus ? `+${f.serieBonus} Bonus-Äpfel` : 'Weiter so!', [sprechtext(SERIE[serie])])) || !gilt()) return;
-  }
-  if (f.zielJetzt) {
-    Ton.ziel();
-    konfetti();
-    if (!(await meldung(symbolHTML('pokal'), 'Tagesziel geschafft!', '+15 Äpfel', [sprechtext(zieh('tagesziel'))])) || !gilt()) return;
-  }
-  if (f.rangNeu) {
-    if (!(await rangMelden()) || !gilt()) return;
-  }
-  for (const id of f.neueErfolge) {
-    if (!(await erfolgMelden(id)) || !gilt()) return;
-  }
+  if (await meldungenFeiern(f, gilt)) return;
   // Zu leicht? Dann die nächste Stufe anbieten
   if (hochZaehler >= 8 && sitzung.stufe !== 'hard' && !vorschlagGemacht.hoch) {
     vorschlagGemacht.hoch = true;
@@ -975,6 +1421,8 @@ document.addEventListener('click', e => {
   const b = e.target.closest('.blase .mini');
   if (!b) return;
   e.stopPropagation();
+  // Knöpfe des Hörnchens tragen data-fr-…: die kennt franz.js
+  if (Object.keys(b.dataset).some(k => /^fr[A-Z]/.test(k))) { if (franzDa()) Franz.blasenKnopf(b); return; }
   if (b.dataset.stufe) stufeWechseln(b.dataset.stufe);
   else { Stimme.stopp(); blaseLeeren(); }
 }, true);
@@ -987,7 +1435,47 @@ function stufeWechseln(neu, thema) {
 
 /* =====================================================================
    BELOHNUNGEN: Äpfel, Ränge, Erfolge, Fakten
+   Eine gemeinsame Kasse für Mathe und Französisch: dieselben Äpfel,
+   dieselbe Serie, dasselbe Tagesziel, dieselben Ränge und Erfolge.
    ===================================================================== */
+// Eine gelöste, beurteilte Aufgabe verbuchen. aepfel: was die Aufgabe selbst
+// bringt; von: das Element, von dem die Äpfel losfliegen; ersterVersuch: ohne
+// Fehler gelöst (nur dann wächst die Serie); fach: 'mathe' oder 'fr';
+// zaehlt false: nicht fürs Tagesziel; kontext: Zusätze für die Erfolge.
+// Zurück kommt, was es zu feiern gibt (siehe meldungenFeiern).
+function belohnen({ aepfel, von, ersterVersuch, fach, zaehlt = true, kontext = {} }) {
+  const vorher = { rang: rangVon(stand.gesamt), heute: heuteGeloest() };
+  ergebnisMerken(true, ersterVersuch, fach, zaehlt);
+  if (ersterVersuch) serie++; else serie = 0;
+  stand.besterLauf = Math.max(stand.besterLauf, serie);
+  const serieBonus = { 5: 5, 10: 10, 15: 10, 20: 15, 25: 15, 30: 20, 40: 25, 50: 30 }[serie] || 0;
+  const zielJetzt = zaehlt && vorher.heute < stand.ziel && vorher.heute + 1 >= stand.ziel;
+  if (zielJetzt) stand.zielTage[heuteKey()] = true;
+  stand.nachRichtig++;
+  apfelDazu(aepfel + serieBonus + (zielJetzt ? 15 : 0), von);
+  const neueErfolge = pruefeErfolge(Object.assign({}, kontext, { stunde: new Date().getHours(), ziel: zielJetzt }));
+  const rangNeu = rangVon(stand.gesamt) !== vorher.rang;
+  speichern();
+  serieZeigen();
+  return { serie, serieBonus, zielJetzt, rangNeu, neueErfolge };
+}
+// Äpfel ohne gelöste Aufgabe (im Französisch: Nachsprechen, Paare, Nachbauen,
+// Rundenbonus). Weder Statistik noch Serie, aber Rang und Erfolge können fallen.
+function aepfelGeben(n, von, kontext = {}) {
+  const rang = rangVon(stand.gesamt);
+  apfelDazu(n, von);
+  const neueErfolge = pruefeErfolge(kontext);
+  const rangNeu = rangVon(stand.gesamt) !== rang;
+  speichern();
+  return { rangNeu, neueErfolge };
+}
+// Eine falsche Antwort: die Serie reisst, der Versuch zählt in der Statistik
+function verfehlt(fach) {
+  serie = 0;
+  serieZeigen();
+  ergebnisMerken(false, false, fach);
+}
+
 function apfelDazu(n, von) {
   if (n <= 0) return;
   stand.aepfel += n;
@@ -1051,7 +1539,9 @@ function konfetti() {
 const symbolHTML = (id, vb = '0 0 40 40') => `<svg viewBox="${vb}"><use href="#${id}"/></svg>`;
 
 // Kleine Meldung oben, die Pieks vorliest. Erfüllt sich mit false, wenn
-// eine andere Ansage dazwischenkam.
+// eine andere Ansage dazwischenkam. Sie ist ein Einwurf: Ein Tipp auf die Blase
+// wiederholt danach, was in der Blase steht, nicht die Meldung (sonst käme im
+// Französisch nach der Ernte Pieks' Meldung statt ihres Satzes).
 let meldungLaeuft = Promise.resolve();
 function meldung(icon, titel, text, saetze) {
   const p = meldungLaeuft.then(async () => {
@@ -1060,7 +1550,7 @@ function meldung(icon, titel, text, saetze) {
     $('toastS').textContent = text;
     $('toast').classList.add('zeigen');
     const start = Date.now();
-    const ganz = await Stimme.sprechen(saetze, { svg: ziel.svg });
+    const ganz = await Stimme.sprechen(saetze, { svg: pieksMund(), einwurf: true });
     if (ganz) await pause(Math.max(0, 2200 - (Date.now() - start)));
     $('toast').classList.remove('zeigen');
     if (ganz) await pause(400);
@@ -1079,6 +1569,34 @@ async function erfolgMelden(id) {
   const e = ERFOLGE[id];
   Ton.erfolg();
   return meldung(symbolHTML('pokal'), e.name, e.text + (e.bonus ? ` +${e.bonus} Äpfel` : ''), [sprechtext(zieh('erfolg_vor')), sprechtext(e.name + '!')]);
+}
+// Was belohnen() oder aepfelGeben() gemeldet hat, nacheinander zeigen: Serie,
+// Tagesziel, Rang, Erfolge. gilt() sagt, ob die Feier noch passt (dieselbe
+// Aufgabe, derselbe Bildschirm). Sind alle gezeigt, kommt null zurück. Nach
+// einer Unterbrechung kommt, was von Rang und Erfolgen offen blieb: das
+// Französisch zeigt es am Ende der Runde. Serie und Tagesziel verfallen.
+async function meldungenFeiern(f, gilt = () => true) {
+  const offen = { rangNeu: !!f.rangNeu, neueErfolge: (f.neueErfolge || []).slice() };
+  if (SERIE[f.serie]) {
+    Ton.serie();
+    if (!(await meldung(symbolHTML('flamme'), f.serie + ' in Folge!', f.serieBonus ? `+${f.serieBonus} Bonus-Äpfel` : 'Weiter so!', [sprechtext(SERIE[f.serie])])) || !gilt()) return offen;
+  }
+  if (f.zielJetzt) {
+    Ton.ziel();
+    konfetti();
+    if (!(await meldung(symbolHTML('pokal'), 'Tagesziel geschafft!', '+15 Äpfel', [sprechtext(zieh('tagesziel'))])) || !gilt()) return offen;
+  }
+  if (offen.rangNeu) {
+    if (!(await rangMelden())) return offen;
+    offen.rangNeu = false;
+    if (!gilt()) return offen;
+  }
+  while (offen.neueErfolge.length) {
+    if (!(await erfolgMelden(offen.neueErfolge[0]))) return offen;
+    offen.neueErfolge.shift();
+    if (!gilt()) return offen;
+  }
+  return null;
 }
 
 // Prüft alle Erfolge; neue werden gespeichert und bringen Bonus-Äpfel
@@ -1099,6 +1617,8 @@ function pruefeErfolge(k = {}) {
     mode: stand.items.length >= 1, modeAlle: stand.items.length >= Object.keys(ITEMS).length,
     kitzel: !!k.kitzel,
   };
+  // Die Französisch-Erfolge kennt franz.js
+  if (franzDa()) Object.assign(bed, Franz.erfolgBedingungen());
   for (const id of Object.keys(ERFOLGE)) {
     if (stand.erfolge[id] || !bed[id]) continue;
     stand.erfolge[id] = Date.now();
@@ -1110,27 +1630,32 @@ function pruefeErfolge(k = {}) {
 }
 // Erfolge, die ausserhalb einer Aufgabe passieren (Tiere, Kaufen, Kitzeln).
 // Gezählt wird sofort, gemeldet erst, wenn Pieks fertig gesprochen hat.
+// Erfüllt sich mit false, wenn Nea dazwischengetippt hat.
 async function erfolgeNebenbei(k, nach) {
   const neu = pruefeErfolge(k);
-  if (!neu.length) return;
   const ganz = nach ? await nach : true;
-  if (ganz === false) return;   // unterbrochen: die Meldung kommt nicht mehr, der Erfolg zählt trotzdem
-  for (const id of neu) if (!(await erfolgMelden(id))) return;
+  if (ganz === false) return false;   // unterbrochen: die Meldung kommt nicht mehr, der Erfolg zählt trotzdem
+  for (const id of neu) if (!(await erfolgMelden(id))) return false;
+  return true;
 }
 
 /* ---------- Fakten ---------- */
 const FAKT_ID = new Map();   // Fakt → Kennung (über den gesprochenen Text)
 const faktId = f => { if (!FAKT_ID.has(f)) FAKT_ID.set(f, kennung(sprechtext(f))); return FAKT_ID.get(f); };
 let letzteKat = '';
-// Welche Aufnahmen es gibt (make-audio.mjs schreibt die Liste). Solange noch
-// nicht alle Fakten vertont sind, kommen zuerst die mit Ton.
-let aufnahmen = null;
-fetch('audio/vorhanden.json').then(r => (r.ok ? r.json() : null)).then(l => { if (Array.isArray(l)) aufnahmen = new Set(l); }).catch(() => {});
-// Keiner doppelt, bis alle erzählt sind; möglichst nicht zweimal dieselbe Kategorie
-function naechsterFakt() {
+// Keiner doppelt, bis alle erzählt sind; möglichst nicht zweimal dieselbe Kategorie.
+// Solange noch nicht alle Fakten vertont sind, kommen zuerst die mit Ton.
+// ohneFranz (auf dem Französisch-Bildschirm): Pieks spricht dort nie Französisch (5.2),
+// also bleiben die Fakten mit französischen Wörtern fürs Rechnen liegen. Sind nur noch
+// sie übrig, gibt es dort diesmal keinen (null), statt die Runde früher neu zu beginnen.
+function naechsterFakt(ohneFranz = false) {
   const gesehen = new Set(stand.fakten);
   let frei = FAKTEN.filter(f => !gesehen.has(faktId(f)));
   if (!frei.length) { stand.fakten = []; frei = FAKTEN.slice(); }
+  if (ohneFranz) {
+    frei = frei.filter(f => !/\b(fondre|racler|Litron|Champollion|Cocorico)\b/.test(sprechtext(f)));
+    if (!frei.length) return null;
+  }
   if (aufnahmen && stand.stimme) {
     const mitTon = frei.filter(f => aufnahmen.has(faktId(f)));
     if (mitTon.length) frei = mitTon;
@@ -1142,18 +1667,26 @@ function naechsterFakt() {
   speichern();
   return f;
 }
-function faktErzaehlen() {
-  const f = naechsterFakt(), vor = zieh('fakt_vor'), kat = FAKT_KAT[f.k] || { name: 'Fakt', icon: '✨' };
-  $('faktKat').innerHTML = `<span aria-hidden="true">${kat.icon}</span> ${esc(kat.name)} · ${stand.fakten.length} von ${FAKTEN.length}`;
-  $('faktText').innerHTML = esc(anzeigetext(f));
-  $('faktNeu').hidden = false;
-  $('faktKarte').hidden = false;
-  $('faktKarte').onclick = () => Stimme.sprechen([sprechtext(f)], { svg: ziel.svg });
+// Pieks erzählt den nächsten Fakt. wo: die Kennungen der Faktkarte (das
+// Französisch hat seine eigene) und, wenn gewünscht, der Satz davor (vor).
+// Erfüllt sich wie jede Ansage: true, wenn er zu Ende erzählt hat.
+function faktErzaehlen(wo = { karte: 'faktKarte', kat: 'faktKat', text: 'faktText', neu: 'faktNeu', vor: null }) {
+  const f = naechsterFakt(bildschirm === 'franz');
+  if (!f) return Promise.resolve(true);
+  const vor = wo.vor || zieh('fakt_vor'), kat = FAKT_KAT[f.k] || { name: 'Fakt', icon: '✨' };
+  const karte = $(wo.karte), teile = [sprechtext(vor), sprechtext(f)];
+  $(wo.kat).innerHTML = `<span aria-hidden="true">${kat.icon}</span> ${esc(kat.name)} · ${stand.fakten.length} von ${FAKTEN.length}`;
+  $(wo.text).innerHTML = esc(anzeigetext(f));
+  $(wo.neu).hidden = false;
+  karte.hidden = false;
+  karte.onclick = () => Stimme.sprechen([sprechtext(f)], { svg: pieksMund(), tipp: true });
   Ton.fakt();
   neuImAlbum = true;
   kopfZeigen();
-  $('faktKarte').scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
-  ansage(esc(anzeigetext(vor)), [sprechtext(vor), sprechtext(f)]);
+  karte.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+  // Der Fakt gehört Pieks. Ist er gerade nicht zu sehen (in der Garderobe steht das
+  // Hörnchen), liest er nur vor, statt ihr die Blase zu nehmen.
+  return zielAuf('p') ? ansage(esc(anzeigetext(vor)), teile) : Stimme.sprechen(teile, { svg: pieksMund() });
 }
 
 /* =====================================================================
@@ -1287,7 +1820,8 @@ const Besuch = (() => {
     timer = setTimeout(() => kommen(), ms !== undefined ? ms : wartezeit(38000));
   }
   function kommen(wunsch) {
-    if (document.hidden || !$('fenster').hidden || !$('start').hidden) { planen(wartezeit(12000)); return; }
+    // Im Französisch kommt niemand: ein Tipp auf ein Tier schnitte der Vokabel das Wort ab
+    if (document.hidden || !$('fenster').hidden || !$('start').hidden || bildschirm === 'franz') { planen(wartezeit(12000)); return; }
     const b = boden();
     const bodenOk = b && b.offsetParent && b.clientHeight >= 46;
     const frei = Object.keys(BESUCHER).filter(k => k !== letzter && besucherMoeglich(k) && !unterwegs[spurVon(k)] && (spurVon(k) === 'himmel' || bodenOk));
@@ -1305,7 +1839,7 @@ const Besuch = (() => {
     // wartet der Hinweis aufs nächste Tier, statt ihm ins Wort zu fallen.
     if (!stand.ersterBesuch && !A?.geloest) {
       setTimeout(() => {
-        if (stand.ersterBesuch || !Stimme.istStill() || !$('fenster').hidden) return;
+        if (stand.ersterBesuch || !Stimme.istStill() || !$('fenster').hidden || bildschirm === 'franz') return;
         stand.ersterBesuch = true;
         speichern();
         sag(TEXTE.erster_besuch[0]);
@@ -1463,11 +1997,12 @@ const Besuch = (() => {
       ], { duration: 1200, delay: i * 120, easing: 'ease-out', fill: 'both' }).onfinish = () => s.remove();
     }
   }
-  // Beim Wechsel zwischen Lichtung und Training verschwinden die Läufer
+  // Beim Wechsel zwischen Lichtung und Training verschwinden die Läufer, im
+  // Französisch auch, wer gerade am Himmel vorbeizieht
   function platzWechsel() {
     for (const spur of ['boden', 'himmel']) {
       const b = unterwegs[spur];
-      if (b && b.ebene !== himmel) { b.el.remove(); unterwegs[spur] = null; }
+      if (b && (b.ebene !== himmel || bildschirm === 'franz')) { b.el.remove(); unterwegs[spur] = null; }
     }
   }
   return { start: () => planen(wartezeit(14000)), planen, kommen, platzWechsel };
@@ -1514,16 +2049,23 @@ async function einrollen(svg) {
    FENSTER: Album, Garderobe, Erfolge, Eltern
    ===================================================================== */
 let fensterArt = null;
+// art: 'album' | 'garderobe' | 'erfolge' | 'eltern'; tab nur fürs Album
+// ('tiere', 'fakten', 'woerter' oder 'woerter:u2' für eine Unité)
 function fensterAuf(art, tab) {
   fensterArt = art;
   $('fenster').hidden = false;
   $('fensterTabs').innerHTML = '';
+  // In der Garderobe steht zuerst, wer auf dem Bildschirm dahinter unterrichtet
+  if (art === 'garderobe') garderobeWer = bildschirm === 'franz' ? 'h' : 'p';
   ({ album: albumZeigen, garderobe: garderobeZeigen, erfolge: erfolgeZeigen, eltern: elternZeigen })[art](tab);
 }
 function fensterZu() {
   $('fenster').hidden = true;
   fensterArt = null;
+  // Die Blase darunter gehört weiter dem, der dort zuletzt gesprochen hat
+  const ort = sprecher('p'), wer = ort && ort.blase.classList.contains('von-hoernchen') ? 'h' : 'p';
   zeigeBildschirm(bildschirm);
+  zielAuf(wer);
   kopfZeigen();
   if (bildschirm === 'lichtung') themenZeichnen();
 }
@@ -1542,8 +2084,20 @@ function albumZeigen(tab = 'tiere') {
   $('fensterTitel').textContent = 'Sammelalbum';
   if (neuImAlbum) { neuImAlbum = false; kopfZeigen(); }
   const tiere = Object.keys(stand.besucher).length;
-  tabs([['tiere', `Besucher ${tiere}/${BESUCHER_REIHE.length}`], ['fakten', `Fakten ${stand.fakten.length}/${FAKTEN.length}`]], tab, albumZeigen);
+  const liste = [['tiere', `Besucher ${tiere}/${BESUCHER_REIHE.length}`], ['fakten', `Fakten ${stand.fakten.length}/${FAKTEN.length}`]];
+  // Das Wörterheft des Hörnchens: dritter Reiter, sobald sie da ist ('woerter' oder 'woerter:u2' für eine Unité)
+  if (hoernchenDa()) liste.push(['woerter', `Wörter ${Franz.zahlen().gekannt}/${VOKABELN.length}`]);
+  else if (tab.startsWith('woerter')) tab = 'tiere';
+  const heft = tab.startsWith('woerter');
+  tabs(liste, heft ? 'woerter' : tab, albumZeigen);
   const inhalt = $('fensterInhalt');
+  if (heft) {
+    // Den Inhalt und seine Tipps besitzt franz.js. onclick wird hier gesetzt wie bei den
+    // anderen Reitern: so bleibt nie ein Tipp-Empfänger des vorigen Reiters stehen.
+    inhalt.onclick = e => Franz.albumKlick(e);
+    Franz.albumTab(inhalt, tab.slice(8));
+    return;
+  }
   if (tab === 'tiere') {
     inhalt.innerHTML = '<div class="raster">' + BESUCHER_REIHE.map(id => {
       const b = BESUCHER[id], art = BESUCHER_ART[id], da = !!stand.besucher[id];
@@ -1558,7 +2112,7 @@ function albumZeigen(tab = 'tiere') {
       const k = e.target.closest('.sammel.knopf');
       if (!k) return;
       const b = BESUCHER[k.dataset.tier];
-      Stimme.sprechen([sprechtext(pick(b.fakten))], { svg: null });
+      Stimme.sprechen([sprechtext(pick(b.fakten))], { svg: null, tipp: true });
       k.querySelector('.info').textContent = anzeigetext(b.fakten[0]) + (b.fakten[1] ? ' ' + anzeigetext(b.fakten[1]) : '');
     };
     if (Math.random() < 0.5) Stimme.sprechen([sprechtext(zieh('album_auf'))], { svg: null });
@@ -1585,27 +2139,33 @@ function albumZeigen(tab = 'tiere') {
   inhalt.onclick = e => {
     if (e.target.closest('[data-zurueck]')) { albumZeigen('fakten'); return; }
     const b = e.target.closest('.fakt-eintrag[data-fakt]');
-    if (b) Stimme.sprechen([sprechtext(FAKTEN[+b.dataset.fakt])], { svg: null });
+    if (b) Stimme.sprechen([sprechtext(FAKTEN[+b.dataset.fakt])], { svg: null, tipp: true });
   };
 }
 
-/* ---------- Garderobe ---------- */
-let garderobeSVG = null;
+/* ---------- Garderobe ----------
+   Ein Schrank für beide: was gekauft ist, können Pieks und das Hörnchen
+   tragen. Ein Schalter über der Vorschau wählt, wer gerade anprobiert. */
+let garderobeSVG = null, garderobeWer = 'p';
 function garderobeZeigen() {
-  $('fensterTitel').textContent = 'Pieks\' Garderobe';
+  const zwei = hoernchenDa();
+  if (!zwei) garderobeWer = 'p';
+  const h = garderobeWer === 'h', an = h ? stand.anH : stand.an, name = h ? HOERNCHEN.name : 'Pieks';
+  $('fensterTitel').textContent = zwei ? 'Garderobe' : 'Pieks\' Garderobe';
   const inhalt = $('fensterInhalt');
   const gruppen = Object.keys(PLAETZE).map(p => {
     const waren = Object.entries(ITEMS).filter(([, it]) => it.platz === p);
     return `<div class="slot-titel">${PLAETZE[p]}</div><div class="raster">` + waren.map(([id, it]) => {
-      const hat = stand.items.includes(id), traegt = stand.an[p] === id, leistbar = stand.aepfel >= it.preis;
+      const hat = stand.items.includes(id), traegt = an[p] === id, leistbar = stand.aepfel >= it.preis;
       return `<button type="button" class="sammel knopf ware${traegt ? ' traegt' : ''}" data-item="${id}">
         <span class="bild"><svg viewBox="-10 -34 220 240" class="ware-bild">${ITEM_SVG[id]}</svg></span>
         <span class="name">${esc(it.name)}</span>
-        ${hat ? `<span class="status">${traegt ? '✓ Pieks trägt das' : 'Anziehen'}</span>` : `<span class="preis${leistbar ? '' : ' zu-teuer'}"><svg viewBox="0 0 40 40"><use href="#apfel"/></svg>${it.preis}</span>`}
+        ${hat ? `<span class="status">${traegt ? `✓ ${esc(name)} trägt das` : 'Anziehen'}</span>` : `<span class="preis${leistbar ? '' : ' zu-teuer'}"><svg viewBox="0 0 40 40"><use href="#apfel"/></svg>${it.preis}</span>`}
       </button>`;
     }).join('') + '</div>';
   }).join('');
-  inhalt.innerHTML = `<div class="garderobe"><div class="vorschau"><div id="garderobePieks" style="width:100%;max-width:240px"></div>
+  const schalter = !zwei ? '' : `<div class="wahl-knoepfe garderobe-wahl"><button type="button" data-wer="p" class="${h ? '' : 'an'}">Pieks</button><button type="button" data-wer="h" class="${h ? 'an' : ''}">${esc(HOERNCHEN.name)}</button></div>`;
+  inhalt.innerHTML = `<div class="garderobe"><div class="vorschau">${schalter}<div id="garderobePieks" style="width:100%;max-width:240px"></div>
     <div class="blase leer" id="blaseGarderobe" style="width:100%"><span class="say"></span></div>
     <div class="kasse"><svg viewBox="0 0 40 40"><use href="#apfel"/></svg><span id="kasseN">${stand.aepfel}</span> Äpfel</div></div><div>${gruppen}</div></div>`;
   // Jedes Teil ist in Pieks' Koordinaten gezeichnet: Vorschau auf den Inhalt zoomen
@@ -1615,34 +2175,53 @@ function garderobeZeigen() {
       svg.setAttribute('viewBox', `${bb.x - rand} ${bb.y - rand} ${bb.width + 2 * rand} ${bb.height + 2 * rand}`);
     } catch (e) { /* noch nicht sichtbar */ }
   });
-  garderobeSVG = pieksEinsetzen($('garderobePieks'));
-  garderobeSVG.addEventListener('pointerdown', () => kitzeln(garderobeSVG));
-  sprechZiel($('blaseGarderobe'), garderobeSVG);
+  const platz = $('garderobePieks');
+  if (h) { platz.innerHTML = hoernchenSVG(); anziehen(platz.querySelector('svg')); }
+  const svg = (garderobeSVG = h ? platz.querySelector('svg') : pieksEinsetzen(platz));
+  // Antippen: jede Figur kitzelt auf ihre Art. Das Hörnchen rollt sich nie zur
+  // Igelkugel ein, und aus ihrem Mund kommt kein Satz von Pieks.
+  svg.addEventListener('pointerdown', () => (h ? Franz.kitzeln(svg) : kitzeln(svg)));
+  sprechZiel($('blaseGarderobe'), svg, garderobeWer);
   inhalt.onclick = e => {
+    const w = e.target.closest('.garderobe-wahl button');
+    if (w) {
+      if (w.dataset.wer === garderobeWer) return;
+      Ton.tipp();
+      Stimme.stopp();
+      garderobeWer = w.dataset.wer;
+      garderobeZeigen();
+      return;
+    }
     const b = e.target.closest('.ware');
     if (b) waehleItem(b.dataset.item);
   };
 }
+// Kaufen, anziehen oder ausziehen für die Figur, die gerade in der Garderobe steht.
+// Pieks' Sätze spricht nur er; steht das Hörnchen da, sagt sie ihre eigenen.
 function waehleItem(id) {
-  const it = ITEMS[id];
+  const it = ITEMS[id], h = garderobeWer === 'h', an = h ? stand.anH : stand.an;
+  const sagt = (pieks, hoernchen) => (h ? sagAls('h', zieh(hoernchen, HTEXTE)) : sagAls('p', pieks()));
   if (!stand.items.includes(id)) {
-    if (stand.aepfel < it.preis) { Ton.falsch(); sag(zieh('zu_teuer')); return; }
+    if (stand.aepfel < it.preis) { Ton.falsch(); sagt(() => zieh('zu_teuer'), 'h_zu_teuer'); return; }
     stand.aepfel -= it.preis;
     stand.items.push(id);
-    stand.an[it.platz] = id;
+    an[it.platz] = id;
     speichern();
     Ton.kaufen();
     garderobeZeigen();
     stimmung(garderobeSVG, 'froh', 1800);
     konfetti();
-    erfolgeNebenbei({}, sagMehr([it.spruch]));
+    erfolgeNebenbei({}, sagt(() => it.spruch, 'h_anziehen'));
     alleAnziehen();
     return;
   }
   Ton.tipp();
-  if (stand.an[it.platz] === id) { stand.an[it.platz] = null; speichern(); garderobeZeigen(); sag(zieh('ausziehen')); }
-  else { stand.an[it.platz] = id; speichern(); garderobeZeigen(); stimmung(garderobeSVG, 'froh', 1200); sag(zieh('kaufen')); }
+  let gesagt;
+  if (an[it.platz] === id) { an[it.platz] = null; speichern(); garderobeZeigen(); gesagt = sagt(() => zieh('ausziehen'), 'h_ausziehen'); }
+  else { an[it.platz] = id; speichern(); garderobeZeigen(); stimmung(garderobeSVG, 'froh', 1200); gesagt = sagt(() => zieh('kaufen'), 'h_anziehen'); }
   alleAnziehen();
+  // Nach jedem Umziehen, nicht erst beim nächsten Kauf: sonst käme «Partnerlook» mitten in einer Aufgabe
+  erfolgeNebenbei({}, gesagt);
 }
 
 /* ---------- Erfolge ---------- */
@@ -1658,9 +2237,13 @@ function erfolgeZeigen() {
     schwer25: [stand.schwer, 25], tage3: [tage, 3], tage7: [tage, 7], tiere5: [tiere, 5], tiereAlle: [tiere, BESUCHER_REIHE.length],
     fakten50: [stand.fakten.length, 50], fakten200: [stand.fakten.length, 200], modeAlle: [stand.items.length, Object.keys(ITEMS).length],
   };
-  $('fensterInhalt').innerHTML = `<p class="klein" style="margin-top:0">${zahl} von ${Object.keys(ERFOLGE).length} Erfolgen geschafft. Jeder bringt Bonus-Äpfel.</p><div class="raster">` +
-    Object.entries(ERFOLGE).map(([id, e]) => {
-      const da = !!stand.erfolge[id], f = fort[id];
+  if (franzDa()) Object.assign(fort, Franz.erfolgFortschritt());
+  // Die französischen Erfolge erst, wenn es sie zu verdienen gibt: Ohne Französisch oder vor dem
+  // ersten Treffen zeigten sie auf jemanden, den es (noch) nicht gibt. Verdiente bleiben immer sichtbar.
+  const ids = Object.keys(ERFOLGE).filter(id => !id.startsWith('fr_') || hoernchenDa() || stand.erfolge[id]);
+  $('fensterInhalt').innerHTML = `<p class="klein" style="margin-top:0">${zahl} von ${ids.length} Erfolgen geschafft. Jeder bringt Bonus-Äpfel.</p><div class="raster">` +
+    ids.map(id => {
+      const e = ERFOLGE[id], da = !!stand.erfolge[id], f = fort[id];
       return `<div class="sammel erfolg${da ? '' : ' zu'}"><span class="bild"><svg viewBox="0 0 40 40"><use href="#${da ? 'pokal' : 'stern'}"/></svg></span>
         <span class="name">${esc(e.name)}</span><span class="info">${esc(e.text)}</span>
         ${e.bonus ? `<span class="preis"><svg viewBox="0 0 40 40"><use href="#apfel"/></svg>+${e.bonus}</span>` : ''}
@@ -1680,9 +2263,10 @@ window.addEventListener('appinstalled', () => { installHinweis = null; if (fenst
 const laeuftAlsApp = () => ['standalone', 'fullscreen', 'minimal-ui'].some(m => matchMedia(`(display-mode: ${m})`).matches) || navigator.standalone === true;
 const istIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 function installHTML() {
-  if (laeuftAlsApp()) return '<p class="klein">✓ Der Mathe-Igel läuft hier schon als App.</p>';
-  if (installHinweis) return '<button type="button" class="install-knopf" data-install>Als App installieren</button><p class="klein">Danach startet der Mathe-Igel wie eine eigene App, im Vollbild und auch ohne Internet.</p>';
-  if (istIOS()) return '<p class="klein">Auf dem iPad oder iPhone: in Safari unten oder oben auf <b>Teilen</b> tippen (Viereck mit Pfeil), dann <b>Zum Home-Bildschirm</b>. Danach startet der Mathe-Igel im Vollbild wie eine eigene App.</p>';
+  const name = esc(APP_NAME);
+  if (laeuftAlsApp()) return `<p class="klein">✓ ${name} läuft hier schon als App.</p>`;
+  if (installHinweis) return `<button type="button" class="install-knopf" data-install>Als App installieren</button><p class="klein">Danach startet ${name} wie eine eigene App, im Vollbild und auch ohne Internet.</p>`;
+  if (istIOS()) return `<p class="klein">Auf dem iPad oder iPhone: in Safari unten oder oben auf <b>Teilen</b> tippen (Viereck mit Pfeil), dann <b>Zum Home-Bildschirm</b>. Danach startet ${name} im Vollbild wie eine eigene App.</p>`;
   return '<p class="klein">Im Browser-Menü <b>App installieren</b> oder <b>Zum Startbildschirm hinzufügen</b> wählen (Chrome, Edge, Samsung Internet). In Chrome und Edge am Computer gibt es dafür auch ein Symbol rechts in der Adresszeile.</p>';
 }
 
@@ -1698,19 +2282,23 @@ function elternZeigen() {
   const kurz = d => String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.';
   const lang = k => { if (k === heuteKey()) return 'Heute'; const y = new Date(); y.setDate(y.getDate() - 1); if (k === dateKey(y)) return 'Gestern'; const [yy, mm, dd] = k.split('-'); return `${dd}.${mm}.${yy.slice(2)}`; };
   const verlauf = Object.keys(s).filter(k => s[k].total > 0).sort().reverse().slice(0, 14);
+  // Mit Französisch: die Zahlen zählen Aufgaben und Wörter, und jeder Balken ist gestapelt
+  const fr = franzDa(), frZ = fr ? Franz.zahlen() : null;
   $('fensterInhalt').innerHTML = `<div class="eltern">
-    <h3>Gelöste Aufgaben</h3>
+    <h3>${fr ? 'Gelöste Aufgaben und Wörter' : 'Gelöste Aufgaben'}</h3>
     <div class="agg"><div><b>${heute.total || 0}</b><small>Heute</small></div><div><b>${summe(7)}</b><small>7 Tage</small></div><div><b>${summe(30)}</b><small>30 Tage</small></div><div><b>${alleGeloest()}</b><small>Total</small></div></div>
     <h3>Letzte 14 Tage</h3>
-    <div class="chart">${tage14.map(t => { const x = s[t.key], n = (x || {}).total || 0, q = x && x.attempts ? Math.round(x.correct / x.attempts * 100) : 0;
-      return `<div class="chart-bar${n ? '' : ' leer'}" style="height:${n ? Math.max(4, n / max * 100) : 3}%" title="${kurz(t.d)}: ${n ? n + ' gelöst, ' + q + '% Quote' : 'keine Aufgaben'}"></div>`; }).join('')}</div>
+    <div class="chart">${tage14.map(t => { const x = s[t.key], n = (x || {}).total || 0, f = Math.min(n, (x || {}).fr || 0), q = x && x.attempts ? Math.round(x.correct / x.attempts * 100) : 0;
+      return `<div class="chart-bar${n ? '' : ' leer'}" style="height:${n ? Math.max(4, n / max * 100) : 3}%" title="${kurz(t.d)}: ${n ? n + ' gelöst' + (f ? ' (davon ' + f + ' Französisch)' : '') + ', ' + q + '% Quote' : 'keine Aufgaben'}">${f ? `<i class="fr" style="height:${Math.round(f / n * 100)}%"></i>` : ''}</div>`; }).join('')}</div>
     <div class="chart-labels">${tage14.map((t, i) => `<div>${i === 0 || i === 13 || i % 2 === 1 ? kurz(t.d) : ''}</div>`).join('')}</div>
+    ${fr ? '<p class="klein"><span style="color:var(--green-d)">■</span> Rechnen &nbsp; <span style="color:var(--f)">■</span> Französisch</p>' : ''}
     ${verlauf.length ? '<h3>Trefferquote pro Tag</h3>' + verlauf.map(k => { const x = s[k], q = x.attempts ? Math.round(x.correct / x.attempts * 100) : 0;
       return `<div class="verlauf-zeile"><div>${lang(k)} <span class="klein">(${x.total})</span></div><div class="verlauf-balken"><i style="width:${q}%"></i></div><div>${q}%</div></div>`; }).join('') : ''}
-    <p class="klein">Quote = richtige Antworten ÷ alle Prüfversuche. Brüche ${stand.geloest.brueche} · Volumen ${stand.geloest.volumen} · Dreisätze ${stand.geloest.dreisatz} · davon schwer ${stand.schwer} · beste Serie ${stand.besterLauf}</p>
+    <p class="klein">Quote = richtige Antworten ÷ alle Prüfversuche. Brüche ${stand.geloest.brueche} · Volumen ${stand.geloest.volumen} · Dreisätze ${stand.geloest.dreisatz} · davon schwer ${stand.schwer} · beste Serie ${stand.besterLauf}${fr ? ` · Französisch: ${frZ.gekannt} kennengelernt, ${frZ.reif} reif` : ''}</p>
+    ${fr ? Franz.elternHTML() : ''}
     <h3>Einstellungen</h3>
-    <div class="einstellung"><span>Tagesziel (Aufgaben)</span><span class="wahl-knoepfe" data-set="ziel">${[5, 10, 15, 20, 30].map(z => `<button type="button" data-wert="${z}" class="${stand.ziel === z ? 'an' : ''}">${z}</button>`).join('')}</span></div>
-    <div class="einstellung"><span>Pieks liest vor</span><span class="wahl-knoepfe" data-set="stimme"><button type="button" data-wert="1" class="${stand.stimme ? 'an' : ''}">An</button><button type="button" data-wert="0" class="${stand.stimme ? '' : 'an'}">Aus</button></span></div>
+    <div class="einstellung"><span>Tagesziel (Aufgaben${fr ? ' oder Wörter' : ''})</span><span class="wahl-knoepfe" data-set="ziel">${[5, 10, 15, 20, 30].map(z => `<button type="button" data-wert="${z}" class="${stand.ziel === z ? 'an' : ''}">${z}</button>`).join('')}</span></div>
+    <div class="einstellung"><span>Vorlesen</span><span class="wahl-knoepfe" data-set="stimme"><button type="button" data-wert="1" class="${stand.stimme ? 'an' : ''}">An</button><button type="button" data-wert="0" class="${stand.stimme ? '' : 'an'}">Aus</button></span></div>
     <div class="einstellung"><span>Geräusche</span><span class="wahl-knoepfe" data-set="ton"><button type="button" data-wert="1" class="${stand.ton ? 'an' : ''}">An</button><button type="button" data-wert="0" class="${stand.ton ? '' : 'an'}">Aus</button></span></div>
     <h3>Als App installieren</h3>
     ${installHTML()}
@@ -1720,6 +2308,8 @@ function elternZeigen() {
     <p class="klein">Alles wird nur auf diesem Gerät in diesem Browser gespeichert. Äpfel insgesamt: ${stand.gesamt}, Rang ${RAENGE.indexOf(rangVon(stand.gesamt)) + 1} von ${RAENGE.length}.</p>
   </div>`;
   $('fensterInhalt').onclick = async e => {
+    // Der Französisch-Block gehört franz.js: seine Knöpfe zuerst
+    if (fr && Franz.elternKlick(e)) return;
     if (e.target.closest('[data-install]') && installHinweis) {
       const h = installHinweis;
       installHinweis = null;
@@ -1727,7 +2317,7 @@ function elternZeigen() {
       elternZeigen();
       return;
     }
-    const w = e.target.closest('.wahl-knoepfe button');
+    const w = e.target.closest('.wahl-knoepfe[data-set] button');
     if (w) {
       const art = w.parentElement.dataset.set, v = +w.dataset.wert;
       if (art === 'ziel') stand.ziel = v;
@@ -1745,7 +2335,11 @@ function elternZeigen() {
     resetScharf = '';
     if (r.dataset.reset === 'stats') { try { localStorage.removeItem(STATS_KEY); } catch (err) { /* egal */ } }
     else {
-      Object.assign(stand, { aepfel: 0, gesamt: 0, geloest: { brueche: 0, volumen: 0, dreisatz: 0 }, schwer: 0, besterLauf: 0, besucher: {}, fakten: [], items: [], an: { kopf: null, augen: null, hals: null, pfote: null }, erfolge: {}, zielTage: {}, nachRichtig: 0 });
+      // Die Französisch-Erfolge bleiben: Ihr Grund (frStand, Statistik) wird hier nicht
+      // gelöscht, sonst kämen sie alle mit der nächsten Aufgabe auf einmal zurück, samt
+      // Bonus-Äpfeln. Nur der Partnerlook geht mit der Garderobe.
+      const frErfolge = Object.fromEntries(Object.entries(stand.erfolge).filter(([k]) => k.startsWith('fr_') && k !== 'fr_partner'));
+      Object.assign(stand, { aepfel: 0, gesamt: 0, geloest: { brueche: 0, volumen: 0, dreisatz: 0 }, schwer: 0, besterLauf: 0, besucher: {}, fakten: [], items: [], an: { kopf: null, augen: null, hals: null, pfote: null }, anH: { kopf: null, augen: null, hals: null, pfote: null }, erfolge: frErfolge, zielTage: {}, nachRichtig: 0 });
       speichern();
       alleAnziehen();
     }
@@ -1762,13 +2356,17 @@ function tonZeigen() {
 }
 
 /* =====================================================================
-   STUFEN-MENÜ im Training
+   STUFEN-MENÜ im Training und im Französisch: Stufe und Thema wechseln.
+   Französisch ist ein Eintrag mehr unter den Themen; dort selbst fehlen
+   die Stufen (stil.css blendet sie aus), denn jede Karte hat ihre eigene.
    ===================================================================== */
 function stufenMenueAuf() {
   const m = $('stufenMenue');
   if (!m.hidden) { m.hidden = true; return; }
+  const fr = bildschirm === 'franz';
   $('popStufen').innerHTML = STUFEN_REIHE.map(s => `<button type="button" class="stufe-btn${s === sitzung.stufe ? ' an' : ''}" data-stufe="${s}">${STUFEN[s]}</button>`).join('');
-  $('popThemen').innerHTML = Object.entries(THEMEN).map(([id, th]) => `<button type="button" class="pop-thema${id === sitzung.thema ? ' an' : ''}" data-thema="${id}"><svg viewBox="0 0 80 80"><use href="#${th.icon}"/></svg>${th.name}</button>`).join('');
+  $('popThemen').innerHTML = Object.entries(THEMEN).map(([id, th]) => `<button type="button" class="pop-thema${!fr && id === sitzung.thema ? ' an' : ''}" data-thema="${id}"><svg viewBox="0 0 80 80"><use href="#${th.icon}"/></svg>${th.name}</button>`).join('')
+    + (hoernchenDa() ? `<button type="button" class="pop-thema${fr ? ' an' : ''}" data-fach="franz"><svg viewBox="0 0 80 80"><use href="#t-franz"/></svg>Französisch</button>` : '');
   const r = $('themaChip').getBoundingClientRect();
   m.style.left = Math.max(8, Math.min(r.left, innerWidth - 290)) + 'px';
   m.style.top = r.bottom + 8 + 'px';
@@ -1776,10 +2374,16 @@ function stufenMenueAuf() {
   Ton.tipp();
 }
 $('stufenMenue').addEventListener('click', e => {
-  const s = e.target.closest('[data-stufe]'), t = e.target.closest('[data-thema]');
+  const s = e.target.closest('[data-stufe]'), t = e.target.closest('[data-thema]'), f = e.target.closest('[data-fach]');
+  $('stufenMenue').hidden = true;
+  if (bildschirm === 'franz') {
+    // Vom Französisch zu einem Rechenthema: still verlassen, Pieks übernimmt
+    if (t && franzDa()) { Franz.verlassen(true); trainingStarten(t.dataset.thema, stand.stufe[t.dataset.thema]); }
+    return;
+  }
+  if (f) { if (franzDa()) Franz.starten('runde'); return; }
   if (s && s.dataset.stufe !== sitzung.stufe) stufeWechseln(s.dataset.stufe);
-  else if (t && t.dataset.thema !== sitzung.thema) { $('stufenMenue').hidden = true; trainingStarten(t.dataset.thema, stand.stufe[t.dataset.thema]); }
-  else $('stufenMenue').hidden = true;
+  else if (t && t.dataset.thema !== sitzung.thema) trainingStarten(t.dataset.thema, stand.stufe[t.dataset.thema]);
 });
 document.addEventListener('pointerdown', e => {
   if (!$('stufenMenue').hidden && !e.target.closest('#stufenMenue') && !e.target.closest('#themaChip')) $('stufenMenue').hidden = true;
@@ -1790,6 +2394,8 @@ document.addEventListener('pointerdown', e => {
    ===================================================================== */
 function startZeigen() {
   $('startKugel').innerHTML = kugelSVG();
+  // Der Name der App kommt aus einer Stelle, auch auf der Startkarte
+  $('start').querySelector('h1').textContent = APP_NAME;
   $('startText').textContent = tageszeit() === 'nacht' ? 'Pieks ist nachtaktiv, aber gerade döst er.' : 'Pieks hält gerade ein Nickerchen.';
   $('start').hidden = false;
 }
@@ -1813,10 +2419,12 @@ async function wecken() {
   speichern();
   const gesagt = sagMehr(teile);
   // Erfolge von früher (z.B. eine Tages-Serie) nach der Begrüssung nachtragen
-  erfolgeNebenbei({}, gesagt);
-  // Tiere erst, wenn die Begrüssung fertig ist (oder Nea schon weitergetippt hat):
-  // sonst kommt beim ersten Start mitten in Pieks' Vorstellung Besuch
-  gesagt.then(() => Besuch.start());
+  const begruesst = erfolgeNebenbei({}, gesagt);
+  // Danach ist das Hörnchen dran: beim ersten Mal stellt sie sich vor, später grüsst
+  // sie kurz. ganz: Begrüssung und Meldungen liefen ohne Unterbrechung, Nea hört also
+  // noch zu. Tiere erst ganz am Schluss (oder wenn Nea schon weitergetippt hat):
+  // sonst kommt beim ersten Start mitten in die Vorstellung Besuch
+  begruesst.then(ganz => (franzDa() ? Franz.begruessen(ganz) : null)).finally(() => Besuch.start());
 }
 function gruss() {
   const tz = tageszeit(), weg = stand.zuletzt ? (Date.now() - stand.zuletzt) / 86400000 : 0;
@@ -1853,7 +2461,12 @@ $('notizBtn').addEventListener('click', () => {
 });
 $('notizZu').addEventListener('click', notizZu);
 $('notizLeeren').addEventListener('click', () => { Ton.tipp(); notizLeeren(); });
-$('homeBtn').addEventListener('click', () => { Ton.tipp(); zurLichtung(); });
+$('homeBtn').addEventListener('click', () => {
+  Ton.tipp();
+  // Aus dem Französisch räumt franz.js auf und kommt dann selbst zur Lichtung
+  if (bildschirm === 'franz' && franzDa()) Franz.verlassen();
+  else zurLichtung();
+});
 $('themaChip').addEventListener('click', stufenMenueAuf);
 $('rang').addEventListener('click', () => { Ton.tipp(); fensterAuf('erfolge'); });
 $('albumBtn').addEventListener('click', () => { Ton.tipp(); fensterAuf('album'); });
@@ -1863,13 +2476,16 @@ $('elternBtn').addEventListener('click', () => { Ton.tipp(); resetScharf = ''; f
 $('aepfel').addEventListener('click', () => { Ton.tipp(); fensterAuf('garderobe'); });
 $('blase').addEventListener('click', () => Stimme.nochmal());
 $('blaseHome').addEventListener('click', () => Stimme.nochmal());
+if ($('blaseFranz')) $('blaseFranz').addEventListener('click', () => Stimme.nochmal());
 $('tonBtn').addEventListener('click', () => { stand.ton = !stand.ton; speichern(); tonZeigen(); if (stand.ton) Ton.richtig(); });
 $('stimmeBtn').addEventListener('click', () => {
   stand.stimme = !stand.stimme;
   speichern();
   tonZeigen();
-  if (stand.stimme) sag(zieh('stimme_an'));
-  else Stimme.stopp();
+  if (!stand.stimme) Stimme.stopp();
+  // Im Französisch hängt mehr daran: Hör-Aufgaben gibt es nur mit Stimme
+  if (bildschirm === 'franz' && franzDa()) Franz.stimmeUm();
+  else if (stand.stimme) sag(zieh('stimme_an'));
 });
 $('weckenBtn').addEventListener('click', wecken);
 $('startKugel').addEventListener('click', wecken);
@@ -1881,6 +2497,13 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (!$('fenster').hidden) { Stimme.stopp(); fensterZu(); }
     else if (!$('stufenMenue').hidden) $('stufenMenue').hidden = true;
+    return;
+  }
+  // Französisch: die Tasten der offenen Aufgabe kennt franz.js. Hier endet der
+  // Weg, damit eine liegengebliebene Rechenaufgabe nie Tasten bekommt.
+  if (bildschirm === 'franz') {
+    if (e.metaKey || (e.ctrlKey && !e.altKey)) return;      // Cmd+R, Ctrl+L … bleiben beim Browser; AltGr (Ctrl+Alt) geht durch
+    if ($('fenster').hidden && franzDa() && Franz.taste(e)) e.preventDefault();
     return;
   }
   if (!$('fenster').hidden || bildschirm !== 'training' || !A) return;
@@ -1896,26 +2519,40 @@ document.addEventListener('keydown', e => {
   }
 });
 // Jeder Tipp irgendwo zählt als «Nea ist noch da»
-document.addEventListener('pointerdown', () => wachHalten(), { passive: true });
+document.addEventListener('pointerdown', () => { wachHalten(); if (franzDa()) Franz.wach(); }, { passive: true });
 window.addEventListener('resize', () => { if (!$('notiz').hidden) Notiz.groesse(); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { zeitAnwenden(); kopfZeigen(); } });
 
 /* =====================================================================
    LOS
    ===================================================================== */
-document.getElementById('sprite').insertAdjacentHTML('beforeend', PIEKS_DEFS);
+// Farbverläufe der Figuren und, wenn das Französisch da ist, seine Zeichen
+document.getElementById('sprite').insertAdjacentHTML('beforeend', PIEKS_DEFS + (franzDa() ? HOERNCHEN_DEFS + FRANZ_SYMBOLE : ''));
 zeitAnwenden();
 landschaft();
+// Neu fallen lassen nur, wenn Tages- oder Jahreszeit wirklich wechselt: Die Reihenfolge der
+// Klassen am body ändert sich auch bei jedem Bildschirmwechsel
 setInterval(() => {
-  const vorher = document.body.className;
+  const b = document.body.classList, anders = !b.contains(tageszeit()) || !b.contains(saison());
   zeitAnwenden();
-  if (document.body.className !== vorher) fallen();
+  if (anders) fallen();
 }, 60000);
 heldSVG = pieksEinsetzen($('heldPieks'));
 dockSVG = pieksEinsetzen($('dockPieks'));
 heldSVG.addEventListener('pointerdown', () => kitzeln(heldSVG));
 dockSVG.addEventListener('pointerdown', () => kitzeln(dockSVG));
 tonZeigen();
+// Das Französisch richtet sich selbst ein: Stand lesen, Figuren einsetzen, Karte zeichnen.
+// Scheitert es dabei, bleibt es für diesen Start ganz weg: rechnen kann Nea immer.
+// Der Fehler geht trotzdem nicht unter, er wird nach dem Start neu geworfen.
+if (franzDa()) {
+  try { Franz.einrichten(); } catch (e) {
+    franzAus = true;
+    $('heldHoernchen').hidden = $('franzKarte').hidden = true;
+    document.querySelector('.held').classList.remove('zu-zweit');
+    setTimeout(() => { throw e; });
+  }
+}
 themenZeichnen();
 zeigeBildschirm('lichtung');
 kopfZeigen();
@@ -1926,6 +2563,16 @@ startZeigen();
 // holt der Service Worker im Hintergrund die wichtigsten Aufnahmen.
 // Lokal (localhost) auch, damit sich die Installation testen lässt.
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname))) {
+  // Nach einem Update übernimmt der neue Service Worker (skipWaiting, claim), aber die
+  // Bitte vom Start ging noch an den alten: ohne diese kämen die neuen Aufnahmen erst
+  // beim nächsten Kaltstart in den Speicher, und die App auf dem iPad wird oft tagelang
+  // nur fortgesetzt. Ebenso, wenn das Netz zurück ist oder die App wieder vorn ist: ein
+  // Ausfall hat das Vorladen vielleicht beendet. Doppelte Bitten fängt sw.js ab (laedt),
+  // und was schon im Speicher liegt, holt es nicht noch einmal.
+  const nachladen = () => { const c = navigator.serviceWorker.controller; if (c) c.postMessage('vorladen'); };
+  navigator.serviceWorker.addEventListener('controllerchange', nachladen);
+  window.addEventListener('online', nachladen);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) nachladen(); });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js')
       .then(() => navigator.serviceWorker.ready)

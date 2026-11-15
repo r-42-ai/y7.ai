@@ -20,6 +20,14 @@
   --err: #F07A6A;
   --key: #FFF8EC;
   --key-edge: #DCC6A2;
+  /* Französisch: männlich und weiblich (nie nur als Farbe zeigen), Fell des Hörnchens, Erdbeeren */
+  --m: #2F7FA8;
+  --f: #D9365E;
+  --fell: #D06A33;
+  --fell-d: #A9531F;
+  --creme: #F6D9B6;
+  --beere: #E2483D;
+  --beere-gruen: #9CCB6A;
   --font: ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", "Quicksand", "Arial Rounded MT Bold", "Segoe UI", system-ui, sans-serif;
 
   /* Landschaft (Tag, Herbst) */
@@ -143,7 +151,8 @@ body.winter .laub-farbig { opacity: .25; }
   padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
   pointer-events: none;
 }
-.app button, .app .karte, .app .blase, .app .pill, .app .dock, .app .themen, .app .menue, .app .notiz { pointer-events: auto; }
+.app button, .app .karte, .app .blase, .app .pill, .app .dock, .app .themen, .app .menue, .app .notiz,
+.app .fr-eingabe, .app .fr-hoernchen, .app .fr-gast, .app .held-hoernchen { pointer-events: auto; }
 
 /* Kopfzeile */
 .kopfzeile { display: flex; align-items: center; gap: 8px; padding: 10px 14px 6px; flex: none; }
@@ -181,7 +190,7 @@ body.winter .laub-farbig { opacity: .25; }
 .thema-chip small { font-size: 13px; color: var(--soft); font-weight: 800; }
 .thema-chip .pfeil { width: 18px; height: 18px; color: var(--soft); }
 body.auf-lichtung #homeBtn, body.auf-lichtung #themaChip, body.auf-lichtung #serie { display: none; }
-body.im-training #rang { display: none; }
+body.im-training #rang, body.im-franz #rang { display: none; }
 
 /* ---------- Pieks ---------- */
 .pieks { overflow: visible; }
@@ -230,11 +239,31 @@ body.im-training #rang { display: none; }
 .blase.leer { visibility: hidden; }
 .blase .op { color: var(--orange-d); white-space: nowrap; }
 .blase .knopf-zeile { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-.blase .say button.mini {
-  margin: 8px 8px 0 0; padding: 7px 14px; border-radius: 999px; font-size: 15px; font-weight: 800;
+/* Kleiner Knopf: in der Blase, im Album, bei den Eltern und unter den Französisch-Aufgaben */
+button.mini {
+  padding: 7px 14px; border-radius: 999px; font-size: 15px; font-weight: 800;
   background: var(--green); color: #fff; box-shadow: 0 3px 0 var(--green-d);
 }
-.blase .say button.mini.leise { background: #F1E6D3; color: var(--soft); box-shadow: 0 3px 0 #D9C6A6; }
+button.mini.leise { background: #F1E6D3; color: var(--soft); box-shadow: 0 3px 0 #D9C6A6; }
+.blase .say button.mini { margin: 8px 8px 0 0; }
+/* Spricht das Hörnchen, färbt sich der untere Rand der Blase wie sein Fell */
+.blase.von-hoernchen { box-shadow: 0 4px 0 #E9B08A, 0 12px 24px -16px rgba(60, 40, 20, .55); }
+/* Wer spricht: kleiner Kopf an der Ecke oben links. Nur wo zwei Figuren stehen,
+   denn im Hochformat kann der Zipfel nicht auf eine von beiden zeigen. Er hängt
+   so weit über die Ecke hinaus, dass er den ersten Buchstaben nicht berührt. */
+.blase-wer {
+  display: none;
+  position: absolute; left: -12px; top: -14px;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: #fff; place-items: center;
+  box-shadow: 0 2px 0 rgba(90, 60, 30, .16), 0 5px 10px -6px rgba(60, 40, 20, .6);
+  pointer-events: none;
+}
+.blase-wer svg { width: 22px; height: 22px; }
+.blase.von-hoernchen .blase-wer { box-shadow: 0 2px 0 #E9B08A, 0 5px 10px -6px rgba(60, 40, 20, .6); }
+.held.zu-zweit .blase-wer, .fr-figur .blase-wer { display: grid; }
+/* Beim ersten Treffen: Platz ist schon da, zu sehen ist noch nichts */
+.wartet { visibility: hidden; }
 @keyframes reden { 0% { transform: scale(.95); } 60% { transform: scale(1.02); } 100% { transform: none; } }
 
 /* ---------- Lichtung ---------- */
@@ -248,11 +277,21 @@ body.im-training #rang { display: none; }
   padding: 4px 22px 0;
   max-width: 1320px; width: 100%; margin: 0 auto;
 }
-.held { grid-area: held; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 0; position: relative; }
-.held-pieks { width: clamp(170px, 26vh, 300px); flex: none; cursor: pointer; pointer-events: auto; position: relative; }
-.held-pieks svg { width: 100%; height: auto; }
+.held {
+  --pieks-b: clamp(170px, 26vh, 300px);
+  --figur-abstand: clamp(8px, 2vw, 28px);
+  grid-area: held; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 0; position: relative;
+}
+/* Pieks und rechts von ihm das Hörnchen: Füsse auf einer Linie, mit Abstand («Pieks, du piekst.») */
+.held-figuren { flex: none; display: flex; align-items: flex-end; justify-content: center; gap: var(--figur-abstand); }
+.held-pieks { width: var(--pieks-b); flex: none; cursor: pointer; pointer-events: auto; position: relative; }
+.held-hoernchen { width: calc(var(--pieks-b) * .78); flex: none; cursor: pointer; position: relative; }
+.held-pieks svg, .held-hoernchen svg { width: 100%; height: auto; }
 .held .blase { max-width: 440px; width: 100%; }
-.held .blase::before { left: calc(50% - 9px); top: -8px; }
+.held .blase::before { left: calc(var(--zipfel, 50%) - 9px); top: -8px; }
+/* Zu zweit zeigt der Zipfel auf die Mitte dessen, der spricht */
+.held.zu-zweit .blase { --zipfel: calc(50% - (var(--pieks-b) * .78 + var(--figur-abstand)) / 2); }
+.held.zu-zweit .blase.von-hoernchen { --zipfel: calc(50% + (var(--pieks-b) + var(--figur-abstand)) / 2); }
 .wahl { grid-area: wahl; display: flex; flex-direction: column; justify-content: center; gap: 14px; min-height: 0; }
 .wahl-titel { margin: 0; font-size: clamp(22px, 2.2vw, 30px); font-weight: 800; color: #fff; text-shadow: 0 2px 0 rgba(60, 40, 20, .35), 0 0 14px rgba(60,40,20,.25); }
 .themen { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -528,6 +567,97 @@ body.im-training #rang { display: none; }
 .dock.fertig .werkzeuge { visibility: hidden; }
 @keyframes popin { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
 
+/* ---------- Französisch: der Rahmen ----------
+   Links das Hörnchen mit Blase und kleinem Pieks, rechts die Karte, unten über
+   die ganze Breite die Eingabe. Was in Vorgabe, Antwort und Feld steht, gehört
+   uebungen.css, der Ablauf der Runde franz.css. */
+.franz {
+  flex: 1; min-height: 0;
+  display: grid;
+  grid-template-columns: clamp(200px, 22vw, 280px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "figur karte" "eingabe eingabe";
+  max-width: 1400px; width: 100%; margin: 0 auto;
+}
+/* Die Bühne ist nur eine Klammer: Figuren und Karte liegen direkt im Raster */
+.fr-buehne { display: contents; }
+.fr-figur {
+  /* so breit wie vorgesehen, aber nie breiter, als beide Figuren in der Spalte Platz haben */
+  --hoernchen-b: min(clamp(110px, 20vh, 190px), (clamp(200px, 22vw, 280px) - 20px) / 1.3);
+  --gast-b: calc(var(--hoernchen-b) * .42);
+  grid-area: figur;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "blase blase blase blase" ". gast hoernchen .";
+  align-items: end;
+  min-height: 0;
+  padding: 6px 4px 4px 16px;
+}
+.fr-hoernchen { grid-area: hoernchen; width: var(--hoernchen-b); cursor: pointer; }
+/* Der kleine Pieks steht unten links und ragt in ihre leere Ecke */
+.fr-gast { grid-area: gast; position: relative; z-index: 1; width: var(--gast-b); margin-right: calc(var(--hoernchen-b) * -.12); cursor: pointer; }
+.fr-hoernchen svg, .fr-gast svg { width: 100%; height: auto; }
+/* Blase über den Figuren, der Zipfel zeigt nach unten auf den, der spricht */
+.fr-figur .blase {
+  --zipfel: calc(50% + var(--hoernchen-b) * .15);
+  grid-area: blase;
+  margin: 8px 0 14px; padding: 10px 14px;
+  font-size: clamp(16px, 1vw + .8vh, 19px);
+}
+.fr-figur .blase.lang { font-size: clamp(15px, .9vw + .75vh, 17px); }
+.fr-figur .blase.von-pieks { --zipfel: calc(50% - var(--hoernchen-b) * .44); }
+.fr-figur .blase::before { left: calc(var(--zipfel) - 9px); bottom: -8px; }
+/* Die Karte fängt oben an und rollt innen, wenn sie höher wäre als ihr Platz */
+.fr-karte {
+  grid-area: karte;
+  align-self: start; justify-self: center;
+  width: min(100% - 28px, 860px);
+  max-height: calc(100% - 14px - clamp(4px, 2vh, 24px));
+}
+/* Eingabe: links das Feld der Aufgabe, rechts unten «Prüfen» oder «Weiter».
+   Solange eine Aufgabe offen ist (Klasse des Feldes), bleibt der Platz der
+   Knöpfe frei, damit nichts springt, wenn sie erscheinen. */
+.fr-eingabe {
+  --fr-spalt: 8px;
+  --fr-tun-b: 168px;
+  grid-area: eingabe;
+  position: relative;
+  justify-self: center;
+  width: min(100% - 28px, 1040px);
+  margin: 0 0 calc(14px + env(safe-area-inset-bottom));
+  padding: 14px;
+  border-radius: 28px;
+  background: rgba(255, 248, 236, .9);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 6px 0 rgba(140, 100, 60, .18), 0 22px 40px -24px rgba(60, 40, 20, .75);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  grid-template-areas: "feld ." "feld wn" "feld tun";
+}
+.fr-eingabe.auswahl, .fr-eingabe.zwei, .fr-eingabe.kacheln, .fr-eingabe.tastatur, .fr-eingabe.nur-weiter { grid-template-columns: minmax(0, 1fr) calc(var(--fr-tun-b) + 12px); }
+.fr-feld { grid-area: feld; align-self: center; min-width: 0; }
+.fr-eingabe .fr-weissnicht { grid-area: wn; min-height: 44px; margin: 0 0 var(--fr-spalt) 12px; padding: 6px 12px; line-height: 1.15; }
+.fr-pruefen, .fr-eingabe .fr-weiter {
+  grid-area: tun; align-self: end;
+  min-width: var(--fr-tun-b); height: clamp(60px, 10vh, 84px); min-height: 0;
+  margin: 0 0 0 12px; padding: 0 16px;
+  border-radius: 20px;
+  font-size: clamp(20px, 2.9vh, 25px);
+}
+.fr-pruefen {
+  background: var(--green); color: #fff; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 0 var(--green-d), 0 10px 18px -8px rgba(60, 40, 20, 0.5);
+}
+.fr-pruefen:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--green-d); }
+/* .weiter ist ausserhalb des Docks unsichtbar: hier zeigt und versteckt ihn das hidden-Attribut */
+.fr-eingabe .fr-weiter { visibility: visible; gap: 10px; animation: popin .4s cubic-bezier(.3, 1.5, .5, 1) backwards; }
+.fr-eingabe .fr-weiter svg { width: 28px; height: 28px; }
+.fr-pruefen:disabled, .fr-eingabe .fr-weiter:disabled { opacity: .35; transform: none; }
+
 /* ---------- Besucher ---------- */
 .besuch { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .himmel-spur { position: fixed; left: 0; right: 0; top: 0; height: 44vh; z-index: 1; }
@@ -623,6 +753,9 @@ body.im-training #rang { display: none; }
 .pop-thema { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 14px; background: #F4EADA; font-size: 15px; font-weight: 800; text-align: left; }
 .pop-thema svg { width: 30px; height: 30px; flex: none; }
 .pop-thema.an { background: #FFE7C2; box-shadow: inset 0 0 0 2px var(--orange); }
+/* Französisch steht als fünfter Eintrag über die ganze Breite und hat keine Schwierigkeit zu wählen */
+.pop-thema[data-fach="franz"] { grid-column: 1 / -1; }
+body.im-franz #popStufenTitel, body.im-franz #popStufen { display: none; }
 
 /* Fenster: Album, Garderobe, Erfolge, Eltern */
 .overlay {
@@ -677,13 +810,17 @@ body.im-training #rang { display: none; }
 .kat .mini-balken i { display: block; height: 100%; background: var(--green); border-radius: inherit; }
 .fakten-liste { display: flex; flex-direction: column; gap: 8px; }
 .fakt-eintrag { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 16px; background: #fff; box-shadow: 0 3px 0 #EADBC2; text-align: left; font-size: 16px; line-height: 1.38; }
-.fakt-eintrag .play { flex: none; width: 34px; height: 34px; border-radius: 50%; background: #E3F4FB; color: var(--blue); display: grid; place-items: center; }
-.fakt-eintrag .play svg { width: 18px; height: 18px; }
+/* Runder Lautsprecher: zeigt, dass ein Tipp etwas vorliest */
+.play { flex: none; width: 34px; height: 34px; border-radius: 50%; background: #E3F4FB; color: var(--blue); display: grid; place-items: center; }
+.play svg { width: 18px; height: 18px; }
 .fakt-eintrag.zu { color: #B8A58A; font-style: italic; }
 .zurueck-link { margin-bottom: 12px; padding: 7px 14px; border-radius: 999px; background: #F1E6D3; font-size: 15px; font-weight: 800; color: var(--soft); }
 .garderobe { display: grid; grid-template-columns: minmax(200px, 300px) 1fr; gap: 18px; align-items: start; }
 .garderobe .vorschau { position: sticky; top: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px; border-radius: 24px; background: linear-gradient(180deg, #DDF0F8, #EAF6E3); }
-.garderobe .vorschau .pieks { width: 100%; max-width: 240px; height: auto; }
+.garderobe .vorschau .pieks, .garderobe .vorschau .hoernchen { width: 100%; max-width: 240px; height: auto; }
+/* Wer wird angezogen: Schalter als erstes Kind der Vorschau, über der Figur */
+.garderobe-wahl { justify-content: center; }
+.wahl-knoepfe.garderobe-wahl button { min-height: 44px; padding: 8px 18px; font-size: 16px; }
 .garderobe .kasse { display: flex; align-items: center; gap: 6px; font-size: 20px; font-weight: 800; }
 .garderobe .kasse svg { width: 30px; height: 30px; }
 .slot-titel { margin: 14px 0 8px; font-size: 14px; font-weight: 800; color: var(--soft); text-transform: uppercase; letter-spacing: .05em; }
@@ -708,12 +845,15 @@ body.im-training #rang { display: none; }
 .eltern h3 { margin: 18px 0 8px; font-size: 15px; color: var(--soft); text-transform: uppercase; letter-spacing: .05em; }
 .eltern h3:first-child { margin-top: 4px; }
 .agg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.agg.sechs { grid-template-columns: repeat(6, 1fr); }
 .agg div { padding: 10px 6px; border-radius: 14px; background: #fff; text-align: center; box-shadow: 0 3px 0 #EADBC2; }
 .agg b { display: block; font-size: 24px; color: var(--green-d); }
 .agg small { font-size: 12px; color: var(--soft); text-transform: uppercase; font-weight: 800; }
 .chart { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; align-items: end; height: 90px; padding: 4px; border-bottom: 2px solid #EADBC2; }
 .chart-bar { position: relative; background: linear-gradient(to top, var(--green-d), #8DD47E); border-radius: 4px 4px 0 0; min-height: 3px; }
 .chart-bar.leer { background: #EFE3CF; }
+/* Gestapelt: unten Mathe, oben der Französisch-Anteil (Höhe in Prozent des Balkens) */
+.chart-bar i.fr { position: absolute; left: 0; right: 0; top: 0; display: block; border-radius: inherit; background: var(--f); }
 .chart-labels { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; font-size: 10px; color: var(--soft); text-align: center; margin-top: 3px; }
 .verlauf-zeile { display: grid; grid-template-columns: 120px 1fr 54px; gap: 10px; align-items: center; font-size: 15px; padding: 4px 0; }
 .verlauf-balken { height: 12px; border-radius: 6px; background: #EFE3CF; overflow: hidden; }
@@ -750,7 +890,8 @@ body.im-training #rang { display: none; }
 .zzz span:nth-child(2) { animation-delay: .4s; font-size: 30px; }
 .zzz span:nth-child(3) { animation-delay: .8s; font-size: 36px; }
 @keyframes zzz { 0% { opacity: 0; transform: translate(0, 10px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(14px, -24px); } }
-.start-karte h1 { margin: 6px 0 4px; font-size: 32px; font-weight: 800; }
+/* Auf dem Handy etwas kleiner, damit der Name der App auf einer Zeile bleibt */
+.start-karte h1 { margin: 6px 0 4px; font-size: clamp(24px, 7.2vw, 32px); font-weight: 800; }
 .start-text { margin: 4px 0 16px; font-size: 18px; color: var(--soft); }
 .los {
   width: 100%; height: 64px; border-radius: 22px;
@@ -761,13 +902,24 @@ body.im-training #rang { display: none; }
 .start.aufwachen .start-karte { animation: wegschweben .6s ease-in both; }
 @keyframes wegschweben { to { opacity: 0; transform: translateY(-30px) scale(.94); } }
 
+/* ---------- Niedriges Querformat ----------
+   Mit der Französisch-Karte (also zu zweit) kann die Auswahl höher werden als
+   ihr Platz: dann rollt sie. Die Ränder sind Luft für die Schatten der Karten. */
+@media (max-height: 700px) and (min-aspect-ratio: 1001/1000) and (min-width: 761px) {
+  .held.zu-zweit ~ .wahl { justify-content: flex-start; overflow-y: auto; margin: -8px -12px; padding: 8px 12px; pointer-events: auto; }
+  .held.zu-zweit ~ .wahl > :first-child { margin-top: auto; }
+  .held.zu-zweit ~ .wahl > :last-child { margin-bottom: auto; }
+}
+
 /* ---------- Hochformat und schmale Bildschirme ---------- */
 @media (max-aspect-ratio: 1/1), (max-width: 760px) {
   .kopfzeile { gap: 6px; padding: 8px 10px 4px; }
   .rang-text .balken { width: 70px; }
   .lichtung { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "held" "wahl" "boden"; padding: 0 14px; gap: 8px; overflow: auto; pointer-events: auto; }
-  .held { flex-direction: row; align-items: center; justify-content: flex-start; gap: 4px; }
-  .held-pieks { width: clamp(110px, 17vh, 170px); }
+  .held { --pieks-b: clamp(110px, 17vh, 170px); flex-direction: row; align-items: center; justify-content: flex-start; gap: 4px; }
+  .held.zu-zweit { gap: 12px; }
+  /* Luft über der Blase: sonst schnitte der Rand der Lichtung das Abzeichen ab, wenn die Blase höher ist als die Figuren */
+  .held.zu-zweit .blase { margin-top: 14px; }
   .held .blase { flex: 1; }
   .held .blase::before { left: -8px; top: calc(50% - 9px); }
   .wahl { justify-content: flex-start; gap: 10px; }
@@ -789,9 +941,30 @@ body.im-training #rang { display: none; }
   .taste { height: clamp(46px, 7.4vh, 84px); font-size: clamp(22px, 3.2vh, 34px); border-radius: 16px; }
   .taste.bruch span { display: none; }
   .weiter { min-height: 60px; }
+  /* Französisch gestapelt: Figuren und Blase in einer Zeile, Karte, Eingabe randlos */
+  .franz { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "figur" "karte" "eingabe"; }
+  .fr-figur { --hoernchen-b: 100px; --gast-b: 44px; grid-template-columns: auto auto minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: "gast hoernchen blase"; padding: 2px 12px 0; }
+  .fr-figur .blase { align-self: center; margin: 12px 0 0 14px; }
+  /* Zipfel links auf Höhe ihres Gesichts, auch wenn die Blase höher ist als die Figuren */
+  .fr-figur .blase::before { left: -8px; top: auto; bottom: min(50% - 9px, var(--hoernchen-b) * .56 - 9px); }
+  .fr-karte { width: min(100% - 24px, 860px); max-height: calc(100% - 16px); }
+  .fr-eingabe {
+    --fr-spalt: 6px; --fr-tun-b: 190px;
+    width: 100%; margin: 0; border-radius: 28px 28px 0 0; padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+    grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto auto; grid-template-areas: "feld feld feld" "wn . tun";
+  }
+  .fr-eingabe.auswahl, .fr-eingabe.zwei, .fr-eingabe.kacheln, .fr-eingabe.tastatur { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto 64px; }
+  /* Karte zum Kennenlernen und Nachsprechen: ihr Knopf und «Weiter» nebeneinander */
+  .fr-eingabe.nur-weiter { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto; grid-template-areas: "feld tun"; }
+  .fr-eingabe .fr-weissnicht { margin: 8px 0 6px; align-self: end; }
+  .fr-pruefen, .fr-eingabe .fr-weiter { height: 56px; margin: 8px 0 0; font-size: 22px; }
+  .fr-eingabe.nur-weiter .fr-pruefen, .fr-eingabe.nur-weiter .fr-weiter { align-self: center; margin: 0 0 0 10px; }
   .garderobe { grid-template-columns: 1fr; }
-  .garderobe .vorschau { position: static; flex-direction: row; justify-content: center; }
-  .garderobe .vorschau .pieks { max-width: 140px; }
+  .garderobe .vorschau { position: relative; flex-direction: row; justify-content: center; }
+  .garderobe .vorschau .pieks, .garderobe .vorschau .hoernchen { max-width: 140px; }
+  /* Der Schalter liegt hier über der Zeile aus Figur, Blase und Kasse */
+  .garderobe-wahl { position: absolute; left: 0; right: 0; top: 10px; }
+  .garderobe .vorschau .garderobe-wahl ~ * { margin-top: 50px; }
 }
 @media (max-width: 520px) {
   .rang-text { display: none; }
@@ -807,17 +980,78 @@ body.im-training #rang { display: none; }
   .menue-btn span { display: none; }
   .menue-btn { min-width: 0; }
   .agg { grid-template-columns: repeat(2, 1fr); }
+  .agg.sechs { grid-template-columns: repeat(3, 1fr); }
   .fenster-karte { border-radius: 24px; }
+  /* Zu zweit auf dem Handy: beide kleiner, damit die Blase Platz behält */
+  .held.zu-zweit { --pieks-b: 96px; --figur-abstand: 8px; }
+  .held.zu-zweit .held-hoernchen { width: 76px; }
+  .held.zu-zweit .blase { margin-top: 11px; padding: 10px 12px; }
+  /* Die Blasen sind hier enger gepolstert: ein etwas kleineres Abzeichen lässt dem Text seinen Platz */
+  .blase-wer { top: -11px; width: 26px; height: 26px; }
+  .fr-figur { --hoernchen-b: 64px; --gast-b: 30px; padding: 0 8px; }
+  .fr-figur .blase, .fr-figur .blase.lang { min-height: 56px; margin: 9px 0 0 10px; padding: 8px 10px; font-size: 15px; line-height: 1.24; }
+  /* Kleiner als 15 px wird die Schrift nie. Damit zwei Tipps zusammen (Artikel und
+     Wort) bei 390 px in vier Zeilen passen, rückt eine lange Blase die Buchstaben
+     eine Spur enger (mit SF Pro Rounded gemessen, der Schrift auf iPhone und iPad) */
+  .fr-figur .blase.lang { letter-spacing: -.01em; }
+  .fr-karte { width: calc(100% - 16px); max-height: calc(100% - 14px); }
+  /* 8 px Rand und 4 px Abstand: so bleibt bei 360 px Breite eine Taste 30 px breit */
+  .fr-eingabe { --fr-spalt: 4px; --fr-tun-b: 150px; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); }
+  .fr-eingabe.auswahl, .fr-eingabe.zwei, .fr-eingabe.kacheln, .fr-eingabe.tastatur { grid-template-rows: auto 54px; }
+  .fr-eingabe .fr-weissnicht { margin: 6px 0 2px; }
+  .fr-pruefen, .fr-eingabe .fr-weiter { height: 48px; margin: 6px 0 0; font-size: 20px; }
+  /* Garderobe: In einer Zeile mit Blase und Kasse schrumpfte die Figur bis auf nichts.
+     Darum Figur und Blase nebeneinander, die Kasse darunter */
+  .garderobe .vorschau { flex-wrap: wrap; row-gap: 8px; }
+  .garderobe .vorschau #garderobePieks { flex: 0 0 96px; }
+  .garderobe .vorschau #blaseGarderobe { flex: 1 1 0; min-width: 0; }
+  .garderobe .vorschau .kasse { flex: 0 0 100%; justify-content: center; }
+  .garderobe .vorschau .garderobe-wahl ~ .kasse { margin-top: 0; }
 }
-@media (max-width: 420px) {
-  .thema-chip span { display: none; }
-  .thema-chip { padding: 4px 8px 4px 6px; }
+/* Kopfzeile beim Rechnen und im Französisch: Mit der Serie und vier Ziffern Äpfeln wäre sie unter
+   720 px breiter als der Bildschirm (iPad Split View, grosse iPhones hochkant), und die Seite rollte
+   seitwärts. Darum weicht Stufe um Stufe etwas, bis bei 320 px eine Serie von 99 und 9999 Äpfel
+   passen. Ab 720 px (jedes Tablet ab 768) bleibt die Kopfzeile, wie sie ist. */
+@media (max-width: 719px) {
+  /* Solange die Serie zeigt, behält der Tagesring nur den Ring */
+  body.im-franz #serie:not([hidden]) ~ #ziel, body.im-training #serie:not([hidden]) ~ #ziel { padding: 4px 6px; }
+  body.im-franz #serie:not([hidden]) ~ #ziel b, body.im-training #serie:not([hidden]) ~ #ziel b { display: none; }
+}
+@media (max-width: 659px) {
+  /* Der Themen-Knopf zeigt nur noch sein Bild, ohne Pfeil (er öffnet das Menü trotzdem), und
+     solange die Serie zeigt, weicht der Tagesring ganz */
+  body.im-franz .thema-chip span, body.im-training .thema-chip span,
+  body.im-franz .thema-chip .pfeil, body.im-training .thema-chip .pfeil { display: none; }
+  body.im-franz .thema-chip, body.im-training .thema-chip { padding: 4px 8px 4px 6px; }
+  body.im-franz .kopfzeile, body.im-training .kopfzeile { gap: 4px; padding-left: 6px; padding-right: 6px; }
+  body.im-franz #serie:not([hidden]) ~ #ziel, body.im-training #serie:not([hidden]) ~ #ziel { display: none; }
+}
+@media (max-width: 389px) {
+  /* Kleine Handys: Abstände und Zähler schlanker */
+  body.im-franz .kopfzeile, body.im-training .kopfzeile { gap: 3px; padding-left: 4px; padding-right: 4px; }
+  body.im-franz #serie, body.im-franz #aepfel, body.im-training #serie, body.im-training #aepfel { gap: 4px; padding: 4px 8px 4px 3px; }
+  body.im-franz #serie svg, body.im-franz #aepfel svg, body.im-training #serie svg, body.im-training #aepfel svg { width: 25px; height: 25px; }
+}
+@media (max-width: 359px) {
+  /* Schmaler als die kleinsten Handys (Slide Over, 320 px): auch die Knöpfe eine Spur kleiner */
+  body.im-franz .kopfzeile, body.im-training .kopfzeile { gap: 2px; }
+  body.im-franz .kopfzeile .rund, body.im-training .kopfzeile .rund { width: 36px; height: 36px; }
+  body.im-franz .kopfzeile .rund svg, body.im-training .kopfzeile .rund svg { width: 22px; height: 22px; }
+  body.im-franz .thema-chip, body.im-training .thema-chip { padding: 4px 6px 4px 4px; }
+  body.im-franz .thema-chip > svg:first-child, body.im-training .thema-chip > svg:first-child { width: 34px; height: 34px; }
+  body.im-franz #serie, body.im-franz #aepfel, body.im-training #serie, body.im-training #aepfel { font-size: 15px; }
+}
+/* Schmaler als das kleinste unterstützte Handy: der Aufbau bleibt, das Feld rollt seitwärts */
+@media (max-width: 359px) {
+  .fr-feld { overflow-x: auto; }
 }
 @media (max-height: 560px) and (orientation: landscape) {
   .taste { height: 40px; font-size: 22px; }
   .buddy-pieks { width: 64px; }
   .werkzeug span { display: none; }
-  .held-pieks { width: 120px; }
+  .held { --pieks-b: 120px; }
+  .fr-figur { --hoernchen-b: 90px; }
+  .fr-pruefen, .fr-eingabe .fr-weiter { height: 48px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

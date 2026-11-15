@@ -1,0 +1,411 @@
+/* =====================================================================
+   Übungen: was auf der Französisch-Karte und im Feld darunter steht,
+   dazu die Bausteine, die auch Lösungsstreifen, Ernte und Wörterheft
+   benutzen. Der Rahmen des Bildschirms steht in stil.css.
+   Richtig und falsch tragen dieselben Farben wie beim Rechnen. Die
+   Farben für männlich und weiblich erscheinen erst, wenn das Geschlecht
+   kein Geheimnis mehr ist: Kein Knopf, keine Kachel und kein Platz
+   einer offenen Aufgabe trägt sie.
+   ===================================================================== */
+
+/* ---------- Bausteine ---------- */
+
+/* Artikel in der Farbe des Geschlechts, immer zusammen mit dem Schild, das es ausschreibt */
+.fr-artikel-m { color: var(--m); }
+.fr-artikel-f { color: var(--f); }
+.fr-genus-chip {
+  display: inline-block; vertical-align: .16em;
+  /* ein Komma dahinter soll nicht abgerückt wirken */
+  margin-right: -.05em; padding: .14em .52em; border-radius: 999px;
+  font-size: max(13px, .4em); font-weight: 800; font-style: normal; line-height: 1.2; letter-spacing: .02em; white-space: nowrap;
+}
+.fr-genus-chip.m { background: #E3F4FB; color: #1F5C7D; }
+.fr-genus-chip.f { background: #FDE7EE; color: #B3264B; }
+/* Beides möglich («un/une enfant»): links männlich, rechts weiblich */
+.fr-genus-chip.mf { padding: .14em 0; background: linear-gradient(90deg, #E3F4FB 50%, #FDE7EE 50%); }
+.fr-genus-chip.mf i { display: inline-block; width: 1.5em; text-align: center; font-style: normal; color: #1F5C7D; }
+.fr-genus-chip.mf i + i { color: #B3264B; }
+/* Klammern aus dem Buch und alles, was gerade nicht gefragt ist */
+.fr-klammer { color: #A39484; font-weight: 700; }
+/* Die Erdbeere einer Stufe: mindestens 24 px, in grosser Schrift wächst sie mit */
+.fr-stufe { display: inline-block; flex: none; width: max(24px, 1.25em); height: max(24px, 1.25em); vertical-align: middle; }
+
+/* Plätze: Jedes Wort ist eine Gruppe, umbrochen wird nur zwischen den Gruppen.
+   --platz ist die Kante eines Buchstaben-Platzes; uebungen.js rechnet sie aus der Breite. */
+.fr-plaetze { --platz: 48px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px calc(var(--platz) * .5); }
+/* uebungen.js misst die Reihe gleich nach jedem Setzen von --platz. Die Regel für reduzierte Bewegung
+   in stil.css macht aus jeder Änderung einen Übergang von 0.01 ms; gemessen würde dann noch die alte
+   Grösse, und die Plätze kämen falsch heraus. Hier gleitet ohnehin nichts. */
+.fr-plaetze, .fr-plaetze * { transition: none !important; }
+.fr-wort { flex: none; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.fr-platz {
+  flex: none; box-sizing: border-box;
+  width: var(--platz); height: var(--platz); padding: 0;
+  border: 2px dashed #D9BE92; border-radius: calc(var(--platz) * .24);
+  /* Tinte, nicht das Blau der Rechen-Felder: Blau heisst hier männlich */
+  background: #fff; color: var(--ink);
+  /* auch im kleinsten Platz (18 px auf dem schmalen Handy) bleibt der Buchstabe lesbar und passt hinein */
+  font-size: max(14px, calc(var(--platz) * .62)); font-weight: 800; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.fr-platz.artikel { width: auto; min-width: calc(var(--platz) * 2.2); padding: 0 .2em; }
+/* Vorgedrucktes bleibt lesbar, auch wenn die Plätze auf dem Handy klein werden */
+.fr-fest { font-size: max(19px, calc(var(--platz) * .62)); font-weight: 800; line-height: max(1.2em, var(--platz)); }
+.fr-fest.leer { width: calc(var(--platz) * .35); }
+/* Vorgedruckte Buchstaben nebeneinander lesen sich als Wort: ohne den Abstand der Plätze */
+.fr-plaetze.buchstaben .fr-fest + .fr-fest:not(.leer) { margin-left: -3px; }
+/* Fehlt nur ein Wort, steht der Rest der Form als Text da: gleich gross, wie lang das Wort auch ist */
+.fr-plaetze.wortluecke .fr-fest { font-size: clamp(21px, 1.1vw + 1.7vh, 30px); line-height: max(1.3em, var(--platz)); }
+.fr-plaetze.wortluecke { column-gap: .5em; }
+.fr-platz.voll { border-style: solid; border-color: #E3D3B9; }
+.fr-platz.aktiv { border: 3px solid var(--sel); background: #FFFCEB; box-shadow: 0 0 0 4px rgba(255, 194, 31, .28); }
+.fr-platz.richtig { border: 2px solid #7CCB6A; background: #E9F9E2; color: #2C7A27; }
+.fr-platz.falsch { border: 2px solid var(--err); background: #FFEDEA; }
+/* Nach dem ersten Fehlversuch sind mehrere Lücken rot: Die, die der nächste Tipp füllt, bleibt gelb.
+   Sie behält .falsch und wird wieder rot, sobald eine andere aktiv ist. */
+.fr-platz.aktiv.falsch { border: 3px solid var(--sel); background: #FFFCEB; }
+.fr-platz.wackelt { animation: shake .45s ease-in-out; }
+.fr-platz.pop { animation: pop .45s ease-out; }
+/* Blass im leeren Platz: die Lösung beim Nachbauen, und unter der getippten Zeile der Hinweis, wie lang das Wort ist */
+.fr-platz.muster { border-color: #E3D3B9; background: #FBF3E4; color: #BBAA95; }
+.fr-plaetze.muster { margin-top: 12px; }
+.fr-plaetze.muster .fr-platz { border-color: #E3D3B9; background: #FBF3E4; color: var(--soft); }
+.fr-plaetze.muster .fr-fest { color: var(--soft); }
+/* Plätze für ganze Wörter: eine Mindestbreite, sie wachsen mit der Kachel */
+.fr-plaetze.woerter { gap: 10px 8px; }
+.fr-plaetze.woerter .fr-platz { width: auto; min-width: 72px; height: 48px; padding: 0 10px; border-radius: 14px; font-size: 22px; }
+.fr-plaetze.woerter .fr-fest { font-size: 24px; line-height: 48px; }
+/* Ein Satz als Fliesstext, in dem ein Wort fehlt */
+.fr-plaetze.satz { gap: .2em .3em; font-size: clamp(22px, 1.3vw + 1.7vh, 34px); font-weight: 800; line-height: 1.25; }
+.fr-plaetze.satz .fr-wort { gap: 0; }
+.fr-plaetze.satz .fr-fest { font-size: inherit; line-height: inherit; }
+.fr-plaetze.satz .fr-platz { width: auto; min-width: 3.6em; height: 1.5em; margin: 0 .05em; padding: 0 .3em; border-radius: .3em; font-size: inherit; }
+
+/* Kacheln in ihrer Ablage. Eine gelegte Kachel hält ihren Platz frei (.weg). */
+.fr-ablage { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--fr-spalt, 8px); padding-bottom: 5px; }
+.fr-kachel, .fr-zurueck {
+  flex: none; min-width: 56px; height: 56px; padding: 0 14px;
+  border-radius: 14px;
+  font-size: 22px; font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: transform .06s, opacity .2s;
+}
+.fr-kachel { background: var(--key); color: var(--ink); box-shadow: 0 5px 0 var(--key-edge), 0 8px 14px -8px rgba(60, 40, 20, .5); }
+.fr-kachel.buchstabe { width: 56px; padding: 0; font-size: 28px; }
+.fr-kachel:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--key-edge); }
+.fr-kachel.weg { visibility: hidden; }
+.fr-kachel.wackelt { animation: shake .45s ease-in-out; }
+.fr-zurueck { width: 56px; padding: 0; background: #FFE2CF; color: #B4532A; box-shadow: 0 5px 0 #E9B697, 0 8px 14px -8px rgba(60, 40, 20, .5); }
+.fr-zurueck svg { width: 28px; height: 28px; }
+.fr-zurueck:active { transform: translateY(3px); box-shadow: 0 2px 0 #E9B697; }
+.fr-zurueck:disabled { opacity: .35; transform: none; }
+/* Kacheln und Tasten nehmen den Finger sofort: kein Ziehen, kein Zoomen mit zwei Daumen */
+.fr-kachel, .fr-zurueck, .fr-taste { touch-action: none; }
+/* Der Ring der Tastatur: über der Ablage und über den Paaren. Beim Legen auch um die Artikel-Kacheln,
+   die zu den eben getippten Buchstaben passen (.tippt): Die Leertaste legt dann den Artikel. */
+.fr-kachel.ring, .fr-kachel.tippt, .fr-paar.ring { outline: 3px solid var(--orange); outline-offset: 3px; }
+/* Gelöst: Was in der Ablage übrig ist und die Tastatur treten zurück */
+.fr-feld.aus .fr-kachel, .fr-feld.aus .fr-taste { opacity: .4; pointer-events: none; }
+
+/* Antwort zum Antippen: unten im Feld, als breiter Knopf unter der Karte zum Kennenlernen */
+.fr-option {
+  position: relative;
+  min-width: 0; min-height: 72px; padding: 8px 16px;
+  border: 3px solid transparent; border-radius: 18px;
+  background: #fff; color: var(--ink);
+  font-size: clamp(19px, .9vw + 1.3vh, 23px); font-weight: 800; line-height: 1.2; text-align: center;
+  overflow-wrap: break-word;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  box-shadow: 0 5px 0 #E3D3B9, 0 8px 14px -8px rgba(60, 40, 20, .5);
+  transition: transform .06s, opacity .2s;
+}
+.fr-option > * { max-width: 100%; }
+.fr-option:active { transform: translateY(3px); box-shadow: 0 2px 0 #E3D3B9; }
+.fr-option:disabled { transform: none; }
+.fr-option.richtig { border-color: #7CCB6A; background: #E9F9E2; color: #2C7A27; box-shadow: 0 5px 0 #A9DB9B; }
+.fr-option.falsch { border-color: var(--err); background: #FFEDEA; box-shadow: 0 5px 0 #F2B8AF; }
+.fr-option.aus { opacity: .5; }
+.fr-option.wackelt { animation: shake .45s ease-in-out; }
+.fr-option.pop { animation: pop .45s ease-out; }
+/* Was die falsch gewählte Antwort bedeutet */
+.fr-opt-sub { font-size: .74em; font-weight: 700; color: var(--soft); }
+.fr-option.breit { width: min(100%, 440px); min-height: 60px; }
+/* «Ich sag’s!»: zwei Sekunden lang ist Nea dran */
+.fr-option.ring { border-color: var(--sel); background: #FFFCEB; animation: ue-ring 1s ease-out 2; }
+@keyframes ue-ring {
+  from { box-shadow: 0 5px 0 #E3D3B9, 0 0 0 0 rgba(255, 194, 31, .7); }
+  to { box-shadow: 0 5px 0 #E3D3B9, 0 0 0 16px rgba(255, 194, 31, 0); }
+}
+/* Pieks hat mitgeraten: sein Kopf an der Ecke und ein Ring um seine Antwort */
+.fr-option.pieks-tipp { opacity: 1; }
+.fr-option.pieks-tipp::after { content: ""; position: absolute; inset: -7px; border: 3px dashed var(--orange); border-radius: 23px; pointer-events: none; }
+.fr-pieks-kopf {
+  position: absolute; right: -9px; top: -13px; z-index: 1;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #fff; display: grid; place-items: center;
+  box-shadow: 0 2px 0 rgba(90, 60, 30, .16), 0 5px 10px -6px rgba(60, 40, 20, .6);
+}
+.fr-pieks-kopf svg { width: 24px; height: 24px; }
+/* Richtig und falsch nicht nur als Farbe: ein Häkchen oder ein Kreuz an der linken oberen Ecke
+   (rechts oben sitzt Pieks’ Kopf) */
+.fr-marke {
+  position: absolute; left: -7px; top: -10px; z-index: 1;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #fff; display: grid; place-items: center;
+  box-shadow: 0 2px 0 rgba(90, 60, 30, .16), 0 5px 10px -6px rgba(60, 40, 20, .6);
+}
+.fr-marke svg { width: 18px; height: 18px; }
+.fr-marke.ja { color: #2C7A27; }
+.fr-marke.nein { color: var(--err); }
+
+/* ---------- Karte: Vorgabe ---------- */
+
+.fr-vorgabe { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.fr-vorgabe:empty, .fr-antwort:empty { display: none; }
+.fr-cap { font-size: 14px; font-weight: 800; color: var(--soft); text-transform: uppercase; letter-spacing: .06em; }
+/* Passt die grosse Zeile nicht neben die Hör-Knöpfe, rutscht sie darunter */
+.fr-kern { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 16px; max-width: 100%; margin: 4px 0 2px; }
+.fr-gross { min-width: 0; font-size: clamp(30px, 2vw + 2.2vh, 46px); font-weight: 800; line-height: 1.15; overflow-wrap: break-word; }
+.fr-gross.lang { font-size: clamp(25px, 1.5vw + 1.8vh, 36px); }
+.fr-gross.laenger { font-size: clamp(21px, 1.1vw + 1.5vh, 28px); line-height: 1.25; }
+.fr-klein { font-size: clamp(17px, .7vw + 1.2vh, 22px); font-weight: 700; line-height: 1.3; color: var(--soft); }
+/* artikel: Nach dem Urteil rückt der Artikel vor das Wort */
+.fr-art.da { display: inline-block; white-space: pre; animation: ue-kommt .4s cubic-bezier(.3, 1.5, .5, 1) backwards; }
+@keyframes ue-kommt { from { opacity: 0; transform: translateX(-.4em) scale(.7); } }
+
+/* Hör-Knöpfe: erdbeerrot der Lautsprecher, daneben die Schnecke für langsam */
+.fr-ton { flex: none; display: flex; align-items: center; gap: 10px; }
+.fr-hoeren {
+  flex: none; width: 64px; height: 64px; border-radius: 50%;
+  background: var(--beere); color: #fff;
+  display: grid; place-items: center;
+  box-shadow: 0 5px 0 #B8322A, 0 8px 14px -8px rgba(60, 40, 20, .5);
+  transition: transform .06s;
+}
+.fr-hoeren svg { width: 34px; height: 34px; }
+.fr-hoeren:active { transform: translateY(3px); box-shadow: 0 2px 0 #B8322A; }
+/* Nur hören: Der Knopf ist die Vorgabe und pulsiert, bis geantwortet ist */
+.fr-hoeren.gross { width: 96px; height: 96px; margin: 4px 0 8px; }
+.fr-hoeren.gross svg { width: 52px; height: 52px; }
+.fr-hoeren.puls { animation: ue-puls 1.8s ease-out infinite; }
+.fr-hoeren.puls:active { animation: none; }
+@keyframes ue-puls {
+  0%, 30% { box-shadow: 0 5px 0 #B8322A, 0 0 0 0 rgba(226, 72, 61, .5); }
+  100% { box-shadow: 0 5px 0 #B8322A, 0 0 0 18px rgba(226, 72, 61, 0); }
+}
+.fr-langsam {
+  flex: none; width: 48px; height: 48px; border-radius: 50%;
+  background: #fff; display: grid; place-items: center;
+  box-shadow: 0 4px 0 #E3D3B9, 0 8px 14px -8px rgba(60, 40, 20, .5);
+  transition: transform .06s;
+}
+.fr-langsam svg { width: 32px; height: 32px; }
+.fr-langsam:active { transform: translateY(3px); box-shadow: 0 1px 0 #E3D3B9; }
+
+/* ---------- Karte: Antwort ---------- */
+
+.fr-antwort { margin-top: 12px; }
+
+/* kennen und echo: ein Teil je Zeile, Französisch = Deutsch */
+.fr-teile { display: grid; grid-template-columns: auto auto auto; justify-content: center; align-items: baseline; gap: 6px 12px; font-size: clamp(18px, .8vw + 1.3vh, 24px); line-height: 1.25; }
+.fr-teil { display: contents; }
+.fr-teil > span:first-child { text-align: right; font-weight: 800; }
+.fr-teil > i { font-style: normal; color: #A39484; }
+.fr-teil > span:last-child { text-align: left; font-weight: 700; color: var(--soft); }
+/* Sätze und lange Formen: das Deutsche unter dem Französischen */
+.fr-teile.gestapelt { display: block; text-align: center; }
+.fr-teile.gestapelt .fr-teil { display: block; }
+.fr-teile.gestapelt .fr-teil + .fr-teil { margin-top: 10px; }
+.fr-teile.gestapelt .fr-teil > span { display: block; text-align: center; }
+.fr-teile.gestapelt .fr-teil > span:last-child { font-size: .88em; }
+.fr-teile.gestapelt .fr-teil > i { display: none; }
+/* Kästen unter dem Wort: der Artikel ist anders als im Deutschen, eine Merkhilfe */
+.fr-kontrast, .fr-merk {
+  display: flex; align-items: center; gap: 10px;
+  width: fit-content; max-width: min(100%, 560px); margin: 12px auto 0; padding: 9px 16px 9px 12px;
+  border-radius: 16px;
+  font-size: clamp(15px, .6vw + 1vh, 19px); font-weight: 700; line-height: 1.3; text-align: left;
+}
+.fr-kontrast { background: #FFF4C7; color: #6B4A00; box-shadow: 0 3px 0 #E8C969; }
+.fr-kontrast > b { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #F2B33D; color: #fff; display: grid; place-items: center; font-size: 18px; line-height: 1; }
+.fr-kontrast .fr-artikel-m, .fr-kontrast .fr-artikel-f { font-weight: 800; }
+.fr-merk { background: var(--card-2); color: var(--ink); box-shadow: 0 3px 0 var(--card-edge); }
+.fr-merk svg { flex: none; width: 26px; height: 26px; }
+
+/* paare: links Französisch, rechts Deutsch, ohne Farbe für das Geschlecht */
+.fr-paare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; max-width: 660px; margin: 0 auto; padding-bottom: 5px; }
+.fr-paar {
+  min-width: 0; min-height: 56px; padding: 6px 12px;
+  border: 3px solid transparent; border-radius: 14px;
+  background: #fff; color: var(--ink);
+  font-size: clamp(17px, .8vw + 1.1vh, 22px); font-weight: 800; line-height: 1.2;
+  /* Lange Wörter («Naturwissenschaften») trennen, statt sie mitten durchzubrechen */
+  overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto;
+  box-shadow: 0 4px 0 #E3D3B9, 0 8px 14px -8px rgba(60, 40, 20, .5);
+  transition: transform .06s;
+}
+.fr-paar.de { background: var(--card-2); font-weight: 700; }
+/* Französisch nie trennen: In einer Rechtschreib-Übung wäre «favo-ri» ein Bindestrich, den es nicht gibt.
+   Umbrochen wird nur an Leerzeichen und am eigenen Bindestrich («demi-rondelle»). */
+.fr-paar.fr { -webkit-hyphens: manual; hyphens: manual; }
+.fr-paar:active { transform: translateY(3px); box-shadow: 0 1px 0 #E3D3B9; }
+.fr-paar.gewaehlt { border-color: var(--sel); background: #FFFCEB; box-shadow: 0 4px 0 #E3D3B9, 0 0 0 4px rgba(255, 194, 31, .28); }
+.fr-paar.richtig { border-color: #7CCB6A; background: #E9F9E2; color: #2C7A27; box-shadow: none; transform: none; }
+.fr-paar.wackelt { animation: shake .45s ease-in-out; }
+.fr-paar.pop { animation: pop .45s ease-out; }
+/* Wie viele Paare schon gefunden sind */
+.fr-paar-zahl { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; }
+.fr-paar-zahl i { width: 16px; height: 16px; border-radius: 50%; background: #E3D3B9; transition: background-color .2s, transform .2s; }
+.fr-paar-zahl i.da { background: #7CCB6A; transform: scale(1.25); }
+
+/* ---------- Feld ---------- */
+
+/* Der untere Rand ist Platz für die Kante der Knöpfe. Alle Antworten gleich hoch, auch wenn eine
+   umbricht; nach dem Urteil wächst die falsche um ihre Erklärung (uebungen.js setzt die Zeilen dann neu). */
+.fr-eingabe.auswahl .fr-feld { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: calc(var(--fr-spalt) + 2px); padding-bottom: 5px; }
+/* Sätze stehen untereinander */
+.fr-eingabe.auswahl .fr-feld.einzeln { grid-template-columns: minmax(0, 1fr); }
+.fr-eingabe.auswahl .fr-feld.einzeln .fr-option { min-height: 60px; }
+.fr-eingabe.zwei .fr-feld { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: calc(var(--fr-spalt) + 6px); padding-bottom: 5px; }
+.fr-eingabe.nur-weiter .fr-feld { display: flex; align-items: center; justify-content: center; gap: calc(var(--fr-spalt) + 2px); padding-bottom: 5px; }
+.fr-eingabe.nur-weiter .fr-feld:empty { padding: 0; }
+
+/* akzent: die Kandidaten der aktiven Lücke in einer Reihe, jeder ein Viertel breit, damit nichts springt */
+.fr-eingabe.auswahl .fr-feld.zeichen { display: flex; justify-content: center; }
+.fr-eingabe.auswahl .fr-feld.zeichen .fr-option { flex: 0 1 calc((100% - 3 * (var(--fr-spalt) + 2px)) / 4); min-height: 72px; padding: 4px; font-size: 34px; line-height: 1; }
+/* Mit Tastatur wählen 1 bis 4 den Kandidaten (nicht den Akzent wie beim Schreiben): Die Ziffer steht in der Ecke */
+.fr-feld.ziffern .fr-option[data-z]::after { content: attr(data-z); position: absolute; right: 8px; top: 6px; font-size: 13px; font-weight: 800; line-height: 1; color: #A3845A; }
+
+/* schreiben: vier Reihen zu zehn Tasten, oben die Akzente */
+.fr-eingabe.tastatur .fr-feld { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: var(--fr-spalt); padding-bottom: 5px; }
+/* .taste bringt die Plätze des Rechen-Felds mit: hier steht jede Taste, wo sie im Quelltext steht */
+.taste.fr-taste { grid-area: auto; position: relative; min-width: 0; height: 54px; padding: 0; border-radius: 12px; font-size: 26px; line-height: 1; }
+.taste.fr-taste.leer { grid-column: span 2; }
+.taste.fr-taste svg { width: 26px; height: 26px; }
+.taste.fr-taste.akzent { background: #FFF0C9; box-shadow: 0 5px 0 #E6CB8E, 0 8px 14px -8px rgba(60, 40, 20, .5); }
+.taste.fr-taste.akzent:active { box-shadow: 0 1px 0 #E6CB8E; }
+/* Wer eine Tastatur angeschlossen hat, findet die Akzente auf den Ziffern */
+.fr-feld.ziffern .fr-taste[data-z]::after { content: attr(data-z); position: absolute; right: 5px; top: 3px; font-size: 12px; font-weight: 800; line-height: 1; color: #A3845A; }
+
+/* Die getippte Zeile: das Feld vom Rechnen, linksbündig und so breit wie die Karte. Lange Formen brechen um. */
+.fr-zeile.feld {
+  display: block; width: min(100%, 640px); height: auto; min-height: 1.75em; margin: 0 auto; padding: .16em .5em;
+  color: var(--ink); font-size: clamp(24px, 1.2vw + 1.9vh, 32px); font-weight: 800; line-height: 1.36;
+  text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; cursor: text;
+}
+.fr-zeile span.falsch { border-radius: 4px; background: #FFE3DE; color: #C03A2B; box-shadow: inset 0 -3px 0 var(--err); }
+.fr-zeile span.muster { color: #C4B39D; }
+/* Die Schreibmarke nimmt keinen Platz weg: Der Text bleibt stehen, wenn sie wandert */
+.fr-zeile.feld .caret { width: 3px; height: 1.08em; margin: 0 -1.5px; vertical-align: -.17em; }
+.fr-zeile.richtig { border: 3px solid #7CCB6A; background: #E9F9E2; color: #2C7A27; box-shadow: none; cursor: default; }
+.fr-zeile.wackelt { animation: shake .45s ease-in-out; }
+.fr-zeile.pop { animation: pop .45s ease-out; }
+.fr-klein b { color: var(--ink); font-weight: 800; }
+
+/* artikel: zwei grosse Knöpfe, links männlich, rechts weiblich. Farbe bekommt erst das Urteil. */
+.fr-genus {
+  position: relative;
+  min-width: 0; min-height: 88px; padding: 6px 12px;
+  border: 3px solid transparent; border-radius: 18px;
+  background: #fff; color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  box-shadow: 0 5px 0 #E3D3B9, 0 8px 14px -8px rgba(60, 40, 20, .5);
+  transition: transform .06s, opacity .2s;
+}
+.fr-genus b { font-size: clamp(28px, 4.2vh, 36px); font-weight: 800; line-height: 1.1; }
+.fr-genus small { font-size: 16px; font-weight: 800; color: var(--soft); }
+.fr-genus:active { transform: translateY(3px); box-shadow: 0 2px 0 #E3D3B9; }
+.fr-genus:disabled { transform: none; }
+.fr-genus.richtig { border-color: #7CCB6A; background: #E9F9E2; color: #2C7A27; box-shadow: 0 5px 0 #A9DB9B; }
+.fr-genus.richtig small { color: inherit; }
+.fr-genus.falsch { border-color: var(--err); background: #FFEDEA; box-shadow: 0 5px 0 #F2B8AF; }
+.fr-genus:disabled:not(.richtig):not(.falsch) { opacity: .5; }
+.fr-genus.wackelt { animation: shake .45s ease-in-out; }
+.fr-genus.pop { animation: pop .45s ease-out; }
+
+/* ---------- Hochformat und schmale Bildschirme ---------- */
+@media (max-aspect-ratio: 1/1), (max-width: 760px) {
+  /* Lange Antworten untereinander */
+  .fr-eingabe.auswahl .fr-feld.lang { grid-template-columns: minmax(0, 1fr); }
+  .fr-eingabe.auswahl .fr-feld.lang .fr-option { min-height: 60px; }
+  .fr-option.breit { width: 100%; }
+  .taste.fr-taste { height: 58px; font-size: 28px; }
+}
+@media (max-width: 520px) {
+  .fr-eingabe.auswahl .fr-feld, .fr-eingabe.auswahl .fr-feld.lang { grid-template-columns: minmax(0, 1fr); gap: 7px; }
+  .fr-eingabe.auswahl .fr-feld .fr-option, .fr-eingabe.auswahl .fr-feld.einzeln .fr-option, .fr-eingabe.auswahl .fr-feld.lang .fr-option { min-height: 56px; }
+  .fr-option { padding: 6px 12px; border-radius: 16px; font-size: 19px; box-shadow: 0 4px 0 #E3D3B9, 0 8px 14px -8px rgba(60, 40, 20, .5); }
+  .fr-option.richtig { box-shadow: 0 4px 0 #A9DB9B; }
+  .fr-option.falsch { box-shadow: 0 4px 0 #F2B8AF; }
+  .fr-option.breit { min-height: 48px; }
+  .fr-genus { min-height: 72px; }
+  .fr-genus b { font-size: 28px; }
+  .fr-gross { font-size: clamp(28px, 8vw, 36px); }
+  .fr-gross.lang { font-size: clamp(23px, 6.4vw, 28px); }
+  .fr-gross.laenger { font-size: clamp(20px, 5.4vw, 23px); }
+  .fr-kern { gap: 6px 12px; }
+  .fr-langsam { width: 44px; height: 44px; }
+  .fr-langsam svg { width: 30px; height: 30px; }
+  .fr-antwort { margin-top: 10px; }
+  .fr-teile { display: block; text-align: center; font-size: 18px; }
+  .fr-teile .fr-teil { display: block; }
+  .fr-teile .fr-teil + .fr-teil { margin-top: 8px; }
+  .fr-teile .fr-teil > span, .fr-teile .fr-teil > span:first-child, .fr-teile .fr-teil > span:last-child { display: block; text-align: center; }
+  .fr-teile .fr-teil > i { display: none; }
+  .fr-kontrast, .fr-merk { margin-top: 10px; padding: 8px 12px 8px 10px; font-size: 15px; }
+  .fr-plaetze.satz { font-size: clamp(20px, 5.6vw, 24px); }
+  .fr-plaetze.woerter .fr-platz { min-width: 56px; height: 44px; padding: 0 8px; font-size: 19px; }
+  .fr-plaetze.woerter .fr-fest { font-size: 20px; line-height: 44px; }
+  .fr-kachel, .fr-zurueck { min-width: 44px; height: 44px; padding: 0 10px; border-radius: 12px; font-size: 19px; }
+  .fr-kachel.buchstabe, .fr-zurueck { width: 44px; padding: 0; }
+  .fr-kachel.buchstabe { font-size: 23px; }
+  .fr-zurueck svg { width: 24px; height: 24px; }
+  .fr-paare { gap: 8px 8px; }
+  .fr-paar { min-height: 52px; padding: 5px 8px; font-size: 17px; }
+  .fr-eingabe.auswahl .fr-feld.zeichen { gap: 7px; }
+  .fr-eingabe.auswahl .fr-feld.zeichen .fr-option { flex-basis: calc((100% - 21px) / 4); min-height: 56px; font-size: 30px; }
+  .taste.fr-taste { height: 46px; border-radius: 9px; font-size: 21px; box-shadow: 0 3px 0 var(--key-edge), 0 6px 10px -7px rgba(60, 40, 20, .5); }
+  .taste.fr-taste.akzent { box-shadow: 0 3px 0 #E6CB8E, 0 6px 10px -7px rgba(60, 40, 20, .5); }
+  .taste.fr-taste.zurueck { box-shadow: 0 3px 0 #E9B697; }
+  .taste.fr-taste.pruefen { box-shadow: 0 3px 0 var(--green-d); }
+  /* Die Kante ist hier flacher, also sinkt die gedrückte Taste auch weniger tief */
+  .taste.fr-taste:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--key-edge); }
+  .taste.fr-taste.akzent:active { box-shadow: 0 1px 0 #E6CB8E; }
+  .taste.fr-taste.zurueck:active { box-shadow: 0 1px 0 #E9B697; }
+  .taste.fr-taste.pruefen:active { box-shadow: 0 1px 0 var(--green-d); }
+  .taste.fr-taste svg { width: 22px; height: 22px; }
+  .fr-feld.ziffern .fr-taste[data-z]::after { right: 3px; top: 2px; font-size: 10px; }
+  .fr-eingabe.tastatur .fr-feld { padding-bottom: 3px; }
+  .fr-zeile.feld { font-size: 23px; padding: .14em .4em; }
+  .fr-plaetze.muster { margin-top: 8px; }
+}
+/* Kleines, niedriges Handy (360 × 640): Vier Antworten und «Weiter» lassen der Karte wenig Platz.
+   Flachere Antworten und ein kleinerer Hör-Knopf, damit die offene Aufgabe ganz zu sehen ist. */
+@media (max-width: 520px) and (max-height: 700px) {
+  .fr-eingabe.auswahl .fr-feld, .fr-eingabe.auswahl .fr-feld.lang { gap: 6px; }
+  .fr-eingabe.auswahl .fr-feld .fr-option, .fr-eingabe.auswahl .fr-feld.einzeln .fr-option, .fr-eingabe.auswahl .fr-feld.lang .fr-option { min-height: 46px; padding: 4px 10px; font-size: 18px; line-height: 1.15; }
+  .fr-genus { min-height: 64px; }
+  .fr-hoeren.gross { width: 72px; height: 72px; margin: 0 0 4px; }
+  .fr-hoeren.gross svg { width: 40px; height: 40px; }
+  /* Diktat: Darunter stehen noch die getippte Zeile (bei langen Formen zweizeilig) und die Tastatur */
+  .fr-hoeren.gross.knapp { width: 56px; height: 56px; margin: 0; }
+  .fr-hoeren.gross.knapp svg { width: 32px; height: 32px; }
+  .fr-gross { font-size: 27px; }
+  .fr-klein { font-size: 16px; line-height: 1.2; }
+  .fr-plaetze.satz { font-size: 20px; }
+  .fr-antwort { margin-top: 6px; }
+}
+/* Niedriges Querformat: alles im Feld etwas flacher */
+@media (max-height: 560px) and (orientation: landscape) {
+  .fr-option, .fr-eingabe.auswahl .fr-feld.einzeln .fr-option { min-height: 50px; }
+  .fr-genus { min-height: 64px; }
+  .fr-hoeren.gross { width: 72px; height: 72px; margin: 0; }
+  .fr-hoeren.gross svg { width: 40px; height: 40px; }
+  .fr-eingabe.auswahl .fr-feld.zeichen .fr-option { min-height: 50px; }
+  .taste.fr-taste { height: 40px; font-size: 22px; }
+}
+/* Schmaler als das kleinste unterstützte Handy: Das Feld rollt seitwärts, also darf der Finger es ziehen */
+@media (max-width: 359px) {
+  .fr-kachel, .fr-zurueck, .fr-taste { touch-action: pan-x; }
+  .fr-eingabe.tastatur .fr-feld { grid-template-columns: repeat(10, 30px); }
+}

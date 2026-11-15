@@ -1,24 +1,36 @@
-// Service Worker des Mathe-Igels: macht die App installierbar und ohne
-// Internet nutzbar. Immer zuerst das Netz, damit Änderungen sofort
-// ankommen; nur wenn das nicht klappt, kommt die gespeicherte Kopie.
+// Service Worker von Pieks: macht die App installierbar und ohne
+// Internet nutzbar. Seite, Skripte und audio/vorhanden.json kommen zuerst
+// aus dem Netz, damit Änderungen sofort ankommen; nur wenn das nicht klappt,
+// kommt die gespeicherte Kopie. Aufnahmen kommen zuerst aus dem Speicher.
 'use strict';
 
-// Liefert alleSaetze() und kennung(), um alle Aufnahmen zu kennen
-importScripts('texte.js', 'fakten.js');
+// Liefert alleSaetze(), alleFranzClips(), kennung() und clipDatei(), um alle Aufnahmen zu kennen
+importScripts('texte.js', 'fakten.js', 'vokabeln.js', 'franz-texte.js');
 
 // Bei neuen Texten genügt es, die «Stand»-Zeile zu ändern: dann holt der neue
 // Service Worker die fehlenden Aufnahmen nach, ohne alles neu zu laden.
-// Wurden bestehende Aufnahmen neu gesprochen (gleiche Dateinamen, z.B. andere
-// Stimme), stattdessen CACHE hochzählen, damit alte Aufnahmen verschwinden.
-// Stand: alle 869 Aufnahmen da (Lucy Fennek)
+// Wurden bestehende Aufnahmen neu gesprochen (--force, gleiche Dateinamen, z.B.
+// andere Stimme), stattdessen CACHE hochzählen: Aufnahmen kommen zuerst aus dem
+// Speicher, ohne neuen CACHE spielten Geräte für immer die alte Fassung. Das wirft
+// alle vorgeladenen Aufnahmen weg; der nächste Start holt sie neu.
+// Stand: Französisch dazu, 1776 Aufnahmen (Lucy Fennek und Lucie)
 const CACHE = 'pieks-v1';
 const FILES = [
   './',
   'stil.css',
+  'hoernchen.css',
+  'uebungen.css',
+  'franz.css',
   'aufgaben.js',
   'texte.js',
   'fakten.js',
+  'vokabeln.js',
+  'franz-texte.js',
+  'lernen.js',
   'grafik.js',
+  'hoernchen.js',
+  'uebungen.js',
+  'franz.js',
   'app.js',
   'manifest.webmanifest',
   'icon.svg',
@@ -29,8 +41,16 @@ const FILES = [
   'icon-maskable-512.png',
   'audio/vorhanden.json',
 ];
-// Vorab nur, was oft gebraucht wird; Fakten kommen beim ersten Hören in den Speicher
-const AUDIO = [...new Set(alleSaetze().filter(x => x.gruppe !== 'fakt').map(x => 'audio/' + kennung(x.s) + '.mp3'))];
+// Vorab nur, was oft gebraucht wird, das Wichtigste zuerst: Pieks, die Besucher, das
+// Hörnchen, dann die Vokabeln (Einträge, Formen, langsame Fassungen). Fakten kommen
+// beim ersten Hören in den Speicher.
+const AUDIO = (() => {
+  const reihe = ['pieks', 'besuch', 'hoernchen', 'wort', 'form', 'langsam'];
+  const clips = alleSaetze().filter(x => x.gruppe !== 'fakt').map(x => ({ gruppe: x.gruppe, datei: kennung(x.s) }))
+    .concat(alleFranzClips().map(c => ({ gruppe: c.gruppe, datei: clipDatei(c) })));
+  clips.sort((a, b) => reihe.indexOf(a.gruppe) - reihe.indexOf(b.gruppe));
+  return [...new Set(clips.map(x => 'audio/' + x.datei + '.mp3'))];
+})();
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
@@ -46,19 +66,42 @@ self.addEventListener('activate', e => {
 });
 
 // Die App bittet nach dem Start darum: alle wichtigen Aufnahmen holen, die noch
-// fehlen. Ohne Netz bricht es still ab und versucht es beim nächsten Start wieder.
+// fehlen. Scheitert ein Abruf, fehlt nur diese Aufnahme (der nächste Start oder das
+// erste Hören holt sie), und nach einer Pause geht es weiter. Erst fünf Fehlschläge
+// in Folge heissen «kein Netz»: dann still Schluss bis zum nächsten Start.
 let laedt = null;
 async function audioVorladen() {
   const c = await caches.open(CACHE);
+  const ort = f => new URL(f, self.registration.scope).href;
+  // Geholt wird nur, was es laut audio/vorhanden.json gibt. Ein 404 landet nicht im
+  // Speicher: Ohne die Liste würde jeder Start wieder nach jeder Aufnahme fragen, die
+  // noch nicht gesprochen ist. Zuerst das Netz, sonst die gespeicherte Liste.
+  let gibt;
+  try {
+    const frisch = await fetch(ort('audio/vorhanden.json')).then(r => (r.ok ? r : null), () => null);
+    const antwort = frisch || await c.match(ort('audio/vorhanden.json'));
+    const liste = antwort ? await antwort.json() : null;
+    if (!Array.isArray(liste)) return;
+    gibt = new Set(liste);
+  } catch (e) {
+    return;
+  }
   const da = new Set((await c.keys()).map(r => r.url));
+  // Die Pausen wachsen (1, 2, 4, 8 s), so übersteht das Vorladen auch einen kurzen
+  // Ausfall, etwa beim Wechsel des WLANs. Ein 404 zählt nicht: Da ist das Netz ja da.
+  let wackler = 0;
   for (const f of AUDIO) {
-    const url = new URL(f, self.registration.scope).href;
+    // 'audio/1a2b3c4d.mp3' → '1a2b3c4d', wie es in der Liste steht
+    if (!gibt.has(f.slice(6, -4))) continue;
+    const url = ort(f);
     if (da.has(url)) continue;
     try {
       const r = await fetch(url);
       if (r.ok) await c.put(url, r);
+      wackler = 0;
     } catch (e) {
-      return;
+      if (++wackler >= 5) return;
+      await new Promise(weiter => setTimeout(weiter, 1000 * 2 ** (wackler - 1)));
     }
   }
 }
@@ -70,7 +113,27 @@ self.addEventListener('message', e => {
 
 self.addEventListener('fetch', e => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  // Eine Aufnahme ändert unter ihrem Namen nie den Inhalt (er ist ein Prüfwert über den
+  // Text): zuerst der Speicher. Sonst wartete auf langsamem Netz jede vorgeladene
+  // Aufnahme auf den Server, und die App gäbe sie nach 1.5 s als stumm auf. Die App holt
+  // ohne Range-Kopfzeile, darum passt die ganze gespeicherte Antwort immer.
+  if (url.pathname.includes('/audio/') && url.pathname.endsWith('.mp3')) {
+    e.respondWith(
+      caches.open(CACHE)
+        .then(c => c.match(req, { ignoreSearch: true }))
+        .catch(() => undefined)
+        .then(hit => hit || fetch(req).then(res => {
+          if (res.ok) {
+            const copy = res.clone();
+            e.waitUntil(caches.open(CACHE).then(c => c.put(req, copy)));
+          }
+          return res;
+        }, () => new Response('', { status: 504 })))   // nicht gespeichert, kein Netz: fehlt (siehe unten)
+    );
+    return;
+  }
   e.respondWith(
     fetch(req)
       .then(res => {
@@ -80,6 +143,12 @@ self.addEventListener('fetch', e => {
         }
         return res;
       })
-      .catch(() => caches.match(req, { ignoreSearch: true }).then(hit => hit || caches.match('./')))
+      .catch(() => caches.match(req, { ignoreSearch: true }).then(hit => {
+        if (hit) return hit;
+        // Was unter audio/ nicht gespeichert ist, fehlt einfach (504). Käme hier die
+        // gespeicherte Seite zurück, hielte die App sie für Ton oder für die Liste.
+        if (url.pathname.includes('/audio/')) return new Response('', { status: 504 });
+        return caches.match('./');
+      }))
   );
 });

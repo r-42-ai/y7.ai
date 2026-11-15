@@ -1,0 +1,292 @@
+/* =====================================================================
+   Französisch: was franz.js zeigt. Die Karte auf der Lichtung, der
+   Kopf der Aufgabenkarte, der Lösungsstreifen, die Unité-Frage, die
+   Ernte und die leere Karte, der Apfel im ersten Treffen, dazu das
+   Wörterheft im Album und der Französisch-Block für die Eltern.
+   Rahmen und Farben stehen in stil.css, alles in einer Aufgabe in
+   uebungen.css. Richtig und falsch zeigen sich nie nur als Farbe.
+   ===================================================================== */
+
+/* ---------- Lichtung: die Karte über den vier Rechen-Karten ---------- */
+
+.franz-karte {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "start start" "balken chips";
+  align-items: center;
+  gap: 8px 14px;
+}
+.franz-karte .thema-start { grid-area: start; }
+/* Wie viel der gewählten Wörter schon eine Erdbeere trägt */
+.franz-balken { grid-area: balken; display: block; height: 8px; margin-left: 6px; border-radius: 99px; background: #F0E4CF; overflow: hidden; }
+.franz-balken i { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--beere-gruen), var(--beere)); transition: width .6s ease-out; }
+.franz-chips { grid-area: chips; display: flex; gap: 8px; }
+.franz-chip {
+  min-height: 44px; padding: 6px 14px; border-radius: 14px;
+  font-size: 15px; font-weight: 800; color: var(--soft); white-space: nowrap;
+  background: #F4EADA; box-shadow: inset 0 -3px 0 #E2D2B8;
+}
+.franz-chip:active { transform: translateY(2px); }
+/* Am Ende des ersten Treffens springt sie herein */
+.franz-karte.kommt { animation: popin .5s cubic-bezier(.3, 1.5, .5, 1) both; }
+
+/* ---------- Erstes Treffen: der Baum schüttelt sich, ein Apfel fällt ---------- */
+
+.baum .krone.schuettelt { transform-box: fill-box; transform-origin: 50% 90%; animation: fr-schuetteln .9s ease-in-out; }
+@keyframes fr-schuetteln {
+  0%, 100% { transform: rotate(0); }
+  15% { transform: rotate(-5deg); }
+  35% { transform: rotate(4deg); }
+  55% { transform: rotate(-3deg); }
+  75% { transform: rotate(2deg); }
+}
+.fall-apfel { position: fixed; z-index: 26; pointer-events: none; }
+
+/* ---------- Kopf der Aufgabenkarte ---------- */
+
+/* Der Ort der Karte darf kürzer werden, aber nicht die Perlen verdrängen */
+.fr-karte .karte-kopf .nr { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fr-karte .karte-kopf .belohnung { flex: none; }
+/* Eine Perle je beurteilte Aufgabe: grün gefüllt richtig, halb beim zweiten Versuch,
+   ein leerer Ring, wenn es noch nicht klappte, und die laufende ist länger */
+.fr-kette { flex: 1 1 0; min-width: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 3px; }
+.fr-kette i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #EADBC2; }
+.fr-kette i.ok { background: #7CCB6A; }
+.fr-kette i.fast { background: linear-gradient(90deg, #7CCB6A 50%, #EADBC2 50%); }
+.fr-kette i.falsch { background: transparent; box-shadow: inset 0 0 0 2px var(--err); }
+.fr-kette i.jetzt { width: 18px; border-radius: 99px; background: var(--orange); }
+.fr-kette-zahl { display: none; font-size: 15px; font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Schmal hat die Kette keinen Platz und die Kopfzeile zeigt den Stand nicht: dann die Zahl.
+   Sie ist nie schmaler als «12/14» und gibt nichts ab; kürzer wird der Ort (mit …). */
+@media (max-width: 520px) {
+  .fr-kette { justify-content: flex-end; flex: 1 0 auto; }
+  .fr-kette i { display: none; }
+  .fr-kette-zahl { display: inline; }
+}
+
+/* ---------- Lösungsstreifen ---------- */
+
+.fr-loesung {
+  margin-top: 14px; padding: 10px 14px;
+  border-radius: 18px; background: #fff;
+  box-shadow: 0 3px 0 #EADBC2;
+  animation: einblenden .35s ease-out both;
+}
+.fr-loesung-zeile {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-size: clamp(19px, .6vw + 1.3vh, 24px); font-weight: 800; line-height: 1.25;
+}
+.fr-loesung-zeile .fr-stufe { width: max(28px, 1.3em); height: max(28px, 1.3em); }
+.fr-loesung-text { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 2px 10px; text-align: center; }
+/* Der Hör-Knopf ist gross genug für den Finger (44 px) und ragt in den Rand: Der Streifen wird nicht höher */
+.fr-loesung-play { flex: none; width: 44px; height: 44px; margin: -5px 0; }
+.fr-loesung-play svg { width: 22px; height: 22px; }
+.fr-loesung-gleich, .fr-loesung-de { color: var(--soft); font-weight: 700; }
+.fr-loesung-play:active { transform: translateY(2px); }
+.fr-loesung-notiz { display: block; margin-top: 4px; text-align: center; font-size: 15px; font-weight: 800; color: #2C7A27; }
+/* Während des zweiten Versuchs: was das getippte Wort bedeutet */
+.fr-loesung.hinweis { background: #FFF6D8; box-shadow: 0 3px 0 #EBCB7A; }
+.fr-loesung-was { font-size: 13px; font-weight: 800; color: #8A5A00; text-transform: uppercase; letter-spacing: .05em; }
+
+/* ---------- Unité-Frage ---------- */
+
+.fr-frage { font-size: clamp(22px, 1.2vw + 1.8vh, 30px); font-weight: 800; line-height: 1.2; }
+.fr-unite-wahl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 6px; }
+.fr-unite-knopf {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 78px; padding: 10px 14px 10px 10px;
+  border-radius: 18px; border-left: 8px solid var(--unite, var(--fell));
+  background: #fff; text-align: left;
+  box-shadow: 0 5px 0 #E3D3B9, 0 8px 14px -8px rgba(60, 40, 20, .5);
+}
+.fr-unite-knopf:active { transform: translateY(3px); box-shadow: 0 2px 0 #E3D3B9; }
+.fr-unite-knopf svg { flex: none; width: 48px; height: 48px; }
+.fr-unite-knopf span { min-width: 0; }
+.fr-unite-knopf b { display: block; font-size: 21px; line-height: 1.15; color: var(--unite, var(--ink)); }
+.fr-unite-knopf small { display: block; font-size: 15px; font-weight: 700; line-height: 1.25; color: var(--soft); }
+
+/* ---------- Ernte und leere Karte ---------- */
+
+.fr-karte.ernte .fr-vorgabe, .fr-karte.leer .fr-vorgabe { gap: 6px; }
+.fr-ernte-kopf { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px 14px; flex-wrap: wrap; text-align: left; }
+.fr-ernte-titel { font-size: clamp(28px, 1.6vw + 2vh, 40px); font-weight: 800; line-height: 1.1; }
+.fr-ernte-aepfel {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 16px 6px 8px; border-radius: 999px;
+  background: #FDEDE0; color: #B8322A; font-size: 26px; font-weight: 800;
+}
+.fr-ernte-aepfel svg { width: 36px; height: 36px; }
+.fr-ernte-liste { display: grid; gap: 8px; }
+.fr-ernte-zeile { width: 100%; align-items: center; }
+.fr-ernte-zeile:active { transform: translateY(2px); box-shadow: 0 1px 0 #EADBC2; }
+.fr-ernte-stufen { flex: none; display: inline-flex; align-items: center; gap: 2px; }
+.fr-ernte-stufen .fr-stufe { width: 28px; height: 28px; }
+.fr-ernte-stufen .fr-pfeil { width: 14px; height: 14px; color: var(--soft); }
+.fr-ernte-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.fr-ernte-text > span { font-size: 19px; font-weight: 800; line-height: 1.25; }
+.fr-ernte-text small { font-size: 15px; font-weight: 700; line-height: 1.3; color: var(--soft); }
+.fr-ernte-text em { font-style: normal; color: #B4532A; }
+.fr-leer-bild { width: 76px; height: 76px; margin: 6px 0 2px; }
+/* Unsichtbar, aber vorgelesen */
+.fr-ernte-aepfel .weg { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Unten: die Knöpfe der Ernte und der leeren Karte, über die ganze Breite */
+.fr-eingabe.ende { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: "feld"; }
+.fr-eingabe.ende .fr-feld { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; padding-bottom: 6px; }
+.fr-knopf {
+  flex: 1 1 200px; max-width: 340px; min-height: 60px; padding: 8px 18px;
+  border-radius: 20px; background: var(--green); color: #fff;
+  font-size: clamp(19px, 2.4vh, 23px); font-weight: 800;
+  box-shadow: 0 6px 0 var(--green-d), 0 10px 18px -8px rgba(60, 40, 20, .5);
+}
+.fr-knopf:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--green-d); }
+.fr-knopf.leise { background: #fff; color: var(--soft); box-shadow: 0 5px 0 #E3D3B9, 0 8px 14px -8px rgba(60, 40, 20, .5); }
+.fr-knopf.leise:active { box-shadow: 0 1px 0 #E3D3B9; }
+/* Ihr Angebot in der Blase («Ja, … dazu!», «Nein, danke»): Fingergrösse wie jeder Knopf. Pieks' Knöpfe bleiben. */
+.blase .say button.mini[data-fr-ziel], .blase .say button.mini[data-fr-nein] { min-height: 44px; }
+
+@media (max-width: 520px) {
+  .franz-karte { gap: 6px 10px; }
+  .franz-chip { padding: 6px 10px; font-size: 14px; }
+  .fr-unite-wahl { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .fr-unite-knopf { min-height: 62px; }
+  .fr-unite-knopf svg { width: 40px; height: 40px; }
+  .fr-ernte-aepfel { font-size: 22px; }
+  .fr-ernte-aepfel svg { width: 30px; height: 30px; }
+  .fr-ernte-text > span { font-size: 17px; }
+  .fr-ernte-text small { font-size: 14px; }
+  .fr-knopf { min-height: 52px; flex-basis: 130px; padding: 6px 10px; font-size: 18px; }
+  .fr-eingabe.ende .fr-feld { gap: 8px; }
+}
+@media (max-height: 560px) and (orientation: landscape) {
+  .fr-knopf { min-height: 48px; }
+}
+
+/* ---------- Wörterheft: der dritte Reiter im Album ---------- */
+
+.fr-heft h3 { margin: 0; font-size: 20px; font-weight: 800; line-height: 1.2; }
+.fr-heft small { display: block; font-size: 14px; font-weight: 800; color: var(--soft); line-height: 1.3; }
+/* Das Beet: jedes der 210 Wörter ein Punkt in Erde, vom Samen bis zur reifen Erdbeere.
+   Die Punkte wachsen mit der Stufe, so liest man sie auch ohne Farbe. */
+.fr-beet { margin-bottom: 14px; }
+.fr-beet-kopf { margin-bottom: 8px; }
+.fr-beet-reihe {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+  padding: 12px; border-radius: 18px;
+  background: linear-gradient(180deg, #9A6A43, #835733);
+  box-shadow: inset 0 3px 0 rgba(0, 0, 0, .14), 0 3px 0 #EADBC2;
+}
+.fr-beet-reihe i { flex: none; width: 12px; height: 12px; border-radius: 50%; }
+.fr-beet-reihe i.s0 { width: 6px; height: 6px; margin: 3px; background: #C9A27A; }
+.fr-beet-reihe i.s1 { width: 8px; height: 8px; margin: 2px; background: #6FC25A; }
+.fr-beet-reihe i.s2 { background: radial-gradient(circle, #FFD43B 0 30%, #fff 34%); }
+.fr-beet-reihe i.s3 { background: #B9DD84; }
+.fr-beet-reihe i.s4 { background: linear-gradient(180deg, #DDEBA8 45%, #E2483D 45%); }
+.fr-beet-reihe i.s5 { background: #E2483D; box-shadow: inset -2px -2px 0 rgba(120, 20, 10, .25); }
+.fr-legende { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 15px; font-weight: 700; color: var(--soft); }
+.fr-legende span { display: inline-flex; align-items: center; gap: 5px; }
+.fr-legende b { color: var(--ink); }
+/* Die vier Unités: die Karten der Fakten, ihr Gesicht auf dem Grund der Unité */
+.fr-unites.kat-liste { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fr-unite { width: 100%; min-height: 76px; }
+.fr-unite > svg { flex: none; width: 52px; height: 52px; }
+.fr-unite-text { flex: 1; min-width: 0; }
+.fr-unite-text b { color: var(--unite, var(--ink)); }
+.fr-unite .mini-balken { display: block; }
+.fr-unite:active { transform: translateY(2px); box-shadow: 0 2px 0 #EADBC2; }
+.fr-geuebt { display: inline-block; margin-left: 4px; padding: 0 8px; border-radius: 999px; background: #E9F9E2; color: #2C7A27; font-size: 12px; line-height: 1.6; white-space: nowrap; }
+
+/* Eine Unité: Kopf, Filter, je Lernziel ein Block */
+.fr-heft .zurueck-link { min-height: 44px; }
+.fr-heft-kopf { display: flex; align-items: center; gap: 12px; }
+.fr-heft-kopf > svg { flex: none; width: 56px; height: 56px; }
+.fr-heft-kopf h3 { color: var(--unite, var(--ink)); font-size: 22px; }
+.fr-filter-zeile { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+.fr-filter {
+  min-height: 44px; padding: 8px 18px; border-radius: 999px;
+  background: #F1E6D3; color: var(--soft); font-size: 16px; font-weight: 800;
+}
+.fr-filter.an { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 2px var(--orange); }
+.fr-lz { margin-top: 14px; padding: 12px; border-radius: 22px; background: #F3E9D8; }
+.fr-lz.an { background: #EEF6E4; }
+.fr-lz-kopf { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.fr-lz-titel { flex: 1 1 180px; min-width: 0; }
+.fr-lz-titel b { font-size: 19px; }
+.fr-plus { display: inline-block; margin-left: 8px; padding: 1px 9px; border-radius: 999px; background: var(--gold); color: #6B4400; font-size: 12px; font-weight: 800; vertical-align: 2px; }
+.fr-lz-knoepfe { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.fr-lz-knoepfe .mini { min-height: 44px; }
+/* Der Schalter «üben»: ein Schieber, der grün wird; die Schrift sagt, worum es geht */
+.fr-schalter {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 6px 16px 6px 8px; border-radius: 999px;
+  background: #fff; color: var(--soft); font-size: 16px; font-weight: 800;
+  box-shadow: 0 3px 0 #E3D3B9;
+}
+.fr-schalter:active { transform: translateY(2px); box-shadow: 0 1px 0 #E3D3B9; }
+.fr-schalter i { position: relative; flex: none; width: 42px; height: 26px; border-radius: 999px; background: #D9C6A6; transition: background .2s; }
+.fr-schalter i::after {
+  content: ''; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(60, 40, 20, .35); transition: transform .2s;
+}
+.fr-schalter[aria-pressed="true"] { color: #2C7A27; }
+.fr-schalter[aria-pressed="true"] i { background: var(--green); }
+.fr-schalter[aria-pressed="true"] i::after { transform: translateX(16px); }
+.fr-lz-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px; margin-top: 10px; }
+.fr-lz-leer { margin: 10px 4px 2px; font-size: 15px; font-weight: 700; color: var(--soft); }
+/* Ein Wort: der ganze Streifen ist der Knopf, der Lautsprecher nur sein Zeichen */
+.fr-eintrag { width: 100%; align-items: center; }
+.fr-eintrag:active { transform: translateY(2px); box-shadow: 0 1px 0 #EADBC2; }
+.fr-eintrag > .fr-stufe { width: 28px; height: 28px; }
+.fr-eintrag-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.fr-eintrag-text > span { font-size: 18px; font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; }
+.fr-heft .fr-eintrag-text small { font-size: 14px; font-weight: 700; }
+.fr-neu { flex: none; padding: 2px 8px; border-radius: 999px; background: #FFE7C2; color: #8A5A00; font-size: 12px; font-weight: 800; }
+.fr-eintrag.spielt .play { background: var(--blue); color: #fff; }
+
+/* ---------- Für Eltern: der Block vor den Einstellungen ---------- */
+
+.fr-stufen > div .fr-stufe { display: block; width: 28px; height: 28px; margin: 0 auto 2px; }
+.fr-eltern-unites { display: grid; gap: 8px; margin-top: 10px; }
+.fr-eltern-unite { display: grid; grid-template-columns: minmax(0, 230px) 1fr 64px; align-items: center; gap: 10px; font-size: 15px; font-weight: 800; }
+.fr-eltern-name small { font-weight: 700; color: var(--soft); }
+.fr-eltern-balken { position: relative; height: 12px; border-radius: 6px; background: #EFE3CF; overflow: hidden; }
+.fr-eltern-balken i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; }
+.fr-eltern-balken i.gekannt { background: #9CD68E; }
+.fr-eltern-balken i.frucht { background: var(--beere); }
+.fr-eltern-zahl { text-align: right; font-variant-numeric: tabular-nums; }
+.fr-farbe.gekannt { color: #9CD68E; }
+.fr-farbe.frucht { color: var(--beere); }
+.fr-schwer { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.fr-schwer li {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px;
+  padding: 8px 14px; border-radius: 14px; background: #fff; box-shadow: 0 3px 0 #EADBC2; font-size: 16px;
+}
+.fr-schwer-wort { font-weight: 800; }
+.fr-schwer-wort small { font-weight: 700; color: var(--soft); }
+.fr-schwer-zahl { font-size: 14px; font-weight: 800; color: #B4532A; white-space: nowrap; }
+.fr-eltern .einstellung { margin-top: 12px; }
+.fr-eltern-knoepfe { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.fr-eltern-knoepfe .mini { min-height: 44px; margin: 4px 8px 4px 0; }
+.fr-eltern-knoepfe .klein { flex-basis: 100%; margin: 0; }
+
+@media (max-width: 520px) {
+  .fr-unites.kat-liste { grid-template-columns: minmax(0, 1fr); }
+  .fr-beet-reihe { gap: 3px; padding: 10px; }
+  .fr-lz { padding: 10px; }
+  .fr-lz-liste { grid-template-columns: minmax(0, 1fr); }
+  .fr-heft .zurueck-link { margin-bottom: 8px; }
+  .fr-heft-kopf > svg { width: 44px; height: 44px; }
+  .fr-heft-kopf h3 { font-size: 20px; }
+  .fr-filter { padding: 8px 14px; }
+  .fr-lz-knoepfe { gap: 6px; }
+  .fr-schalter { gap: 6px; padding: 6px 12px 6px 6px; font-size: 15px; }
+  .fr-lz-knoepfe .mini { padding: 7px 12px; }
+  .fr-eintrag-text > span { font-size: 17px; }
+  /* «neu» sitzt als Fähnchen auf der oberen Kante: Die Zeile gehört ganz dem Wort, nichts bricht mitten darin */
+  .fr-eintrag { position: relative; }
+  .fr-eintrag .fr-neu { position: absolute; left: 8px; top: -7px; padding: 0 7px; font-size: 11px; line-height: 16px; box-shadow: 0 1px 0 #EBCB7A; }
+  .fr-eltern-unite { grid-template-columns: minmax(0, 1fr) 56px; grid-template-areas: "name zahl" "balken balken"; gap: 4px 10px; }
+  .fr-eltern-name { grid-area: name; }
+  .fr-eltern-balken { grid-area: balken; }
+  .fr-eltern-zahl { grid-area: zahl; }
+}

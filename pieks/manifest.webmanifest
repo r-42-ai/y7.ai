@@ -1,8 +1,8 @@
 {
   "id": "/pieks/",
-  "name": "Mathe-Igel",
-  "short_name": "Mathe-Igel",
-  "description": "Brüche, Volumen und Dreisätze üben mit Pieks, dem Mathe-Igel",
+  "name": "Pieks & Pirouette",
+  "short_name": "Pieks",
+  "description": "Rechnen und Französisch üben mit Pieks, dem Igel, und Pirouette, dem Eichhörnchen",
   "lang": "de-CH",
   "start_url": "./",
   "scope": "./",

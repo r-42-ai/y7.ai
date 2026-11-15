@@ -1,0 +1,111 @@
+/* =====================================================================
+   Hörnchen: Mimik und Bewegungen (die Zeichnung steht in hoernchen.js).
+   Gesicht und Körper verhalten sich wie bei Pieks (stil.css): Klassen
+   am <svg>, der Mund folgt --mund. Dazu kommt ihr Schweif.
+   blinzeln und atmen sind die Bewegungen aus stil.css; eigene heissen hn-…
+   Jede Bewegung sitzt auf ihrer eigenen Gruppe (siehe hoernchen.js). So
+   bricht keine die andere ab, und es ruckt nicht, wenn sich zwei treffen:
+   dreht sie sich vor Freude, hüpft sie dabei einfach weiter.
+   animationend melden nur dreht, versteckt und zeigt-schweif: darauf
+   wartet franz.js, um die Klasse wieder wegzunehmen.
+   ===================================================================== */
+.hoernchen { overflow: visible; }
+.hoernchen .hn-augen-froh, .hoernchen .hn-augen-zu, .hoernchen .hn-brauen, .hoernchen .hn-mund-auf, .hoernchen .hn-mund-o, .hoernchen .hn-schweif-vorn { display: none; }
+/* Sie blinzelt und atmet nicht im Takt mit Pieks */
+.hoernchen .hn-augen { transform-box: fill-box; transform-origin: center; animation: blinzeln 5s -1.7s infinite; }
+/* Gekitzelt kichert sie, und ihren Schweif zeigt sie stolz: so liest man beides auch im Standbild */
+.hoernchen.froh .hn-augen, .hoernchen.kitzel .hn-augen, .hoernchen.zeigt-schweif .hn-augen, .hoernchen.schlaeft .hn-augen { display: none; }
+.hoernchen.froh .hn-augen-froh, .hoernchen.kitzel .hn-augen-froh, .hoernchen.zeigt-schweif .hn-augen-froh, .hoernchen.schlaeft .hn-augen-zu { display: inline; }
+.hoernchen.froh .hn-mund-zu, .hoernchen.kitzel .hn-mund-zu, .hoernchen.spricht .hn-mund-zu, .hoernchen.oops .hn-mund-zu { display: none; }
+.hoernchen.froh .hn-mund-auf, .hoernchen.kitzel .hn-mund-auf, .hoernchen.spricht .hn-mund-auf { display: inline; }
+/* Hinter dem Schweif schaut sie besorgt hervor */
+.hoernchen.oops .hn-brauen, .hoernchen.versteckt .hn-brauen, .hoernchen.oops .hn-mund-o { display: inline; }
+.hoernchen.oops.spricht .hn-mund-o { display: none; }
+.hoernchen .hn-mund-auf { transform-box: fill-box; transform-origin: 50% 0; }
+.hoernchen.spricht:not(.froh) .hn-mund-auf { transform: scaleY(var(--mund, .3)); }
+
+/* Stimmungen, dieselben Bewegungen wie bei Pieks (hops, wackeln, kitzeln in stil.css): zwei
+   Hüpfer, einmal wackeln, einmal kichern. Hier stehen sie am Anfang einer langen Runde von
+   10 s (1 % = 0,1 s), danach ist Ruhe. Eine endlose Bewegung meldet kein animationend: so
+   kann keine Stimmung die Drehung vorzeitig beenden, die gerade läuft. */
+.hoernchen .hn-ganz { transform-origin: 100px 195px; animation: atmen 3.4s -1.1s ease-in-out infinite; }
+.hoernchen.froh .hn-ganz { animation: hn-hops 10s ease-out infinite; }
+.hoernchen.oops .hn-ganz { animation: hn-wackeln 10s ease-in-out infinite; }
+.hoernchen.kitzel .hn-ganz { animation: hn-kitzeln 10s ease-in-out infinite; }
+@keyframes hn-hops { 0%, 5%, 10%, 100% { transform: translateY(0); } 2%, 7% { transform: translateY(-14px); } }
+@keyframes hn-wackeln { 0%, 7%, 100% { transform: rotate(0); } 1.75% { transform: rotate(-6deg); } 5.25% { transform: rotate(5deg); } }
+@keyframes hn-kitzeln {
+  0%, 5%, 100% { transform: rotate(0) scale(1); }
+  1% { transform: rotate(-8deg) scale(1.04); }
+  2% { transform: rotate(7deg) scale(1.04); }
+  3% { transform: rotate(-5deg) scale(1); }
+  4% { transform: rotate(4deg) scale(1); }
+}
+
+/* Der Schweif dreht sich um die Hüfte. Innen (hn-wiegt) wiegt er sich immer, aussen
+   (hn-schweif) kommt dazu, was sie gerade fühlt: vor Freude wedelt er zweimal.
+   Er schwingt nur zum Kopf hin, so bleibt sie in ihrem Rahmen. */
+.hoernchen .hn-schweif, .hoernchen .hn-wiegt { transform-origin: 128px 182px; }
+.hoernchen .hn-wiegt { animation: hn-wedeln 4.2s ease-in-out infinite; }
+.hoernchen.froh .hn-schweif { animation: hn-freude 10s ease-in-out infinite; }
+@keyframes hn-wedeln { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-3.2deg); } }
+@keyframes hn-freude { 0%, 5%, 10%, 100% { transform: rotate(0); } 2.5%, 7.5% { transform: rotate(-6deg); } }
+
+/* Ihre Drehung: einmal um die Hochachse, mit kleinem Hüpfer. scaleX ist der Kosinus des
+   Drehwinkels, der Winkel läuft weich an und aus: so huscht die schmale Ansicht vorbei,
+   statt stehen zu bleiben. */
+.hoernchen .hn-dreh { transform-origin: 100px 195px; }
+.hoernchen.dreht .hn-dreh { animation: hn-dreht .8s linear; }
+@keyframes hn-dreht {
+  0%, 100% { transform: translateY(0) scaleX(1); }
+  10%, 90% { transform: translateY(-3.7px) scaleX(.985); }
+  20%, 80% { transform: translateY(-7.1px) scaleX(.794); }
+  30%, 70% { transform: translateY(-9.7px) scaleX(.212); }
+  40%, 60% { transform: translateY(-11.4px) scaleX(-.598); }
+  50% { transform: translateY(-12px) scaleX(-1); }
+}
+
+/* Verstecken: der Schweif klappt nach vorne vors Gesicht, die Pfoten halten ihn fest (was sie
+   in der Pfote trägt, geht mit), sie schaut darüber hinweg; dann klappt er zurück. Vorne liegt
+   eine eigene Zeichnung (.hn-schweif-vorn), weil im SVG vorne ist, was zuletzt gezeichnet wird.
+   Sie steht aufgerichtet genau dort, wo der Schweif hinten steht: da wird überblendet. */
+.hoernchen .hn-schweif-vorn { transform-origin: 165px 172px; opacity: 0; }
+.hoernchen.versteckt .hn-schweif { animation: hn-versteckt-hinten 1.5s ease-in-out; }
+.hoernchen.versteckt .hn-schweif-vorn { display: inline; animation: hn-versteckt-vorn 1.5s ease-in-out; }
+.hoernchen.versteckt .hn-haende, .hoernchen.versteckt .slot-pfote { animation: hn-versteckt-pfoten 1.5s ease-in-out; }
+@keyframes hn-versteckt-hinten {
+  0%, 100% { opacity: 1; transform: rotate(0); }
+  10%, 90% { opacity: 0; transform: rotate(-5deg); }
+}
+@keyframes hn-versteckt-vorn {
+  0%, 100% { opacity: 0; transform: rotate(80deg); }
+  10%, 90% { opacity: 1; transform: rotate(74deg); }
+  31% { opacity: 1; transform: rotate(-4deg); }
+  38%, 70% { opacity: 1; transform: rotate(0); }
+}
+@keyframes hn-versteckt-pfoten { 0%, 18%, 86%, 100% { transform: translateY(0); } 38%, 70% { transform: translateY(-46px); } }
+
+/* Schweif zeigen: er plustert sich zweimal auf und legt sich wieder. Er neigt sich dabei
+   über ihren Kopf, nicht nach aussen. */
+.hoernchen.zeigt-schweif .hn-schweif { animation: hn-faechert 1.2s ease-in-out; }
+@keyframes hn-faechert {
+  0%, 100% { transform: rotate(0) scale(1, 1); }
+  25%, 60% { transform: rotate(-5deg) scale(1.18, 1.06); }
+  42% { transform: rotate(-3deg) scale(1.1, 1.03); }
+}
+
+/* Ohne Bewegung ruht sie ganz; von jedem Zustand bleiben Augen, Brauen und Mund stehen. Die
+   Drehung kürzt die Regel am Ende von stil.css auf einen Augenblick. Verstecken und Schweif
+   zeigen wären so nicht zu sehen; darum stehen sie hier als Standbild, gleich lang wie sonst
+   die Bewegung. Auch so melden nur diese drei animationend. */
+@media (prefers-reduced-motion: reduce) {
+  .hoernchen .hn-ganz, .hoernchen .hn-augen, .hoernchen .hn-wiegt, .hoernchen .hn-schweif { animation: none !important; }
+  .hoernchen.versteckt .hn-schweif { animation: hn-ruhe-weg 1.5s !important; }
+  .hoernchen.versteckt .hn-schweif-vorn { animation: hn-ruhe-da 1.5s !important; }
+  .hoernchen.versteckt .hn-haende, .hoernchen.versteckt .slot-pfote { animation: hn-ruhe-pfoten 1.5s !important; }
+  .hoernchen.zeigt-schweif .hn-schweif { animation: hn-ruhe-gross 1.2s !important; }
+}
+@keyframes hn-ruhe-weg { from, to { opacity: 0; } }
+@keyframes hn-ruhe-da { from, to { opacity: 1; } }
+@keyframes hn-ruhe-pfoten { from, to { transform: translateY(-46px); } }
+@keyframes hn-ruhe-gross { from, to { transform: rotate(-5deg) scale(1.18, 1.06); } }

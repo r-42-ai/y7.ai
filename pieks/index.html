@@ -5,30 +5,33 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Mathe-Igel</title>
-<meta name="description" content="Brüche, Volumen und Dreisätze üben mit Pieks, dem Mathe-Igel.">
+<title>Pieks &amp; Pirouette</title>
+<meta name="description" content="Rechnen und Französisch üben mit Pieks, dem Igel, und Pirouette, dem Eichhörnchen.">
 <meta name="theme-color" content="#F6C27A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Mathe-Igel">
+<meta name="apple-mobile-web-app-title" content="Pieks &amp; Pirouette">
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://y7.ai/pieks/">
-<meta property="og:title" content="Mathe-Igel">
-<meta property="og:description" content="Brüche, Volumen und Dreisätze üben mit Pieks, dem Mathe-Igel.">
+<meta property="og:title" content="Pieks &amp; Pirouette">
+<meta property="og:description" content="Rechnen und Französisch üben mit Pieks, dem Igel, und Pirouette, dem Eichhörnchen.">
 <meta property="og:image" content="https://y7.ai/pieks/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="stil.css">
+<link rel="stylesheet" href="hoernchen.css">
+<link rel="stylesheet" href="uebungen.css">
+<link rel="stylesheet" href="franz.css">
 </head>
 <body class="tag herbst">
 
-<!-- Bausteine, die mehrfach vorkommen (Pieks' Farbverläufe kommen aus grafik.js dazu) -->
+<!-- Bausteine, die mehrfach vorkommen (Pieks' Farbverläufe kommen aus grafik.js dazu, die des Hörnchens und die Französisch-Zeichen aus hoernchen.js) -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs id="sprite">
     <symbol id="apfel" viewBox="0 0 40 40">
@@ -268,11 +271,29 @@
   <!-- LICHTUNG: hier wählt Nea, was sie üben will -->
   <section class="lichtung" id="lichtung">
     <div class="held">
-      <div class="held-pieks" id="heldPieks"></div>
-      <div class="blase gross" id="blaseHome" role="button" tabindex="0" aria-label="Nochmal vorlesen"><span class="say" aria-live="polite"></span></div>
+      <!-- Das Hörnchen steht rechts neben Pieks, sobald es sich vorgestellt hat -->
+      <div class="held-figuren">
+        <div class="held-pieks" id="heldPieks"></div>
+        <div class="held-hoernchen" id="heldHoernchen" hidden></div>
+      </div>
+      <div class="blase gross" id="blaseHome" role="button" tabindex="0" aria-label="Nochmal vorlesen"><span class="blase-wer" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-pieks-kopf"/></svg></span><span class="say" aria-live="polite"></span></div>
     </div>
     <div class="wahl">
       <h2 class="wahl-titel">Was üben wir heute?</h2>
+      <!-- Französisch: eine breite Karte über den vier Mathe-Karten, franz.js füllt und zeigt sie -->
+      <div class="thema franz-karte" id="franzKarte" hidden>
+        <button type="button" class="thema-start" id="franzStart" aria-label="Französisch üben">
+          <svg viewBox="0 0 80 80" aria-hidden="true"><use href="#t-franz"/></svg>
+          <span class="t-name">Französisch</span>
+          <span class="t-info" id="franzInfo"></span>
+          <span class="los-pfeil" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#i-weiter"/></svg></span>
+        </button>
+        <span class="mini-balken franz-balken"><i id="franzBalken"></i></span>
+        <div class="franz-chips">
+          <button type="button" class="franz-chip" id="franzWoerterBtn">Wörter</button>
+          <button type="button" class="franz-chip" id="franzAuswahlBtn">Auswahl</button>
+        </div>
+      </div>
       <div class="themen" id="themen"></div>
       <nav class="menue">
         <button type="button" class="menue-btn" id="albumBtn"><svg viewBox="0 0 40 40"><use href="#i-album"/></svg><span>Album</span><i class="neu-punkt" id="albumNeu" hidden></i></button>
@@ -346,11 +367,45 @@
       </div>
     </aside>
   </section>
+
+  <!-- FRANZÖSISCH: das Hörnchen unterrichtet, Pieks lernt mit. uebungen.js füllt
+       Vorgabe, Antwort und Feld der Aufgabe, franz.js alles andere -->
+  <section class="franz" id="franz" hidden>
+    <div class="fr-buehne">
+      <div class="fr-figur">
+        <div class="blase" id="blaseFranz" role="button" tabindex="0" aria-label="Nochmal vorlesen"><span class="blase-wer" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#t-franz"/></svg></span><span class="say" aria-live="polite"></span></div>
+        <div class="fr-hoernchen" id="franzHoernchen"></div>
+        <div class="fr-gast" id="franzPieks"></div>
+      </div>
+      <article class="karte fr-karte" id="frKarte" aria-live="off">
+        <div class="karte-kopf">
+          <span class="nr" id="frNr"></span>
+          <span class="fr-kette" id="frKette" aria-hidden="true"></span>
+          <span class="belohnung" id="frBelohnung" title="So viele Äpfel gibt diese Aufgabe"><svg viewBox="0 0 40 40"><use href="#apfel"/></svg><b id="frBelohnungN"></b></span>
+        </div>
+        <div class="fr-vorgabe" id="frVorgabe"></div>
+        <div class="fr-antwort" id="frAntwort"></div>
+        <div class="fr-loesung" id="frLoesung" hidden aria-live="polite"></div>
+        <!-- Fakt am Ende einer Runde, erzählt von Pieks -->
+        <div class="faktkarte" id="frFaktKarte" hidden>
+          <div class="fakt-kopf"><span class="fakt-kat" id="frFaktKat"></span><span class="fakt-neu" id="frFaktNeu">Neu im Album</span></div>
+          <p class="fakt-text" id="frFaktText"></p>
+        </div>
+      </article>
+    </div>
+    <!-- Alle Antworten unten über die ganze Breite: Auswahl, Kacheln oder Tastatur -->
+    <div class="fr-eingabe" id="frEingabe">
+      <div class="fr-feld" id="frFeld"></div>
+      <button type="button" class="fr-pruefen" id="frPruefen" hidden>Prüfen</button>
+      <button type="button" class="mini leise fr-weissnicht" id="frWeissNicht" hidden>Weiss ich nicht</button>
+      <button type="button" class="weiter fr-weiter" id="frWeiter" hidden>Weiter <svg viewBox="0 0 32 32"><use href="#i-weiter"/></svg></button>
+    </div>
+  </section>
 </main>
 
 <!-- Stufe und Thema wechseln, ohne zurück zur Lichtung -->
 <div class="popover" id="stufenMenue" hidden>
-  <div class="pop-titel">Schwierigkeit</div>
+  <div class="pop-titel" id="popStufenTitel">Schwierigkeit</div>
   <div class="pop-stufen" id="popStufen"></div>
   <div class="pop-titel">Thema</div>
   <div class="pop-themen" id="popThemen"></div>
@@ -376,16 +431,23 @@
   <div class="start-karte">
     <div class="start-kugel" id="startKugel"></div>
     <div class="zzz" aria-hidden="true"><span>z</span><span>z</span><span>Z</span></div>
-    <h1>Mathe-Igel</h1>
+    <h1>Pieks &amp; Pirouette</h1>
     <p class="start-text" id="startText">Pieks hält gerade ein Nickerchen.</p>
     <button class="los" id="weckenBtn" type="button">Pieks wecken!</button>
   </div>
 </div>
 
+<!-- Französisch gibt es nur, wenn alle sechs Dateien dafür ganz geladen sind (franzDa in app.js) -->
 <script src="aufgaben.js"></script>
 <script src="texte.js"></script>
 <script src="fakten.js"></script>
+<script src="vokabeln.js"></script>
+<script src="franz-texte.js"></script>
+<script src="lernen.js"></script>
 <script src="grafik.js"></script>
+<script src="hoernchen.js"></script>
+<script src="uebungen.js"></script>
+<script src="franz.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
