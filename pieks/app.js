@@ -770,14 +770,60 @@ function pieksMund() {
 // teile sind die gesprochenen Teile.
 function ansage(html, teile, opt = {}) {
   if (ziel.say) {
-    ziel.say.innerHTML = html;
-    ziel.blase.classList.remove('leer');
-    ziel.blase.classList.toggle('lang', ziel.say.textContent.length > 90);
+    // Rückt ein Satz die Figuren (beim Rechnen steht Pieks auf der Blase), gleiten sie an den neuen Platz.
+    // Auf dem Handy wächst dabei das Dock: Dann gleiten auch die Werkzeuge darüber und die Tiere auf der
+    // Wiese, die am Dock steht. Im Französisch tut das franz.js (figurenGleiten).
+    gleiten([...['heldPieks', 'heldHoernchen', 'dockPieks'].map($), document.querySelector('#dock .werkzeuge'), ...document.querySelectorAll('#bodenTraining .besucher')], () => {
+      ziel.say.innerHTML = html;
+      // Rollt der Text in der Blase (Lichtung), fängt ein neuer Satz oben an
+      ziel.say.scrollTop = 0;
+      ziel.blase.classList.remove('leer');
+      ziel.blase.classList.toggle('lang', ziel.say.textContent.length > 90);
+    }, 300);
     ziel.blase.classList.remove('pop');
     void ziel.blase.offsetWidth;
     ziel.blase.classList.add('pop');
+    rolltZeigen(ziel.say);
   }
   return Stimme.sprechen(teile, Object.assign({ svg: ziel.svg }, opt));
+}
+// Was durch eine Änderung seinen Platz wechselt, gleitet hin, statt zu springen (FLIP). Figuren gleiten
+// samt Grösse (auf dem Handy wird Pieks zu zweit kleiner), Blasen nur mit dem Ort: Ihre Schrift bleibt.
+// Gemessen wird, wo es gerade zu sehen ist: Gleitet es schon, geht es von dort aus weiter, statt zu
+// springen. translate und scale lassen eigene Bewegungen (Hüpfen, Sprechen) darunter weiterlaufen.
+function gleiten(els, aendern, ms = 450) {
+  els = els.filter(el => el && !el.hidden);
+  const vor = els.map(el => el.getBoundingClientRect());
+  els.forEach(el => el.getAnimations().forEach(an => { if (an.id === 'gleiten') an.cancel(); }));
+  aendern();
+  els.forEach((el, i) => {
+    const a = vor[i], b = el.getBoundingClientRect();
+    if (!a.width || !b.width) return;
+    const blase = el.classList.contains('blase'), k = blase ? 1 : a.width / b.width, dx = a.left - b.left, dy = a.top - b.top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(k - 1) < .01) return;
+    // Figuren werden um die linke obere Ecke skaliert; eine Blase nur verschoben, ihr «reden» bleibt, wie es ist
+    hinGleiten(el, Object.assign(blase ? {} : { transformOrigin: '0 0' }, { translate: `${dx}px ${dy}px`, scale: `${k}` }), ms);
+  });
+}
+// Ein Element gleitet von «von» (translate, scale: wo es zu sehen war) an seinen Platz. Ohne Bewegung
+// (reduce) blendet es stattdessen dort aus, wo es war, und am neuen Platz wieder ein: So springt nichts,
+// und nichts bewegt sich.
+function hinGleiten(el, von, ms) {
+  if (reduce) {
+    // Kleine Wege (fast jeder neue Satz im Dock) einfach hinnehmen: ein Aus- und Einblenden
+    // bei jedem Satz wäre unruhiger als der kleine Versatz. Nur grosse Wege werden überblendet.
+    const [dx = 0, dy = 0] = String(von.translate || '').split(' ').map(parseFloat);
+    if (Math.hypot(dx, dy) < 60 && Math.abs(parseFloat(von.scale || 1) - 1) < .1) return;
+  }
+  const da = Object.assign(von.transformOrigin ? { transformOrigin: von.transformOrigin } : {}, { translate: '0px 0px', scale: '1' });
+  const bilder = reduce
+    ? [{ ...von, opacity: 1 }, { ...von, opacity: 0, offset: .3 }, { ...von, opacity: 0, offset: .45 }, { ...da, opacity: 0, offset: .45 }, { ...da, opacity: 0, offset: .6 }, { ...da, opacity: 1 }]
+    : [von, da];
+  el.animate(bilder, { duration: reduce ? 400 : ms, easing: reduce ? 'linear' : 'cubic-bezier(.3, .7, .4, 1)', id: 'gleiten' });
+}
+// Steht unten in der Blase noch mehr, als sie zeigt (Lichtung: Handy, und quer am unteren Rand), verblasst die letzte Zeile
+function rolltZeigen(say) {
+  say.parentElement.classList.toggle('rollt', say.scrollHeight - say.scrollTop - say.clientHeight > 2);
 }
 // Aus einem Text werden Aufnahmen: bei Pieks eine, beim Hörnchen eine je
 // Sprachstück, weil jede Aufnahme nur eine Sprache kennt
@@ -856,16 +902,27 @@ function landschaft() {
     st += `<circle cx="${rnd(0, 1000)}" cy="${rnd(0, 380)}" r="${(Math.random() * 1.6 + 0.6).toFixed(1)}" style="animation-delay:-${(Math.random() * 3).toFixed(2)}s"/>`;
   }
   $('sterne').innerHTML = st;
-  // Waldrand: Tannen und Laubbäume im Wechsel
+  // Waldrand: Tannen und Laubbäume im Wechsel, gezogen wie immer von 0 bis 1200. Breite Fenster
+  // sehen mehr (viewBox ab -2400): Dort steht dieselbe Reihe noch einmal, ohne neuen Zufall,
+  // denn jeder Wurf mehr gäbe danach andere Aufgaben und Besucher.
+  const baeume = [];
+  let x = -10;
+  for (; x < 1220; x += rnd(26, 44)) {
+    const h = rnd(70, 130), tanne = Math.random() < 0.55;
+    baeume.push({ x, h, tanne, farbe: tanne ? '' : pick(['var(--wald2)', 'var(--laub1)', 'var(--laub3)', 'var(--wald2)']) });
+  }
+  const reihe = x + 10;   // so lang ist die Reihe: dort stünde der nächste Baum
+  // Die Reihe von 0 bis 1200 zuletzt: Sie steht vorn und sieht aus wie bisher
   let w = '';
-  for (let x = -10; x < 1220; x += rnd(26, 44)) {
-    const h = rnd(70, 130), y = 160;
-    if (Math.random() < 0.55) {
-      w += `<path d="M${x} ${y - h} L${x + h * 0.28} ${y} L${x - h * 0.28} ${y} Z" fill="var(--tanne)" opacity=".85"/>`;
-    } else {
-      const r = h * 0.3;
-      const farbe = pick(['var(--wald2)', 'var(--laub1)', 'var(--laub3)', 'var(--wald2)']);
-      w += `<rect x="${x - 3}" y="${y - h * 0.45}" width="6" height="${h * 0.45}" fill="#6B4A2E" opacity=".7"/><circle cx="${x}" cy="${y - h * 0.55}" r="${r}" fill="${farbe}" opacity=".9"/>`;
+  for (const k of [-2, -1, 1, 2, 0]) {
+    for (const b of baeume) {
+      const bx = b.x + k * reihe, h = b.h, y = 160;
+      if (bx < -2450 || bx > 3650) continue;
+      if (b.tanne) {
+        w += `<path d="M${bx} ${y - h} L${bx + h * 0.28} ${y} L${bx - h * 0.28} ${y} Z" fill="var(--tanne)" opacity=".85"/>`;
+      } else {
+        w += `<rect x="${bx - 3}" y="${y - h * 0.45}" width="6" height="${h * 0.45}" fill="#6B4A2E" opacity=".7"/><circle cx="${bx}" cy="${y - h * 0.55}" r="${h * 0.3}" fill="${b.farbe}" opacity=".9"/>`;
+      }
     }
   }
   $('waldrand').innerHTML = w;
@@ -1868,9 +1925,10 @@ const Besuch = (() => {
     const vonLinks = Math.random() < 0.5;
     const el = element(id, w, h);
     if (!vonLinks) el.classList.add('links');
-    // Lichtung: im Himmelsstreifen über den Karten. Training: oben über der Wiese.
+    // Lichtung: im Himmelsstreifen über den Karten. Training: oben über der Wiese, vom Boden aus
+    // gemessen: Wächst die Karte darüber, bleibt das Tier, wo es ist, und fliegt hinter ihr durch.
     if (imHimmel) el.style.top = Math.round(rnd(9, 20) / 100 * innerHeight) + 'px';
-    else if (fliegt) el.style.top = Math.round(Math.max(4, Math.random() * (H * 0.55 - h))) + 'px';
+    else if (fliegt) el.style.bottom = Math.round(H - h - Math.max(4, Math.random() * (H * 0.55 - h))) + 'px';
     else el.style.bottom = '4px';
     ebene.appendChild(el);
     const von = vonLinks ? -w - 20 : W + 20, bis = vonLinks ? W + 20 : -w - 20;
@@ -2476,6 +2534,7 @@ $('elternBtn').addEventListener('click', () => { Ton.tipp(); resetScharf = ''; f
 $('aepfel').addEventListener('click', () => { Ton.tipp(); fensterAuf('garderobe'); });
 $('blase').addEventListener('click', () => Stimme.nochmal());
 $('blaseHome').addEventListener('click', () => Stimme.nochmal());
+$('blaseHome').querySelector('.say').addEventListener('scroll', e => rolltZeigen(e.target), { passive: true });
 if ($('blaseFranz')) $('blaseFranz').addEventListener('click', () => Stimme.nochmal());
 $('tonBtn').addEventListener('click', () => { stand.ton = !stand.ton; speichern(); tonZeigen(); if (stand.ton) Ton.richtig(); });
 $('stimmeBtn').addEventListener('click', () => {

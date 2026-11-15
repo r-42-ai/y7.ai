@@ -90,6 +90,57 @@ const Franz = (() => {
     return s;
   }
 
+  // Quer stehen die Figuren direkt auf der Eingabe (stil.css), und die ist bei jeder Übungsart anders hoch.
+  // Rückt sie die Figuren (oder streckt eine lange Blase ihre Zeile), gleiten sie an den neuen Platz, statt zu
+  // springen. Verglichen wird, wo das Layout sie hinstellt (ohne Transform): So beginnt jedes Gleiten dort,
+  // wo die Figur zu sehen ist, auch mitten in einem anderen, und auch, wenn die Figuren auf niedrigen
+  // Bildschirmen über ihre Zeile hinausragen und weniger weit rücken als sie. Nicht beim Öffnen des
+  // Bildschirms und nicht, wenn sich das Fenster ändert: Dann ist alles neu.
+  function figurenGleiten() {
+    const fig = document.querySelector('.fr-figur'), ein = $('frEingabe'), blase = $('blaseFranz');
+    if (!fig || typeof ResizeObserver === 'undefined') return;
+    const quer = matchMedia('(min-aspect-ratio: 1001/1000) and (min-width: 761px)');
+    const teile = [$('franzHoernchen'), $('franzPieks'), blase, ein];
+    const lage = el => {
+      let x = 0, y = 0;
+      for (let e = el; e; e = e.offsetParent) { x += e.offsetLeft; y += e.offsetTop; }
+      return { x, y, h: el.offsetHeight };
+    };
+    let alt = new Map(), fenster = '';
+    const ro = new ResizeObserver(() => {
+      const f = innerWidth + 'x' + innerHeight, gleich = f === fenster;
+      fenster = f;
+      const neu = new Map();
+      for (const el of teile) if (el.offsetParent) neu.set(el, lage(el));
+      const vorher = alt;
+      alt = neu;
+      if (!gleich) return;
+      for (const [el, b] of neu) {
+        const a = vorher.get(el);
+        if (!a) continue;
+        let dx = a.x - b.x, dy = a.y - b.y;
+        // Quer hängt die Blase unten an den Figuren: Es zählt ihr unterer Rand (oben wächst sie mit dem Text).
+        // Hochkant steht sie neben ihnen und wächst aus der Mitte, da gleitet sie nicht.
+        if (el === blase) {
+          if (!quer.matches) continue;
+          dx = 0; dy = (a.y + a.h) - (b.y + b.h);
+        }
+        // Wird die Eingabe quer höher, schiebt sie die Figuren vor sich her, statt sie kurz zu verdecken.
+        // Ohne Bewegung wächst sie einfach (die Figuren blenden um, hinGleiten in app.js).
+        if (el === ein) {
+          if (reduce || !quer.matches || dy <= 0) continue;
+          dx = 0;
+        }
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
+        // Gleitet es schon, geht es von dort aus weiter, wo es gerade zu sehen ist
+        const t = getComputedStyle(el).translate, [tx = 0, ty = 0] = t && t !== 'none' ? t.split(' ').map(parseFloat) : [];
+        el.getAnimations().forEach(an => { if (an.id === 'gleiten') an.cancel(); });
+        hinGleiten(el, { translate: `${dx + tx}px ${dy + ty}px`, scale: '1' }, 400);
+      }
+    });
+    for (const el of [fig, ein, blase]) ro.observe(el);
+  }
+
   // Einmal beim Start: Stand lesen, Figuren einsetzen, zuhören, Karte zeichnen
   function einrichten() {
     let roh = null;
@@ -103,6 +154,7 @@ const Franz = (() => {
     // Auf dem Französisch-Bildschirm nur ein Laut: ein Satz schnitte das Wort ab, das gerade dran ist
     svg.buehne.addEventListener('pointerdown', () => { audio(); Ton.keckern(); stimmung(svg.buehne, 'kitzel', 600); });
     svg.gast.addEventListener('pointerdown', () => { audio(); Ton.kitzeln(); stimmung(svg.gast, 'kitzel', 600); });
+    figurenGleiten();
 
     $('franzStart').addEventListener('click', () => starten('runde'));
     $('franzWoerterBtn').addEventListener('click', () => { Ton.tipp(); fensterAuf('album', 'woerter'); });
@@ -139,13 +191,17 @@ const Franz = (() => {
 
   /* ---------- Lichtung: die Karte ---------- */
 
-  // Vor dem ersten Treffen ist weder sie noch ihre Karte zu sehen
+  // Vor dem ersten Treffen ist weder sie noch ihre Karte zu sehen. Im Treffen selbst kommen beide
+  // erst, wenn sie dran sind (noch): Bis dahin steht Pieks allein, und nichts hält ihnen den Platz frei.
+  const noch = { sie: false, karte: false };
   function lichtungZeigen() {
     const da = !!frStand.vorgestellt;
-    $('heldHoernchen').hidden = !da;
-    $('franzKarte').hidden = !da;
-    document.querySelector('.held').classList.toggle('zu-zweit', da);
+    $('heldHoernchen').hidden = !da || noch.sie;
+    $('franzKarte').hidden = !da || noch.karte;
+    document.querySelector('.held').classList.toggle('zu-zweit', da && !noch.sie);
   }
+  // Was auf der Lichtung Platz macht, wenn sie oder ihre Karte dazukommt (es gleitet hin, gleiten() in app.js)
+  const lichtungTeile = () => [$('heldPieks'), $('blaseHome'), ...document.querySelectorAll('.wahl > :not(#franzKarte)')];
 
   // Die Zeile unter «Französisch» (1.1): was heute wartet, die erste passende gewinnt
   function infoZeile(z) {
@@ -303,19 +359,25 @@ const Franz = (() => {
     sichern();
     const held = $('heldHoernchen'), karte = $('franzKarte');
     const szene = ganz && bildschirm === 'lichtung' && $('fenster').hidden;
-    if (szene) {
-      held.classList.add('wartet');
-      karte.classList.add('wartet');
-    }
+    // Bis sie hereinhüpft, steht Pieks allein da; Platz für sie und ihre Karte gibt es erst, wenn sie kommen
+    if (szene) noch.sie = noch.karte = true;
     karteZeichnen();
     if (!szene) return;
     const ab = tipps;
     const gilt = () => tipps === ab && bildschirm === 'lichtung' && $('fenster').hidden;
-    // Tippt Nea irgendwo hin, steht sie sofort da; die Szene endet nach dem Satz, der gerade läuft
-    szeneWeg = () => {
-      held.classList.remove('wartet');
-      karte.classList.remove('wartet');
+    // Pieks und die Wahl gleiten zur Seite, statt zu springen. Kommen beide auf einmal (Nea tippt), ist das
+    // ein einziges Gleiten: Ein zweites mässe sonst mitten im ersten.
+    const kommen = (sie, k) => {
+      if (!(sie && noch.sie) && !(k && noch.karte)) return;
+      gleiten(lichtungTeile(), () => {
+        if (sie) noch.sie = false;
+        if (k) noch.karte = false;
+        lichtungZeigen();
+      });
     };
+    const sieKommt = () => kommen(true, false), karteKommt = () => kommen(false, true);
+    // Tippt Nea irgendwo hin, steht sie sofort da; die Szene endet nach dem Satz, der gerade läuft
+    szeneWeg = () => kommen(true, true);
     try {
       // 1. Die Krone schüttelt sich, ein Apfel fällt Pieks auf den Kopf
       await apfelFaellt();
@@ -324,7 +386,7 @@ const Franz = (() => {
       // 2. «Autsch!»
       if (!(await sagAls('p', PTEXTE.p_besuch[0])) || !gilt()) return;
       // 3. Sie hüpft herein und stellt sich vor
-      held.classList.remove('wartet');
+      sieKommt();
       await hereinHuepfen(held);
       if (!gilt()) return;
       Ton.keckern();
@@ -342,7 +404,7 @@ const Franz = (() => {
       // 5. Das Wörterheft
       if (!(await sagAls('h', HTEXTE.h_vorstellen[1])) || !gilt()) return;
       // 6. Ihre Karte springt herein
-      karte.classList.remove('wartet');
+      karteKommt();
       if (!reduce) {
         karte.classList.add('kommt');
         setTimeout(() => karte.classList.remove('kommt'), 700);

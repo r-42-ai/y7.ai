@@ -191,12 +191,18 @@
   <svg class="wolke w1" viewBox="0 0 120 56"><path d="M24 50 C10 50 4 42 6 34 C8 26 16 22 24 24 C26 12 38 6 50 10 C56 2 72 0 80 10 C90 6 102 12 102 24 C112 24 118 32 116 40 C114 48 106 50 100 50 Z"/></svg>
   <svg class="wolke w2" viewBox="0 0 120 56"><path d="M24 50 C10 50 4 42 6 34 C8 26 16 22 24 24 C26 12 38 6 50 10 C56 2 72 0 80 10 C90 6 102 12 102 24 C112 24 118 32 116 40 C114 48 106 50 100 50 Z"/></svg>
   <svg class="wolke w3" viewBox="0 0 120 56"><path d="M24 50 C10 50 4 42 6 34 C8 26 16 22 24 24 C26 12 38 6 50 10 C56 2 72 0 80 10 C90 6 102 12 102 24 C112 24 118 32 116 40 C114 48 106 50 100 50 Z"/></svg>
-  <svg class="berge" viewBox="0 0 1200 220" preserveAspectRatio="xMidYMax slice">
-    <path class="berg-fern" d="M0 220 V150 L80 118 L150 140 L240 70 L300 104 L360 84 L420 120 L520 40 L600 96 L660 72 L740 118 L820 60 L900 110 L980 86 L1060 128 L1140 96 L1200 120 V220 Z"/>
-    <path class="schnee" d="M240 70 L262 84 L250 86 L240 80 L228 88 L222 82 Z M520 40 L548 62 L534 62 L522 54 L508 64 L498 58 Z M820 60 L846 80 L832 80 L822 72 L810 82 L800 76 Z M660 72 L676 84 L664 84 L656 80 Z"/>
-    <path class="huegel-fern" d="M0 220 V176 C120 150 240 168 340 160 C460 150 560 176 700 166 C820 158 960 176 1080 162 C1140 156 1180 160 1200 162 V220 Z"/>
+  <!-- Gezeichnet ist die Kette von 0 bis 1200. Breite Fenster sehen mehr davon (stil.css): Gespiegelt
+       und verschoben geht sie nach beiden Seiten weiter, an den Nähten stimmen die Höhen. -->
+  <svg class="berge" viewBox="-2400 0 6000 220" preserveAspectRatio="xMidYMax slice">
+    <g id="bergkette">
+      <path class="berg-fern" d="M0 220 V150 L80 118 L150 140 L240 70 L300 104 L360 84 L420 120 L520 40 L600 96 L660 72 L740 118 L820 60 L900 110 L980 86 L1060 128 L1140 96 L1200 120 V220 Z"/>
+      <path class="schnee" d="M240 70 L262 84 L250 86 L240 80 L228 88 L222 82 Z M520 40 L548 62 L534 62 L522 54 L508 64 L498 58 Z M820 60 L846 80 L832 80 L822 72 L810 82 L800 76 Z M660 72 L676 84 L664 84 L656 80 Z"/>
+      <path class="huegel-fern" d="M0 220 V176 C120 150 240 168 340 160 C460 150 560 176 700 166 C820 158 960 176 1080 162 C1140 156 1180 160 1200 162 V220 Z"/>
+    </g>
+    <use href="#bergkette" transform="translate(-2400 0)"/><use href="#bergkette" transform="matrix(-1 0 0 1 0 0)"/>
+    <use href="#bergkette" transform="matrix(-1 0 0 1 2400 0)"/><use href="#bergkette" transform="translate(2400 0)"/>
   </svg>
-  <svg class="waldrand" viewBox="0 0 1200 160" preserveAspectRatio="xMidYMax slice" id="waldrand"></svg>
+  <svg class="waldrand" viewBox="-2400 0 6000 160" preserveAspectRatio="xMidYMax slice" id="waldrand"></svg>
   <div class="wiese"></div>
   <svg class="baum b-links" viewBox="0 0 160 220">
     <rect x="70" y="110" width="22" height="110" rx="9" fill="#7A5235"/>
