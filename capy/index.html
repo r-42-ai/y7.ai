@@ -1831,7 +1831,7 @@ const Stimme = (() => {
     return out;
   }
 
-  // Die Stimme des Lamas ist leiser aufgenommen als Capys: auf dieselbe Lautstärke bringen
+  // Die Aufnahmen des Lamas auf Capys Lautstärke bringen (lauter oder leiser)
   function angleichen(buf) {
     let summe = 0, spitze = 0;
     for (let k = 0; k < buf.numberOfChannels; k++) {
@@ -1841,7 +1841,7 @@ const Stimme = (() => {
     const rms = Math.sqrt(summe / Math.max(1, buf.length * buf.numberOfChannels));
     if (!rms || !spitze) return buf;
     const g = Math.min(4, 0.1 / rms, 0.97 / spitze);
-    if (g <= 1.05) return buf;
+    if (Math.abs(g - 1) < 0.08) return buf;
     for (let k = 0; k < buf.numberOfChannels; k++) {
       const d = buf.getChannelData(k);
       for (let i = 0; i < d.length; i++) d[i] *= g;

@@ -60,15 +60,15 @@ Fehlen die Russisch-Dateien, läuft Capy wie immer.
 | Stimme | Wer | Dateien |
 |---|---|---|
 | `c` | Capy, «Sandra Squirrel – Quirky Explorer» | `audio/<prüfwert>.mp3` |
-| `l` | das Lama, «Mila Svetlova – Russian Fairy» (Russisch als Muttersprache) | `audio/l-<prüfwert>.mp3`, langsam `audio/ll-…` |
+| `l` | das Lama, «Kate – Multilingual Storyteller» (Russisch und Deutsch) | `audio/l-<prüfwert>.mp3`, langsam `audio/ll-…` |
 
 - Der Dateiname ist ein Prüfwert über den gesprochenen Text: Ändert sich ein Satz,
   entsteht eine neue Datei.
 - Zeilen des Lamas mischen Sprachen: `'{Молодец!} Das war richtig.'`. Russisches in
   geschweiften Klammern ist eine eigene Aufnahme; die App hängt die Stücke aneinander.
   Wörter und Sätze gibt es normal (Tempo 0.9) und langsam (0.7).
-- Das Lama ist leiser aufgenommen als Capy; die App gleicht die Lautstärke an, bevor sie
-  die Stille am Rand abschneidet.
+- Die App bringt die Aufnahmen des Lamas auf Capys Lautstärke, bevor sie die Stille am
+  Rand abschneidet (sonst gingen leise Anfänge wie с, ф, х verloren).
 
 Ablauf:
 1. Texte ändern, `node capy/pruefe.mjs`.

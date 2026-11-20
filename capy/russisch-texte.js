@@ -22,8 +22,9 @@
    ===================================================================== */
 
 const LAMA = {
-  // ElevenLabs «Mila Svetlova – Russian Fairy»: jung, verspielt, Muttersprache Russisch
-  stimme: 'RxivyypsDodFBfmDDOZF',
+  // ElevenLabs «Kate – Multilingual Storyteller»: spricht Russisch und Deutsch,
+  // von Yunas Familie aus drei Hörproben ausgewählt (vorher «Mila Svetlova»)
+  stimme: 'R38XE2306Hb4iCupQ3X3',
   // Zur Wahl, wenn das Lama ankommt. Yuna sucht aus; ändern geht in der Russisch-Ecke.
   namen: [
     { id: 'puschinka', de: 'Puschinka', ru: 'Пушинка', heisst: 'Flöckchen',
