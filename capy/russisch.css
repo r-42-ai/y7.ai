@@ -81,20 +81,7 @@
 .lama-ankunft .lama-gross { width: 140px; margin: -2px auto 2px; }
 .lama-ankunft h1 { color: var(--ru-farbe); }
 .lama-text { min-height: 3.9em; display: flex; align-items: center; justify-content: center; }
-.namen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 10px 0 4px; }
-.namen[hidden], .lama-knoepfe[hidden] { display: none; }
-.name-wahl {
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: 10px 8px 9px;
-  border-radius: 20px;
-  background: #fff;
-  box-shadow: 0 4px 0 #E6D9BC;
-}
-.name-wahl b { font-size: 26px; color: var(--ru-farbe); line-height: 1.15; }
-.name-wahl span { font-size: 17px; }
-.name-wahl small { font-size: 13px; color: var(--soft); }
-.name-wahl:active { transform: translateY(3px); box-shadow: 0 1px 0 #E6D9BC; }
-.name-wahl.an { background: #EAF8DF; box-shadow: 0 4px 0 var(--leaf-edge), inset 0 0 0 3px var(--leaf-edge); }
+.lama-knoepfe[hidden] { display: none; }
 .lama-spaeter { margin-top: 12px; font-size: 17px; font-weight: 800; color: var(--soft); text-decoration: underline; text-underline-offset: 3px; }
 
 /* ---------- Die Ecke ---------- */

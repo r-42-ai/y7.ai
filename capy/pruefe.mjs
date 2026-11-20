@@ -58,7 +58,7 @@ if (zahlen.join() !== '1,2,3,4,5,6,7,8,9,10') fehler.push('Zahlwörter: ' + zahl
 // Sprachen sauber getrennt
 const alleZeilen = [];
 for (const v of Object.values(R.LAMA_TEXTE)) alleZeilen.push(...(Array.isArray(v) ? v : Object.values(v)));
-alleZeilen.push(...R.BUCHSTABEN.map(b => b.text), ...R.STATIONEN.map(s => s.start), ...R.LAMA.namen.map(n => n.satz));
+alleZeilen.push(...R.BUCHSTABEN.map(b => b.text), ...R.STATIONEN.map(s => s.start), R.LAMA.name.satz);
 for (const z of alleZeilen) {
   for (const x of R.stuecke(z)) {
     if (x.ru && /[A-Za-zÄÖÜäöü]/.test(x.t)) fehler.push('Russisches Stück mit lateinischen Buchstaben: «' + x.t + '»');

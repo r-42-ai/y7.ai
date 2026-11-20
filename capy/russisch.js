@@ -19,19 +19,18 @@
   if (typeof LAMA === 'undefined' || typeof Stimme === 'undefined') return;
 
   /* ---------- Lernstand ----------
-     name: ausgesuchter Name · da: das Lama ist bei Capy angekommen
+     da: das Lama ist bei Capy angekommen
      stationen: Nummer → { sterne } der geschafften Stationen
      items: 'b:М', 'w:кот', 's:Это кот.', 'z:Привет!' → { k: Stärke 0–5, n: so oft gesehen, z: Tag }
      heute: Tag der letzten Runde · runden: alle Runden zusammen          */
   const SPEICHER = 'y7.capy.russisch';
   const tagHeute = () => { const d = new Date(); return Math.floor((d - d.getTimezoneOffset() * 6e4) / 864e5); };
   const ru = (() => {
-    const s = { name: '', da: false, stationen: {}, items: {}, heute: 0, runden: 0 };
+    const s = { da: false, stationen: {}, items: {}, heute: 0, runden: 0 };
     try {
       const raw = JSON.parse(localStorage.getItem(SPEICHER) || 'null');
       if (raw && typeof raw === 'object') {
-        if (LAMA.namen.some(n => n.id === raw.name)) s.name = raw.name;
-        s.da = raw.da === true && !!s.name;
+        s.da = raw.da === true;
         if (raw.stationen && typeof raw.stationen === 'object') {
           for (const [k, v] of Object.entries(raw.stationen)) {
             if (STATIONEN.some(x => x.nr === +k) && v && [1, 2, 3].includes(v.sterne)) s.stationen[+k] = { sterne: v.sterne };
@@ -52,7 +51,6 @@
   })();
   const sichern = () => { try { localStorage.setItem(SPEICHER, JSON.stringify(ru)); } catch (e) { /* privater Modus o.ä. */ } };
 
-  const lamaName = () => LAMA.namen.find(n => n.id === ru.name) || null;
   const gesehen = k => !!(ru.items[k] && ru.items[k].n > 0);
   const staerke = k => (ru.items[k] ? ru.items[k].k : 0);
   // ergebnis: true = gleich richtig, false = daneben, null = nur angeschaut
@@ -151,7 +149,7 @@
   const ruHtml = st => st.map(x => (x.ru
     ? `<span class="ru-t" lang="ru">${esc(x.t)}</span>` + (RU_DE[x.t] ? ` <small class="ru-ue">${esc(RU_DE[x.t])}</small>` : '')
     : esc(x.t))).join(' ');
-  const teile = zeile => { const n = lamaName(); return n ? mitName(zeile, n) : stuecke(zeile); };
+  const teile = zeile => mitName(zeile, LAMA.name);
   function sprich(html, aufnahmen) {
     const nr = ++sprichNr, lama = buehne.lama;
     if (html !== null && buehne.sagt) {
@@ -203,8 +201,8 @@
   function zeigeLamaBeiCapy(neu) {
     platz.hidden = !ru.da;
     kopfKnopf.hidden = !ru.da;
-    const n = lamaName();
-    if (n) {
+    const n = LAMA.name;
+    {
       platz.setAttribute('aria-label', n.de + ': Russisch lernen');
       kopfKnopf.setAttribute('aria-label', 'Russisch mit ' + n.de);
       $('losRu').innerHTML = `Russisch mit ${esc(n.de)} ` + '<span lang="ru">' + esc(n.ru) + '</span>';
@@ -263,8 +261,7 @@
   TEXTE.tipp_lama = CAPY_LAMA.tipp;
 
   /* =====================================================================
-     ANKUNFT: Beim ersten Mal kommt das Lama zu Capy, und Yuna sucht ihm
-     einen Namen aus. Dieselbe Karte dient später zum Umbenennen.
+     ANKUNFT: Beim ersten Mal kommt das Lama zu Capy und stellt sich vor.
      ===================================================================== */
   const ankunftEl = document.createElement('div');
   ankunftEl.className = 'overlay';
@@ -275,10 +272,6 @@
       <div class="lama-gross">${lamaSvg('lama-karte')}</div>
       <h1 id="lamaTitel" lang="ru">Привет!</h1>
       <p class="lama-text"><span id="lamaText" aria-live="polite"></span></p>
-      <div class="namen" id="lamaNamen" hidden>
-        ${LAMA.namen.map(n => `<button class="name-wahl" type="button" data-name="${n.id}">
-          <b lang="ru">${esc(n.ru)}</b><span>${esc(n.de)}</span><small>${esc(n.heisst)}</small></button>`).join('')}
-      </div>
       <div class="lama-knoepfe" id="lamaKnoepfe" hidden>
         <button class="go" id="lamaLos" type="button">Russisch lernen!</button>
         <button class="lama-spaeter" id="lamaSpaeter" type="button">Später</button>
@@ -286,7 +279,6 @@
     </div>`;
   document.body.appendChild(ankunftEl);
   const karteLama = ankunftEl.querySelector('.lama');
-  let ankunftModus = '';   // 'neu' oder 'umbenennen'
 
   const faellig = () => !ru.da && stand.intro && stand.solved >= 3 && $('intro').hidden;
   function ankunftPruefen(ms) {
@@ -296,11 +288,15 @@
   $('go').addEventListener('click', () => ankunftPruefen(350));
   $('next').addEventListener('click', () => ankunftPruefen(700));
 
+  // Sagt den eigenen Namen auf Russisch und auf Deutsch
+  function namenSagen() {
+    const st = stuecke(LAMA.name.satz);
+    return sprich(`<span class="ru-t" lang="ru">${esc(ichHeisse())}</span> ${ruHtml(st)}`,
+      [lamaWort(ichHeisse())].concat(st.map(x => lamaAufnahme(x))));
+  }
   async function ankunft() {
-    ankunftModus = 'neu';
     ankunftEl.hidden = false;
     $('lamaTitel').textContent = 'Привет!';
-    $('lamaNamen').hidden = true;
     $('lamaKnoepfe').hidden = true;
     buehne = { lama: karteLama, sagt: $('lamaText') };
     // Capy spricht mit Capys Stimme
@@ -308,50 +304,20 @@
     $('lamaText').textContent = anzeigetext(capySatz);
     if (!(await Stimme.einwurf([sprechtext(capySatz)])) || ankunftEl.hidden) return;
     if (!(await sagL(LAMA_TEXTE.ankunft[0])) || ankunftEl.hidden) return;
-    $('lamaNamen').hidden = false;
-    await sagL(LAMA_TEXTE.ohne_name[0]);
-  }
-  function umbenennen() {
-    ankunftModus = 'umbenennen';
-    ankunftEl.hidden = false;
-    const n = lamaName();
-    $('lamaTitel').textContent = n ? n.ru : 'Привет!';
-    $('lamaNamen').hidden = false;
-    $('lamaKnoepfe').hidden = true;
-    buehne = { lama: karteLama, sagt: $('lamaText') };
-    sagL(LAMA_TEXTE.anderer_name[0]);
-  }
-  ankunftEl.addEventListener('click', async e => {
-    const b = e.target.closest('.name-wahl');
-    if (!b) return;
-    audio();
-    const n = LAMA.namen.find(x => x.id === b.dataset.name);
-    const ersteMal = !ru.da;
-    ru.name = n.id;
+    // Ab jetzt ist das Lama da, auch wenn die Karte zugeht
     ru.da = true;
     sichern();
-    ankunftEl.querySelectorAll('.name-wahl').forEach(x => x.classList.toggle('an', x === b));
-    $('lamaTitel').textContent = n.ru;
+    $('lamaTitel').textContent = LAMA.name.ru;
     Ton.freund();
     freuen(karteLama, 1600);
-    zeigeLamaBeiCapy(ersteMal);
-    eckeTitel();
-    const ich = 'Меня зовут ' + n.ru + '!';
-    const st = stuecke(n.satz);
-    const html = `<span class="ru-t" lang="ru">${esc(ich)}</span> ${ruHtml(st)}`;
-    if (!(await sprich(html, [lamaWort(ich)].concat(st.map(x => lamaAufnahme(x))))) || ankunftEl.hidden) return;
-    if (ankunftModus === 'umbenennen') {
-      ankunftEl.hidden = true;
-      if (!$('ru').hidden) buehne = { lama: eckeLama, sagt: $('ruSagt') };
-      return;
-    }
-    $('lamaNamen').hidden = true;
+    zeigeLamaBeiCapy(true);
+    if (!(await namenSagen()) || ankunftEl.hidden) return;
     const schoen = CAPY_LAMA.schoener_name[0];
     $('lamaText').textContent = anzeigetext(schoen);
     if (!(await Stimme.einwurf([sprechtext(schoen)])) || ankunftEl.hidden) return;
     $('lamaKnoepfe').hidden = false;
     await sagL(LAMA_TEXTE.lernen[0]);
-  });
+  }
   $('lamaLos').addEventListener('click', () => { ankunftEl.hidden = true; eckeAuf(); });
   $('lamaSpaeter').addEventListener('click', () => {
     ankunftEl.hidden = true;
@@ -383,7 +349,7 @@
     </div>
     <header class="ru-bar">
       <button class="round pill" id="ruZu" type="button" aria-label="Zurück zu Capy">${ICON.haus}</button>
-      <button class="ru-name pill" id="ruName" type="button" aria-label="Namen ändern"></button>
+      <button class="ru-name pill" id="ruName" type="button"></button>
       <div class="count pill ru-m" aria-label="Mandarinen">${ICON.mandarine}<span id="ruM">0</span></div>
       <button class="round pill" id="ruTon" type="button" aria-label="Ton"></button>
     </header>
@@ -399,8 +365,8 @@
   const inhalt = $('ruInhalt');
 
   function eckeTitel() {
-    const n = lamaName();
-    $('ruName').innerHTML = n ? `Russisch mit <b>${esc(n.de)}</b> <span lang="ru">${esc(n.ru)}</span>` : 'Russisch';
+    const n = LAMA.name;
+    $('ruName').innerHTML = `Russisch mit <b>${esc(n.de)}</b> <span lang="ru">${esc(n.ru)}</span>`;
   }
   function tonKnopf() {
     $('ruTon').innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="${stand.stimme ? '#i-ton' : '#i-stumm'}"/></svg>`;
@@ -430,7 +396,8 @@
     wachHalten();
   }
   $('ruZu').addEventListener('click', eckeZu);
-  $('ruName').addEventListener('click', umbenennen);
+  // Tipp auf den Namen: das Lama sagt, wie es heisst
+  $('ruName').addEventListener('click', () => { freuen(eckeLama); namenSagen(); });
   $('ruTon').addEventListener('click', () => {
     stand.stimme = !stand.stimme;
     speichern();

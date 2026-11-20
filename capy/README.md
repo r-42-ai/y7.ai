@@ -13,9 +13,10 @@ läuft auch auf dem Handy und am Computer. Installierbar und ohne Internet spiel
   `?jz=winter` (fruehling, sommer, herbst) und `?zeit=nacht` (tag, abend).
 
 ## Russisch mit dem Lama
-Capys Freundin ist ein Lama aus Russland. Es kommt nach der dritten Pyramide, und Yuna
-sucht ihm einen Namen aus (Пушинка, Маша, Мила oder Бублик; ändern: Tipp auf den Namen
-oben in der Russisch-Ecke). Danach steht es auf der Wiese, jubelt manchmal auf Russisch
+Capys Freundin ist ein Lama aus Russland und heisst **Пупок** (Pupok, «Bauchnabel»), so
+hat es Yuna ausgesucht. Es kommt nach der dritten Pyramide und stellt sich vor (ein Tipp
+auf den Namen oben in der Russisch-Ecke, und es sagt ihn nochmal). Danach steht es auf
+der Wiese, jubelt manchmal auf Russisch
 mit, und ein Tipp darauf (oder der Lama-Knopf oben, oder der blaue Knopf auf der
 Begrüssungskarte) öffnet die **Russisch-Ecke**.
 
@@ -52,9 +53,9 @@ Fehlen die Russisch-Dateien, läuft Capy wie immer.
 
 ## Speicher (nur im Browser, pro Gerät)
 - `y7.pyr.stand`: Stufe, Pyramiden, Mandarinen, Hüte, Album, Fakten, Einstellungen
-- `y7.capy.russisch`: Name des Lamas, geschaffte Stationen, Stärke jedes Buchstabens,
-  Worts und Satzes. «Russisch-Fortschritt löschen» im Elternbereich (Fragezeichen)
-  löscht nur das; Name und Lama bleiben.
+- `y7.capy.russisch`: ob das Lama schon da ist, geschaffte Stationen, Stärke jedes
+  Buchstabens, Worts und Satzes. «Russisch-Fortschritt löschen» im Elternbereich
+  (Fragezeichen) löscht nur das Gelernte; das Lama bleibt.
 
 ## Vertonung (ElevenLabs)
 | Stimme | Wer | Dateien |

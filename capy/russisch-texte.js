@@ -16,8 +16,7 @@
    Zeilen des Lamas: Russisches steht in geschweiften Klammern und ist eine
    eigene Aufnahme, der Rest ist Deutsch (mit Akzent, sie kommt ja aus
    Russland):  '{Молодец!} Das war richtig.'
-   %name% wird durch den Namen ersetzt, den Yuna ausgesucht hat; solche
-   Zeilen gibt es für jeden Namen einmal als Aufnahme.
+   %name% wird durch den Namen des Lamas ersetzt (LAMA.name).
    Die Umschrift (um) ist deutsch, der Akzent zeigt die betonte Silbe.
    ===================================================================== */
 
@@ -25,17 +24,9 @@ const LAMA = {
   // ElevenLabs «Kate – Multilingual Storyteller»: spricht Russisch und Deutsch,
   // von Yunas Familie aus drei Hörproben ausgewählt (vorher «Mila Svetlova»)
   stimme: 'R38XE2306Hb4iCupQ3X3',
-  // Zur Wahl, wenn das Lama ankommt. Yuna sucht aus; ändern geht in der Russisch-Ecke.
-  namen: [
-    { id: 'puschinka', de: 'Puschinka', ru: 'Пушинка', heisst: 'Flöckchen',
-      satz: 'Ich heisse Puschinka! Das heisst Flöckchen, weil ich so flauschig bin.' },
-    { id: 'mascha', de: 'Mascha', ru: 'Маша', heisst: 'ein russischer Mädchenname',
-      satz: 'Ich heisse Mascha! So heissen in Russland ganz viele Mädchen.' },
-    { id: 'mila', de: 'Mila', ru: 'Мила', heisst: 'lieb',
-      satz: 'Ich heisse Mila! Das bedeutet lieb.' },
-    { id: 'bublik', de: 'Bublik', ru: 'Бублик', heisst: 'Kringel',
-      satz: 'Ich heisse Bublik! So heisst in Russland ein runder Kringel zum Knabbern. Lecker!' },
-  ],
+  // Yuna hat den Namen ausgesucht: Пупок heisst Bauchnabel
+  name: { de: 'Pupok', ru: 'Пупок', heisst: 'Bauchnabel',
+    satz: 'Ich heisse Pupok! Das heisst Bauchnabel. Lustig, oder?' },
 };
 
 /* ---------- Buchstaben ----------
@@ -292,8 +283,6 @@ const ZAUBERWOERTER = [
 const LAMA_TEXTE = {
   // Ankunft bei Capy
   ankunft: ['{Привет!} Das heisst Hallo! Ich bin ein Lama und komme aus Russland, von ganz weit weg.'],
-  ohne_name: ['Ich habe noch keinen Namen. Such mir einen aus!'],
-  anderer_name: ['Wie soll ich heissen? Such dir einen Namen aus!'],
   lernen: ['Möchtest du mit mir Russisch lernen? Unsere Buchstaben sehen ganz anders aus. Ich zeig sie dir!'],
   spaeter: ['Kein Problem! Tipp einfach auf mich, wenn du Lust hast.'],
 
@@ -406,6 +395,7 @@ const lamaWort = (ru, langsam) => ({ w: 'l', s: ru, langsam: !!langsam });
 const wortSagt = w => w.sagt || 'Das heisst ' + w.de + (/[.!?]$/.test(w.de) ? '' : '.');
 const satzSagt = s => 'Das heisst: ' + s.de;
 const buchstabe = b => BUCHSTABEN.find(x => x.b === b);
+const ichHeisse = () => 'Меня зовут ' + LAMA.name.ru + '!';
 const stationVon = b => (STATIONEN.find(s => s.b.includes(b)) || {}).nr;
 
 // Alle Aufnahmen der Russisch-Ecke, mit gedachtem Satz davor (nicht gesprochen),
@@ -435,7 +425,8 @@ function russischAufnahmen() {
     if (!z.zahl) l(z.ru, 'wort', true);
     zeile(wortSagt(z));
   }
-  for (const n of LAMA.namen) { l('Меня зовут ' + n.ru + '!', 'wort'); zeile(n.satz); }
+  l(ichHeisse(), 'wort');
+  zeile(LAMA.name.satz);
   // Capys Sätze, mit Capys Stimme
   for (const pool of Object.values(CAPY_LAMA)) {
     for (const e of pool) liste.push({ s: TX.sprechtext(e), stimme: 'c', datei: TX.kennung(TX.sprechtext(e)), vorher: '', nachher: '', lebhaft: true, kurz: false, tempo: 1 });
@@ -452,5 +443,5 @@ function alleAufnahmen() {
 
 if (typeof module !== 'undefined') {
   module.exports = { LAMA, BUCHSTABEN, ALPHABET, STATIONEN, WOERTER, SAETZE, ZAUBERWOERTER, LAMA_TEXTE, RU_DE, CAPY_LAMA,
-    stuecke, mitName, lamaAufnahme, lamaWort, wortSagt, satzSagt, buchstabe, stationVon, russischAufnahmen, alleAufnahmen };
+    stuecke, mitName, lamaAufnahme, lamaWort, wortSagt, satzSagt, buchstabe, ichHeisse, stationVon, russischAufnahmen, alleAufnahmen };
 }
