@@ -1,0 +1,479 @@
+/* =====================================================================
+   RUSSISCH-ECKE: das Lama bei Capy, seine Ankunft und die Ecke selbst.
+   Farben und Schrift kommen aus index.html (:root).
+   ===================================================================== */
+:root {
+  --ru-farbe: #2B5BB0;          /* russischer Text */
+  --art-freund: #4EA63A;
+  --art-schwindler: #E07B00;
+  --art-neu: #2B7BC0;
+}
+
+/* ---------- Das Lama ---------- */
+.lama { display: block; overflow: visible; }
+.lama .mund-auf, .lama .augen-froh { display: none; }
+.lama .augen { transform-box: fill-box; transform-origin: center; animation: blinkeye 5.2s infinite; }
+.lama .lama-kopf { transform-box: view-box; transform-origin: 60px 92px; }
+.lama .ohr { transform-box: fill-box; transform-origin: 50% 100%; }
+.lama .ohr.r { animation: ohr-zucken 7s ease-in-out infinite; }
+.lama.froh .augen { display: none; }
+.lama.froh .augen-froh { display: inline; }
+.lama.froh { animation: lama-hops .5s ease-out 2; }
+.lama.froh .ohr.l { animation: ohr-l .3s ease-in-out 4 alternate; }
+.lama.froh .ohr.r { animation: ohr-r .3s ease-in-out 4 alternate; }
+.lama.spricht .lama-kopf { animation: lama-nicken .8s ease-in-out infinite; }
+.lama.spricht .mund-zu { animation: mund-zu .32s steps(1) infinite; }
+.lama.spricht .mund-auf { display: inline; animation: mund-auf .32s steps(1) infinite; }
+.lama.oops .lama-kopf { animation: tilt .7s ease-in-out; }
+@keyframes mund-auf { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes mund-zu { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
+@keyframes lama-nicken { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-3deg) translateY(1px); } }
+@keyframes lama-hops { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-9%); } }
+@keyframes ohr-l { from { transform: rotate(0); } to { transform: rotate(-14deg); } }
+@keyframes ohr-r { from { transform: rotate(0); } to { transform: rotate(14deg); } }
+@keyframes ohr-zucken { 0%, 90%, 100% { transform: rotate(0); } 93% { transform: rotate(12deg); } 96% { transform: rotate(-4deg); } }
+
+/* Auf Capys Wiese: im Streifen unter der Pyramide, zwischen den anderen Freunden */
+.lama-platz {
+  position: absolute;
+  bottom: 0;
+  left: 18%;
+  height: 112%;
+  aspect-ratio: 120 / 150;
+  pointer-events: auto;
+  cursor: pointer;
+  filter: drop-shadow(0 3px 0 rgba(var(--schatten), 0.2));
+}
+.lama-platz[hidden] { display: none; }
+.lama-platz .lama { width: 100%; height: 100%; }
+.lama-platz.kommt { animation: lama-kommt 1.8s cubic-bezier(.25, .9, .4, 1) both; }
+@keyframes lama-kommt { from { transform: translateX(70vw); } 75% { transform: translateX(-6%); } to { transform: none; } }
+.lama-sprech {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 4px;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 3px 0 rgba(60, 120, 150, 0.15);
+  animation: talk .35s ease-out;
+}
+.lama-sprech[hidden] { display: none; }
+@media (orientation: landscape) and (min-width: 700px) { .lama-platz { left: 37%; } }
+@media (max-width: 480px) { .lama-platz { left: 1%; height: 100%; } }
+
+/* Knopf oben (nur wo Platz ist; sonst tippt man auf das Lama) */
+.round.ru-kopfknopf { display: none; }
+.ru-kopfknopf .lama { width: 34px; height: 34px; }
+@media (min-width: 560px) { .round.ru-kopfknopf:not([hidden]) { display: grid; } }
+.go.zweit { margin-top: 10px; height: 56px; font-size: 21px; background: #3D9BE0; box-shadow: 0 6px 0 #2B7BC0; }
+.go.zweit:active { box-shadow: 0 2px 0 #2B7BC0; }
+.go.zweit[hidden] { display: none; }
+[lang="ru"] { font-variant-ligatures: none; }
+
+/* ---------- Ankunft und Namenswahl ---------- */
+.lama-ankunft { max-width: 460px; }
+.lama-ankunft .lama-gross { width: 140px; margin: -2px auto 2px; }
+.lama-ankunft h1 { color: var(--ru-farbe); }
+.lama-text { min-height: 3.9em; display: flex; align-items: center; justify-content: center; }
+.namen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 10px 0 4px; }
+.namen[hidden], .lama-knoepfe[hidden] { display: none; }
+.name-wahl {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 10px 8px 9px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 4px 0 #E6D9BC;
+}
+.name-wahl b { font-size: 26px; color: var(--ru-farbe); line-height: 1.15; }
+.name-wahl span { font-size: 17px; }
+.name-wahl small { font-size: 13px; color: var(--soft); }
+.name-wahl:active { transform: translateY(3px); box-shadow: 0 1px 0 #E6D9BC; }
+.name-wahl.an { background: #EAF8DF; box-shadow: 0 4px 0 var(--leaf-edge), inset 0 0 0 3px var(--leaf-edge); }
+.lama-spaeter { margin-top: 12px; font-size: 17px; font-weight: 800; color: var(--soft); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- Die Ecke ---------- */
+body.ru-offen { overflow: hidden; }
+.ru {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: linear-gradient(180deg, #BFE3F7 0%, #E2F3FB 52%, #D6EFBF 80%, #ADDB8A 100%);
+}
+.ru[hidden] { display: none; }
+.ru-szene { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.ru-birke { position: absolute; bottom: -2%; height: 62%; width: auto; aspect-ratio: 60 / 200; opacity: .9; }
+.ru-birke.b1 { left: -1%; }
+.ru-birke.b2 { right: 1%; height: 48%; --birke: #9AD47A; }
+.ru-bar, .ru-haupt { position: relative; z-index: 1; }
+.ru-bar { display: flex; align-items: center; gap: 8px; padding: 10px 16px 6px; }
+.ru-name {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 16px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ink);
+  text-align: left;
+}
+.ru-name span { color: var(--ru-farbe); margin-left: 4px; }
+.ru-m { padding-right: 12px; }
+.ru-haupt {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  padding: 2px 16px 16px;
+}
+.ru-lama { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ru-lama .lama { flex: none; width: clamp(78px, 19vw, 130px); }
+.ru-blase {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 62px;
+  padding: 10px 14px;
+  border-radius: 20px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  font-size: clamp(15px, 3.6vmin, 19px);
+  line-height: 1.25;
+  box-shadow: 0 4px 0 rgba(30, 90, 120, 0.15);
+  cursor: pointer;
+}
+.ru-blase::before {
+  content: "";
+  position: absolute;
+  left: -8px; top: 50%;
+  width: 18px; height: 18px;
+  margin-top: -9px;
+  background: #fff;
+  transform: rotate(45deg);
+  border-radius: 3px;
+}
+.ru-blase span { position: relative; }
+.ru-blase.pop { animation: talk .35s ease-out; }
+.ru-t { color: var(--ru-farbe); font-weight: 800; }
+.ru-t.ru-gross { font-size: 1.5em; vertical-align: -0.1em; }
+.ru-ue { color: var(--soft); font-size: .82em; font-weight: 700; }
+
+.ru-inhalt {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px;
+  border-radius: 28px;
+  background: rgba(255, 251, 240, 0.94);
+  box-shadow: 0 8px 0 rgba(60, 120, 150, 0.14), 0 22px 40px -24px rgba(30, 80, 110, 0.6);
+  display: flex;
+  flex-direction: column;
+}
+/* Querformat: das Lama links, gross, die Blase darunter */
+@media (orientation: landscape) and (min-width: 700px) {
+  .ru-haupt { grid-template-columns: clamp(220px, 27vw, 330px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 16px; }
+  .ru-lama { flex-direction: column; justify-content: center; gap: 14px; }
+  .ru-lama .lama { width: min(84%, 230px); }
+  .ru-blase { flex: none; width: 100%; min-height: 84px; }
+  .ru-blase::before { left: 50%; top: -8px; margin: 0 0 0 -9px; }
+}
+
+/* ---------- Karte mit den Matrjoschkas ---------- */
+.matrjoschkas { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px 10px; }
+.matr { position: relative; display: block; padding: 0 0 22px; }
+.matr .matr-bild { width: 100%; height: auto; filter: drop-shadow(0 3px 0 rgba(90, 58, 28, 0.15)); }
+.matr-b {
+  position: absolute;
+  left: 18%; right: 18%;
+  top: 56%;
+  transform: translateY(-50%);
+  font-size: clamp(11px, 2.3vmin, 16px);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--ink);
+  text-align: center;
+  word-spacing: -.05em;
+}
+.matr-b.viele { top: 60%; font-size: clamp(9px, 1.7vmin, 12px); word-spacing: -.15em; }
+.matr.gross .matr-b.viele { font-size: clamp(13px, 3vmin, 19px); }
+.matr-st { position: absolute; left: 0; right: 0; bottom: 0; font-size: 15px; color: #F5A300; letter-spacing: .05em; text-align: center; }
+.matr.gesperrt .matr-bild { filter: grayscale(1); opacity: .42; }
+.matr.gesperrt .matr-b { opacity: .45; }
+.matr.gesperrt .matr-st { font-size: 13px; }
+.matr.jetzt .matr-bild { animation: matr-wackeln 2.4s ease-in-out infinite; transform-origin: 50% 95%; }
+.matr.jetzt::after {
+  content: "";
+  position: absolute;
+  inset: -4px -2px 18px;
+  border-radius: 40% 40% 34% 34%;
+  border: 4px solid rgba(255, 194, 31, 0.6);
+  animation: glow 1.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.matr.gross { width: clamp(110px, 24vmin, 170px); margin: 0 auto; padding: 0; }
+.matr.gross .matr-b { font-size: clamp(16px, 4vmin, 26px); }
+.matr.gross::after { inset: -6px; }
+@keyframes matr-wackeln { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+.ru-menue { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: auto; padding-top: 14px; }
+.ru-los { grid-column: 1 / -1; margin: 0; height: 60px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.ru-los svg, .ru-weiter svg { width: 30px; height: 30px; }
+.ru-knopf {
+  height: 52px;
+  padding: 0 8px;
+  border-radius: 18px;
+  font-size: 17px;
+  font-weight: 800;
+  color: #fff;
+  box-shadow: 0 5px 0 var(--k2);
+}
+.ru-knopf:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--k2); }
+.ru-knopf:disabled { opacity: .45; cursor: default; }
+.ru-knopf.gelb { background: #F5B400; --k2: #D49500; }
+.ru-knopf.blau { background: #3D9BE0; --k2: #2B7BC0; }
+.ru-knopf.lila { background: #8B6BD8; --k2: #6C4FBA; }
+.ru-knopf span { margin-right: 2px; }
+
+/* ---------- Runde ---------- */
+.ru-kopf { display: flex; align-items: center; gap: 10px; }
+.ru-x { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--soft); background: #F3E9D2; }
+.ru-x svg { width: 20px; height: 20px; }
+.ru-fortschritt { flex: 1; height: 12px; border-radius: 99px; background: #EFE4CC; overflow: hidden; }
+.ru-fortschritt i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #A6E488, #5DB84B); transition: width .5s ease; }
+.ru-frage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 4px;
+  text-align: center;
+}
+.ru-titel { margin: 4px 0 0; font-size: 24px; font-weight: 800; }
+.ru-wdh-bild { font-size: clamp(64px, 14vmin, 110px); line-height: 1; }
+.ru-b-gross {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .12em;
+  font-size: clamp(84px, 19vmin, 150px);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ru-farbe);
+}
+.ru-b-gross small { font-size: .5em; opacity: .75; }
+.ru-b-gross.art-freund { color: var(--art-freund); }
+.ru-b-gross.art-schwindler { color: var(--art-schwindler); }
+.ru-b-gross.art-neu { color: var(--art-neu); }
+.art-zeichen { padding: 4px 14px; border-radius: 999px; font-size: 15px; font-weight: 800; color: #fff; }
+.art-zeichen.art-freund { background: var(--art-freund); }
+.art-zeichen.art-schwindler { background: var(--art-schwindler); }
+.art-zeichen.art-neu { background: var(--art-neu); }
+.ru-merk {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 6px 18px 6px 10px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 3px 0 #E6D9BC;
+  font-size: clamp(20px, 4.4vmin, 30px);
+  color: var(--ru-farbe);
+}
+.ru-merk .bild { font-size: 1.5em; line-height: 1; }
+.ru-bild-gross { font-size: clamp(64px, 15vmin, 120px); line-height: 1.05; }
+.ru-bild-mittel { font-size: clamp(48px, 11vmin, 84px); line-height: 1.05; }
+.ru-wort-gross { font-size: clamp(36px, 8.6vmin, 70px); font-weight: 800; letter-spacing: .06em; color: var(--ru-farbe); line-height: 1.1; }
+.ru-satz-gross { font-size: clamp(26px, 6vmin, 46px); font-weight: 800; color: var(--ru-farbe); line-height: 1.15; }
+.ru-de { margin: 0; font-size: 19px; color: var(--soft); }
+.ru-de.gross { font-size: clamp(19px, 4vmin, 26px); color: var(--ink); }
+.ru-um { margin: 0; font-size: 18px; color: var(--soft); font-style: italic; }
+.ru-hoer {
+  width: clamp(72px, 15vmin, 104px); height: clamp(72px, 15vmin, 104px);
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: #3D9BE0;
+  color: #fff;
+  box-shadow: 0 6px 0 #2B7BC0;
+}
+.ru-hoer svg { width: 52%; height: 52%; }
+.ru-hoer:active { transform: translateY(4px); box-shadow: 0 2px 0 #2B7BC0; }
+.ru-hoer.klein { width: 52px; height: 52px; box-shadow: 0 4px 0 #2B7BC0; }
+
+.ru-antworten { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-top: 4px; }
+.ru-antworten.neu, .ru-antworten.start { display: flex; justify-content: center; }
+.ru-wahl {
+  min-height: clamp(74px, 13vmin, 110px);
+  padding: 8px;
+  border-radius: 22px;
+  background: #fff;
+  font-size: clamp(36px, 8vmin, 60px);
+  font-weight: 800;
+  color: var(--ink);
+  box-shadow: 0 5px 0 #E0D0AE, 0 8px 14px -8px rgba(90, 58, 28, 0.35);
+  transition: transform .06s;
+}
+.ru-wahl[lang="ru"] { color: var(--ru-farbe); }
+.ru-wahl:active { transform: translateY(4px); box-shadow: 0 1px 0 #E0D0AE; }
+.ru-antworten.bilder .ru-wahl { font-size: clamp(44px, 10vmin, 78px); }
+.ru-antworten.woerter { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.ru-antworten.woerter .ru-wahl { font-size: clamp(22px, 4.6vmin, 34px); letter-spacing: .05em; }
+.ru-antworten.saetze { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.ru-antworten.saetze .ru-wahl { min-height: 58px; font-size: clamp(18px, 3.6vmin, 24px); text-align: left; padding: 10px 18px; }
+.ru-wahl.richtig, .paar.richtig { background: var(--leaf); color: var(--leaf-ink); box-shadow: 0 5px 0 var(--leaf-edge); }
+.ru-wahl.falsch { background: #FFE0DA; color: #B4532A; box-shadow: 0 5px 0 var(--err); animation: shake .45s ease-in-out; }
+.ru-wahl.loesung { box-shadow: 0 5px 0 var(--leaf-edge), inset 0 0 0 4px var(--leaf-edge); animation: nudge .9s ease-in-out infinite; }
+.ziffer { font-size: 1.2em; font-weight: 800; color: var(--stone-ink); }
+.ru-dann { display: flex; justify-content: center; padding-top: 14px; }
+.ru-weiter {
+  width: min(100%, 360px);
+  height: 60px;
+  margin: 0 auto;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.ru-gesagt svg { width: 28px; height: 28px; }
+
+/* Zahlen kennenlernen */
+.zahlen { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.zahl-k {
+  min-width: 110px;
+  padding: 10px 14px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 5px 0 #E0D0AE;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.zahl-k .ziffer { font-size: 48px; line-height: 1; }
+.zahl-k b { font-size: 24px; color: var(--ru-farbe); }
+.zahl-k small { font-size: 15px; color: var(--soft); font-style: italic; }
+
+/* Wort oder Satz legen */
+.ru-slots { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 6px; }
+.ru-slots .slot {
+  min-width: clamp(40px, 7.5vmin, 58px);
+  height: clamp(50px, 10vmin, 74px);
+  padding: 0 6px;
+  border-radius: 12px 12px 4px 4px;
+  background: rgba(255, 255, 255, 0.75);
+  border-bottom: 4px dashed var(--hole-edge);
+  display: grid; place-items: center;
+  font-size: clamp(32px, 7vmin, 52px);
+  font-weight: 800;
+  color: var(--ru-farbe);
+}
+.ru-slots.satz .slot { min-width: clamp(64px, 14vmin, 110px); font-size: clamp(24px, 5vmin, 36px); }
+.ru-slots .slot.voll { border-bottom-style: solid; border-bottom-color: #BFE2F1; animation: pop .35s ease-out; }
+.ru-slots .slot.naechster { border-bottom-color: var(--orange); animation: nudge .5s ease-in-out 2; }
+.ru-slots.richtig .slot { color: var(--leaf-ink); border-bottom-color: var(--leaf-edge); }
+.ru-slots .satzende { font-size: clamp(28px, 6vmin, 40px); font-weight: 800; color: var(--ru-farbe); padding-bottom: 6px; }
+.ru-antworten.legen { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.ru-kachel {
+  min-width: clamp(56px, 10vmin, 76px);
+  height: clamp(56px, 10vmin, 76px);
+  padding: 0 10px;
+  border-radius: 18px;
+  background: var(--cream);
+  font-size: clamp(30px, 6.4vmin, 46px);
+  font-weight: 800;
+  color: var(--ru-farbe);
+  box-shadow: 0 5px 0 #D8C39A, 0 8px 14px -6px rgba(20, 70, 100, 0.35);
+}
+.ru-kachel.wort { font-size: clamp(22px, 4.6vmin, 32px); padding: 0 18px; }
+.ru-kachel:active { transform: translateY(4px); box-shadow: 0 1px 0 #D8C39A; }
+.ru-kachel.weg { visibility: hidden; }
+.ru-kachel.wackelt, .paar.wackelt { animation: shake .45s ease-in-out; }
+
+/* Paare */
+.paare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; width: 100%; }
+.paare .spalte { display: flex; flex-direction: column; gap: 10px; }
+.paar {
+  min-height: clamp(58px, 10vmin, 80px);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 5px 0 #E0D0AE;
+  font-weight: 800;
+}
+.paar.wort { font-size: clamp(20px, 4.4vmin, 30px); letter-spacing: .04em; color: var(--ru-farbe); }
+.paar.bild { font-size: clamp(36px, 7.6vmin, 56px); }
+.paar.gewaehlt { box-shadow: 0 5px 0 #E8C969, inset 0 0 0 4px var(--sel); background: #FFFBE6; }
+.paar.richtig { opacity: .55; }
+.ru-antworten.paare-runde { display: block; }
+
+/* Ende */
+.ru-ende { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; }
+.ende-sterne { font-size: clamp(48px, 11vmin, 80px); letter-spacing: .08em; color: #E8DCC2; line-height: 1; }
+.ende-sterne .an { color: #FFC21F; text-shadow: 0 3px 0 #F5A300; }
+.ende-m { margin: 0 0 10px; display: inline-flex; align-items: center; gap: 6px; font-size: 30px; font-weight: 800; }
+.ende-m svg { width: 40px; height: 40px; }
+
+/* ---------- Alphabet und Wörter ---------- */
+.ru-liste-kopf { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.ru-zurueck {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 42px; padding: 0 16px 0 10px;
+  border-radius: 999px;
+  background: #F3E9D2;
+  font-size: 17px; font-weight: 800; color: var(--soft);
+}
+.ru-zurueck svg { width: 22px; height: 22px; transform: scaleX(-1); }
+.legende { display: flex; flex-wrap: wrap; gap: 6px; }
+.legende i { font-style: normal; font-size: 13px; font-weight: 800; padding: 3px 10px; border-radius: 999px; color: #fff; }
+.legende .art-freund { background: var(--art-freund); }
+.legende .art-schwindler { background: var(--art-schwindler); }
+.legende .art-neu { background: var(--art-neu); }
+.zahl-gelernt { font-size: 15px; color: var(--soft); }
+.abc { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 8px; }
+.abc-b {
+  aspect-ratio: 1;
+  border-radius: 16px;
+  background: #fff;
+  font-size: clamp(26px, 5vmin, 36px);
+  font-weight: 800;
+  box-shadow: 0 4px 0 #E6D9BC;
+  display: flex; align-items: baseline; justify-content: center; gap: 2px;
+  padding-top: 12%;
+}
+.abc-b small { font-size: .55em; opacity: .7; }
+.abc-b.art-freund { color: var(--art-freund); background: #EEF9E6; }
+.abc-b.art-schwindler { color: var(--art-schwindler); background: #FFF2E0; }
+.abc-b.art-neu { color: var(--art-neu); background: #E6F2FC; }
+.abc-b.noch { color: #C9BBA0; }
+.wortliste { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.wort-k {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 6px 9px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 4px 0 #E6D9BC;
+}
+.wort-k .bild { font-size: 40px; line-height: 1.1; }
+.wort-k .bild .ziffer { font-size: 36px; }
+.wort-k b { font-size: 19px; color: var(--ru-farbe); letter-spacing: .03em; }
+.wort-k small { font-size: 13px; color: var(--soft); text-align: center; }
+.wortliste.zauber .wort-k b { letter-spacing: 0; font-size: 17px; }
+.ru-inhalt h2 { margin: 16px 2px 8px; font-size: 18px; }
+.huepft { animation: pop .45s ease-out; }
+
+@media (max-width: 420px) {
+  .ru-bar { gap: 6px; padding: 8px 10px 4px; }
+  .ru-name { font-size: 16px; padding: 0 12px; }
+  .ru-haupt { padding: 2px 10px 10px; }
+  .ru-inhalt { padding: 10px; border-radius: 22px; }
+  .ru-antworten { gap: 8px; }
+  .ru-menue { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .ru-knopf { font-size: 15px; height: 48px; }
+  .matrjoschkas { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px 6px; }
+}

@@ -2,7 +2,7 @@
 <html lang="de-CH">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#A4DAF5">
@@ -947,6 +947,8 @@
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   }
 </style>
+<!-- nach dem eigenen Stil, damit die Russisch-Ecke bei Gleichstand gewinnt -->
+<link rel="stylesheet" href="russisch.css">
 </head>
 <body>
 
@@ -1139,6 +1141,14 @@
       <path d="M24 16 l1.5 3.2 3.5 .4 -2.6 2.4 .7 3.5 -3.1 -1.8 -3.1 1.8 .7 -3.5 -2.6 -2.4 3.5 -.4 Z" fill="#FFD43B"/>
       <circle cx="29" cy="29" r="1.6" fill="#FFE98A"/><circle cx="19" cy="30" r="1.2" fill="#FFE98A"/>
     </symbol>
+    <symbol id="h-uschanka" viewBox="0 0 48 40">
+      <path d="M7 19 C3 25 3 33 7.5 38 C11 37 13 32 13 26 Z" fill="#8A5A2B"/>
+      <path d="M41 19 C45 25 45 33 40.5 38 C37 37 35 32 35 26 Z" fill="#8A5A2B"/>
+      <path d="M9 23 C9 11 15.5 4 24 4 C32.5 4 39 11 39 23 Z" fill="#6B4423"/>
+      <path d="M17 9 C20 6.5 23 6 26 6.2" stroke="#8A5A2B" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <rect x="5" y="17" width="38" height="11" rx="5.5" fill="#D9B88E"/>
+      <path d="M10 20 l1 5 M15 19.5 l1 5.5 M20.5 19.5 l.5 5.5 M26 19.5 l.5 5.5 M31.5 19.5 l1 5.5 M37 20 l1 5" stroke="#B8946A" stroke-width="1.5" stroke-linecap="round"/>
+    </symbol>
     <symbol id="h-krone" viewBox="0 0 44 36">
       <path d="M5 30 L3 10 L13 19 L22 5 L31 19 L41 10 L39 30 Z" fill="#FFC21F" stroke="#F5A300" stroke-width="2" stroke-linejoin="round"/>
       <rect x="5" y="25.5" width="34" height="7.5" rx="3" fill="#F5A300"/>
@@ -1319,6 +1329,7 @@
       <span id="solved">0</span>
     </button>
     <button class="round pill album" id="album" type="button" aria-label="Album"><svg viewBox="0 0 24 24"><use href="#i-album"/></svg></button>
+    <button class="round pill ru-kopfknopf" id="ruKnopf" type="button" aria-label="Russisch" hidden></button>
     <button class="round pill" id="stimme" type="button" aria-label="Vorlesen ausschalten"><svg viewBox="0 0 24 24"><use href="#i-stimme"/></svg></button>
     <button class="round pill" id="sound" type="button" aria-label="Geräusche ausschalten"><svg viewBox="0 0 24 24"><use href="#i-ton"/></svg></button>
     <button class="round pill" id="help" type="button" aria-label="So geht's"><svg viewBox="0 0 24 24"><use href="#i-frage"/></svg></button>
@@ -1333,6 +1344,8 @@
         <svg class="friend f-schildkroete" data-f="schildkroete" viewBox="0 0 72 46"><use href="#f-schildkroete"/></svg>
         <svg class="friend f-ente" data-f="ente" viewBox="0 0 58 48"><use href="#f-ente"/></svg>
         <svg class="friend f-baby" data-f="baby" viewBox="0 0 80 74"><use href="#f-baby"/></svg>
+        <!-- Capys Freundin, das Lama aus Russland (russisch.js) -->
+        <div class="lama-platz" id="lamaPlatz" role="button" tabindex="0" hidden></div>
       </div>
     </div>
     <div class="besuch vorne" id="besuchVorne" aria-hidden="true"></div>
@@ -1453,6 +1466,7 @@
       <span><svg viewBox="0 0 40 40" aria-hidden="true"><use href="#stern"/></svg>Stufe <b id="bilanzS">1</b></span>
     </div>
     <button class="go" id="los" type="button">Los geht's!</button>
+    <button class="go zweit" id="losRu" type="button" hidden>Russisch</button>
   </div>
 </div>
 
@@ -1796,7 +1810,7 @@ const Stimme = (() => {
   let letzte = [];
 
   function holen(satz) {
-    const id = kennung(satz);
+    const id = datei(satz);
     if (!roh.has(id)) {
       roh.set(id, fetch('audio/' + id + '.mp3').then(r => (r.ok ? r.arrayBuffer() : null)).catch(() => null));
     }
@@ -1817,14 +1831,34 @@ const Stimme = (() => {
     return out;
   }
 
+  // Die Stimme des Lamas ist leiser aufgenommen als Capys: auf dieselbe Lautstärke bringen
+  function angleichen(buf) {
+    let summe = 0, spitze = 0;
+    for (let k = 0; k < buf.numberOfChannels; k++) {
+      const d = buf.getChannelData(k);
+      for (let i = 0; i < d.length; i++) { summe += d[i] * d[i]; spitze = Math.max(spitze, Math.abs(d[i])); }
+    }
+    const rms = Math.sqrt(summe / Math.max(1, buf.length * buf.numberOfChannels));
+    if (!rms || !spitze) return buf;
+    const g = Math.min(4, 0.1 / rms, 0.97 / spitze);
+    if (g <= 1.05) return buf;
+    for (let k = 0; k < buf.numberOfChannels; k++) {
+      const d = buf.getChannelData(k);
+      for (let i = 0; i < d.length; i++) d[i] *= g;
+    }
+    return buf;
+  }
+
   async function dekodieren(c, satz) {
-    const id = kennung(satz);
+    const id = datei(satz);
     if (fertig.has(id)) return fertig.get(id);
     const daten = await holen(satz);
     if (!daten) { roh.delete(id); return null; }
     try {
       const buf = await new Promise((ok, nein) => c.decodeAudioData(daten.slice(0), ok, nein));
-      const t = trimmen(c, buf);
+      // Das Lama zuerst laut genug machen, sonst schnitte das Kürzen leise Anfänge ab (с, ф, х).
+      // Der Puffer gehört uns, er darf verändert werden.
+      const t = trimmen(c, typeof satz === 'string' ? buf : angleichen(buf));
       fertig.set(id, t);
       return t;
     } catch (e) {
@@ -1847,7 +1881,7 @@ const Stimme = (() => {
   }
 
   // Ungefähre Lesezeit, wenn nichts zu hören ist (Stimme aus, offline …)
-  const lesezeit = saetze => clamp(saetze.join(' ').length * 55, 900, 6500);
+  const lesezeit = saetze => clamp(saetze.map(aufnahmeText).join(' ').length * 55, 900, 6500);
 
   // Spricht die Sätze nacheinander. Erfüllt sich, wenn alles gesagt ist
   // (true) oder eine neuere Ansage dazwischenkam (false).
@@ -2311,6 +2345,8 @@ async function feiern(diese, lob, aufgestiegen, freund, hutNeu) {
   const fakt = naechsterFakt(), vor = zieh('fakt_vor');
   Stimme.vorladen([sprechtext(vor), sprechtext(fakt)]);
   if (!(await sag(lob, 0.5)) || !gilt()) return;
+  // Capys Freundin, das Lama, jubelt manchmal auf Russisch mit (russisch.js)
+  if (window.Russisch && (!(await Russisch.jubeln()) || !gilt())) return;
   if (aufgestiegen) {
     const unter = zieh('stufe_auf'), titel = stufentext(stufe() + 1);
     Ton.stufe();
@@ -2473,6 +2509,7 @@ const HUT_BILD = {
   muetze:    ['h-muetze',    '0 0 44 40', [48, -3, 44, 40]],
   kuerbis:   ['h-kuerbis',   '0 0 44 40', [50, 0, 40, 36]],
   zauberhut: ['h-zauberhut', '0 0 48 48', [48, -7, 44, 44]],
+  uschanka:  ['h-uschanka',  '0 0 48 40', [46, -4, 48, 40]],
   krone:     ['h-krone',     '0 0 44 36', [50, 2, 40, 33]],
 };
 const hutVon = id => HUETE.find(h => h.id === id) || HUETE[0];
@@ -2580,7 +2617,8 @@ const Welt = (() => {
 })();
 
 // Eine Karte oder die Schatzkiste liegt über dem Spiel
-const verdeckt = () => !$('intro').hidden || !$('kiste').hidden;
+// (auch die Karten und die Russisch-Ecke aus russisch.js)
+const verdeckt = () => !!document.querySelector('.overlay:not([hidden]), #ru:not([hidden])');
 
 /* =====================================================================
    BESUCH: Ab und zu läuft ein Tier über die Wiese oder fliegt vorbei.
@@ -3334,5 +3372,8 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+<!-- Russisch mit Capys Freundin, dem Lama. Fehlen diese Dateien, läuft alles andere wie immer. -->
+<script src="russisch-texte.js"></script>
+<script src="russisch.js"></script>
 </body>
 </html>

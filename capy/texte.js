@@ -329,6 +329,7 @@ const HUETE = [
   { id: 'kuerbis',   name: 'Kürbis',     preis: 20, satz: 'Ein Kürbis! Der ist ganz schön schwer.' },
   { id: 'zauberhut', name: 'Zauberhut',  preis: 25, satz: 'Ein Zauberhut! Hokuspokus, Zahlenzauber!' },
   { id: 'krone',     name: 'Krone',      preis: 35, satz: 'Eine Krone! Jetzt bin ich ein Königs-Capybara.' },
+  { id: 'uschanka',  name: 'Uschanka',   preis: 22, satz: 'Eine Uschanka! So eine Mütze trägt man in Russland im Winter.' },
 ];
 
 // Erklärung auf der ersten Karte, zum Vorlesen
@@ -530,6 +531,12 @@ function kennung(s) {
   return h.toString(16).padStart(8, '0');
 }
 
+// Dateiname einer Aufnahme in audio/: Capys Sätze heissen nach ihrem Text (Prüfwert),
+// die des Lamas tragen «l-» davor, ihre langsamen Fassungen «ll-».
+// Eine Aufnahme ist ein Text (Capy) oder { w: 'l', s: Text, langsam }.
+const aufnahmeText = x => (typeof x === 'string' ? x : x.s);
+const datei = x => (typeof x === 'string' ? '' : x.w === 'l' ? (x.langsam ? 'll-' : 'l-') : '') + kennung(aufnahmeText(x));
+
 // 0 … 100 als Wort für die Stimme (wird nie angezeigt, darum mit ß, siehe oben)
 function zahlwort(n) {
   const e = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun',
@@ -585,5 +592,5 @@ function alleSaetze() {
 
 if (typeof module !== 'undefined') {
   module.exports = { TEXTE, FREUNDE, NEUER_FREUND, NEU_IM_ALBUM, TIERE, HUETE, ANLEITUNG, STUFEN, FAKTEN,
-    FAKTEN_GRUPPEN, SPRECHNAME, anzeigetext, sprechtext, kennung, zahlwort, RECHENWORT, stufentext, alleSaetze };
+    FAKTEN_GRUPPEN, SPRECHNAME, anzeigetext, sprechtext, kennung, aufnahmeText, datei, zahlwort, RECHENWORT, stufentext, alleSaetze };
 }
