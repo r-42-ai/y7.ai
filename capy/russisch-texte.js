@@ -66,8 +66,8 @@ const BUCHSTABEN = [
   { b: 'В', k: 'в', art: 'schwindler', name: 'вэ', laut: 'W', falle: 'B', wort: 'волк',
     text: 'Ein Schwindler! Er sieht aus wie unser B, sagt aber W, wie in Wolke.' },
   { b: 'У', k: 'у', art: 'schwindler', name: 'у', laut: 'U', falle: 'Y', wort: 'утка',
-    // als «у». kam ein kurzes «u … u» heraus; gedehnt klingt es sauber
-    sprechen: { text: 'Ууу.', vorher: 'Учительница медленно тянет звук:', tempo: 0.8 },
+    // als «у». kam ein kurzes «u … u» heraus; als «уу». klingt es sauber (von Yunas Familie ausgewählt)
+    sprechen: { text: '«уу».', vorher: 'Запомни эту букву. Она называется', nachher: 'Повтори за мной.', tempo: 0.75 },
     text: 'Ein Schwindler! Er sieht aus wie unser Y, sagt aber U, wie in Uhu.' },
   { b: 'Е', k: 'е', art: 'schwindler', name: 'е', laut: 'JE', falle: 'E', wort: 'енот',
     text: 'Fast ein Freund! Er sieht aus wie unser E, klingt aber wie der Anfang von jetzt.' },
@@ -108,8 +108,8 @@ const BUCHSTABEN = [
   { b: 'Щ', k: 'щ', art: 'neu', name: 'ща', wort: 'щенок',
     text: 'Das ist das Sch mit einem Schwänzchen. Es klingt wie das Ende von Fisch, nur länger und weicher.' },
   { b: 'Ъ', k: 'ъ', art: 'neu', name: 'твёрдый знак',
-    // langsam (0.75) zog sich der lange Name; im Satz und fast im normalen Tempo klingt er natürlich
-    sprechen: { text: 'твёрдый знак', vorher: 'Эта буква называется', nachher: '. Она не звучит.', tempo: 0.9 },
+    // langsam (0.75) zog sich der lange Name; flüssig im Satz klingt er natürlich (von Yunas Familie ausgewählt)
+    sprechen: { text: 'Твёрдый знак.', vorher: 'Последняя необычная буква:', nachher: 'Он не звучит.', tempo: 0.95 },
     text: 'Das ist das harte Zeichen. Es ist ganz still, kommt fast nie vor und macht nur eine kleine Pause.' },
 ];
 // Reihenfolge im russischen Alphabet (für die Alphabet-Tafel)
