@@ -497,7 +497,7 @@
       const nach = x.wort ? [lamaWort(x.wort)] : [];
       // Buchstabenname, dann das Merkwort
       sprich(`<span class="ru-t ru-gross" lang="ru">${x.b}${x.k}</span>` + (x.wort ? ` ${WORT.get(x.wort).bild} <span class="ru-t" lang="ru">${esc(x.wort)}</span>` : ''),
-        [lamaWort(nameAufnahme(x))].concat(nach));
+        [buchstabenAufnahme(x)].concat(nach));
       return;
     }
     if (b.dataset.wort) {
@@ -670,8 +670,8 @@
       <button class="ru-b-gross art-${b.art}" type="button" data-sag="name" lang="ru">${b.b}<small>${b.k}</small></button>
       ${w ? `<button class="ru-merk" type="button" data-sag="wort"><span class="bild">${w.bild}</span><b lang="ru">${esc(GROSS(w.ru))}</b></button>` : ''}`,
     weiterKnopf(), 'neu');
-    R.hoeren = () => sagL(b.text, { vor: [lamaWort(nameAufnahme(b))], nach: w ? [lamaWort(w.ru)] : [] });
-    R.sag = { name: () => nurRu(nameAufnahme(b)), wort: () => w && nurRu(w.ru) };
+    R.hoeren = () => sagL(b.text, { vor: [buchstabenAufnahme(b)], nach: w ? [lamaWort(w.ru)] : [] });
+    R.sag = { name: () => Stimme.einwurf([buchstabenAufnahme(b)]), wort: () => w && nurRu(w.ru) };
     R.hoeren();
   }
   function zeigeWNeu(a) {
@@ -751,7 +751,7 @@
       if (t === 'b-hoeren') {
         anweisung = ziehL('b_hoeren');
         frage = hoerKnopf();
-        hoerbar = [lamaWort(nameAufnahme(x))];
+        hoerbar = [buchstabenAufnahme(x)];
         const nahe = BUCHSTABEN.filter(y => y !== x && stationVon(y.b) <= Math.max(stationVon(x.b), bisJetzt()));
         const wahl = shuffle(bekannt.length >= 2 ? bekannt : nahe).slice(0, 2);
         optionen = [opt(x.b, true)].concat(wahl.map(y => opt(y.b, false)));
@@ -766,7 +766,7 @@
           if (!laute.has(y.laut) && (gesehen('b:' + y.b) || falsche.length < 2)) { falsche.push(y.laut); laute.add(y.laut); }
         }
         optionen = [opt(x.laut, true)].concat(falsche.slice(0, 2).map(l => opt(l, false)));
-        danach = [lamaWort(nameAufnahme(x))];
+        danach = [buchstabenAufnahme(x)];
       } else {
         anweisung = LAMA_TEXTE.b_bild[0];
         frage = `<div class="ru-b-gross art-${x.art}" lang="ru">${x.b}<small>${x.k}</small></div>`;
@@ -774,7 +774,7 @@
         const mitWort = BUCHSTABEN.filter(y => y !== x && y.wort && WORT.get(y.wort).bild !== w.bild);
         const wahl = shuffle(bekannt.filter(y => y.wort).length >= 2 ? bekannt.filter(y => y.wort) : mitWort).slice(0, 2);
         optionen = [opt(w.bild, true)].concat(wahl.map(y => opt(WORT.get(y.wort).bild, false)));
-        danach = [lamaWort(nameAufnahme(x)), lamaWort(w.ru)];
+        danach = [buchstabenAufnahme(x), lamaWort(w.ru)];
         klasse += ' bilder';
       }
     } else if (t === 'w-lesen' || t === 'w-bild' || t === 'w-hoeren') {

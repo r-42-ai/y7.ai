@@ -533,9 +533,12 @@ function kennung(s) {
 
 // Dateiname einer Aufnahme in audio/: Capys Sätze heissen nach ihrem Text (Prüfwert),
 // die des Lamas tragen «l-» davor, ihre langsamen Fassungen «ll-».
-// Eine Aufnahme ist ein Text (Capy) oder { w: 'l', s: Text, langsam }.
+// Eine Aufnahme ist ein Text (Capy) oder { w: 'l', s: Text, langsam, f }. f ist die
+// Fassung: Wird eine Aufnahme ersetzt, die Geräte schon gespeichert haben, bekommt sie so
+// einen neuen Namen, und die Geräte holen sie neu.
 const aufnahmeText = x => (typeof x === 'string' ? x : x.s);
-const datei = x => (typeof x === 'string' ? '' : x.w === 'l' ? (x.langsam ? 'll-' : 'l-') : '') + kennung(aufnahmeText(x));
+const datei = x => (typeof x === 'string' ? '' : x.w === 'l' ? (x.langsam ? 'll-' : 'l-') : '') + kennung(aufnahmeText(x)) +
+  (typeof x !== 'string' && x.f ? '-' + x.f : '');
 
 // 0 … 100 als Wort für die Stimme (wird nie angezeigt, darum mit ß, siehe oben)
 function zahlwort(n) {
