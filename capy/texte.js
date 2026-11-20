@@ -38,6 +38,32 @@ const TEXTE = {
     'Hallo Yuna! Schön, dass du noch vorbeischaust.',
     'Guten Abend! Zum Rechnen ist es nie zu spät.',
   ],
+  // Manchmal grüsst Capy passend zur Jahreszeit oder zur Nacht draussen
+  gruss_fruehling: [
+    'Hallo Yuna! Schau, überall blüht es.',
+    'Es ist Frühling, Yuna! Die Bäume blühen.',
+    'Hoi Yuna! Riechst du die Blumen?',
+  ],
+  gruss_sommer: [
+    'Hallo Yuna! Die Sonne scheint so schön warm.',
+    'Hoi Yuna! Bei der Hitze bleibe ich gern im Wasser.',
+    'Sommer, Yuna! Zeit zum Planschen und Rechnen.',
+  ],
+  gruss_herbst: [
+    'Hallo Yuna! Schau, wie die Blätter fallen.',
+    'Es ist Herbst, Yuna! Die Bäume sind ganz bunt.',
+    'Hoi Yuna! Draussen wird es kühler. Schön, dass du da bist.',
+  ],
+  gruss_winter: [
+    'Hallo Yuna! Brr, es schneit. Zum Glück ist mein Bad schön warm.',
+    'Hoi Yuna! Im Winter bade ich am liebsten mit Yuzus.',
+    'Es schneit, Yuna! Komm, wir bauen Pyramiden im Schnee.',
+  ],
+  gruss_nacht: [
+    'Hallo Yuna! Schau, die Sterne leuchten schon.',
+    'Guten Abend, Yuna! Der Mond schaut uns beim Rechnen zu.',
+    'Draussen ist es schon dunkel, Yuna. Dann rechnen wir ganz gemütlich.',
+  ],
 
   // Allererste Pyramiden: erklären, wie es geht
   erste: [
@@ -86,6 +112,12 @@ const TEXTE = {
     'Bei dieser Pyramide brauchst du auch Minus.',
     'Achtung, hier fehlen auch Steine weiter unten!',
     'Hier musst du manchmal rückwärts rechnen.',
+  ],
+  // Zum ersten Mal Zahlen bis 100
+  start_hundert: [
+    'Jetzt kommen Zahlen bis hundert!',
+    'Aufgepasst, die Zahlen werden grösser!',
+    'Grosse Zahlen! Rechne zuerst die Zehner, dann die Einer.',
   ],
 
   // Richtig
@@ -208,18 +240,60 @@ const TEXTE = {
 
   // Stimme wieder eingeschaltet
   stimme_an: ['Ich lese dir wieder vor!'],
+
+  // Schatzkiste: was Capy sagt, wenn eine Seite aufgeht
+  kiste_huete: ['Was soll ich heute auf dem Kopf tragen?', 'Such mir etwas Schönes aus!'],
+  kiste_tiere: ['Schau, wen wir schon alles getroffen haben!', 'Tipp ein Tier an, dann erzähle ich dir etwas.'],
+  kiste_fakten: ['Tipp auf einen Fakt, dann lese ich ihn dir vor.', 'Das alles habe ich dir schon erzählt.'],
+  kiste_fakten_leer: ['Hier sammle ich alles, was ich dir erzähle. Nach jeder Pyramide kommt etwas dazu.'],
+  // Capy probiert ein Stück an, das ihm noch nicht gehört
+  hut_probe: ['Steht mir das?', 'Wie sehe ich aus?', 'Soll ich das nehmen?'],
+  // Etwas Neues für den Kopf geholt; danach kommt der Satz zum Stück selbst
+  hut_gekauft: ['Danke, Yuna!', 'Oh, danke! Das gefällt mir.', 'Juhu, etwas Neues!', 'Das wollte ich schon immer haben!'],
+  // Die Mandarinen reichen noch nicht
+  hut_teuer: [
+    'Dafür brauchen wir noch mehr Mandarinen.',
+    'Das kostet noch zu viel. Bauen wir noch ein paar Pyramiden!',
+    'Noch nicht ganz. Jede Pyramide bringt eine Mandarine.',
+  ],
+  // Nach einer Pyramide: Jetzt reicht es für etwas Neues
+  hut_tipp: [
+    'Du hast genug Mandarinen für etwas Neues! Tipp oben auf die Mandarine.',
+    'Mit deinen Mandarinen kannst du mir etwas Neues für den Kopf holen. Tipp oben auf die Mandarine!',
+  ],
+  // Im Album auf ein Tier getippt, das noch fehlt
+  album_spaeter: ['Dieses Tier kommt später dazu. Bau weiter Pyramiden!', 'Noch ein paar Pyramiden, dann lernst du es kennen.'],
+  album_unbekannt: [
+    'Dieses Tier haben wir noch nicht getroffen. Halt die Augen offen!',
+    'Tipp ein Tier an, wenn es vorbeikommt. Dann kommt es ins Album.',
+  ],
 };
 
-// Freunde, die nach so vielen gelösten Pyramiden dazukommen
+// Freunde, die nach so vielen gelösten Pyramiden dazukommen. Die ersten sechs
+// bleiben für immer da (album: was Capy im Album über sie sagt). Wer danach
+// kommt (besuch: true), schaut von da an immer wieder vorbei, wie die Tiere
+// unten in TIERE; dort stehen auch ihre Sätze.
 const FREUNDE = [
-  { id: 'schmetterling', at: 2,  name: 'Schmetterling', text: 'Ein Schmetterling ist zu Besuch!' },
-  { id: 'vogel',         at: 4,  name: 'Vogel',         text: 'Ein Vogel setzt sich zu Capy.' },
-  { id: 'schildkroete',  at: 7,  name: 'Schildkröte',   text: 'Eine Schildkröte kommt vorbei.' },
-  { id: 'frosch',        at: 11, name: 'Frosch',        text: 'Ein Frosch hüpft herbei!' },
-  { id: 'ente',          at: 16, name: 'Ente',          text: 'Eine Ente watschelt herbei.' },
-  { id: 'baby',          at: 22, name: 'Capybara-Baby', text: 'Ein Capybara-Baby will mitspielen!' },
+  { id: 'schmetterling', at: 2,  name: 'Schmetterling', text: 'Ein Schmetterling ist zu Besuch!',
+    album: 'Der Schmetterling flattert immer um uns herum.' },
+  { id: 'vogel',         at: 4,  name: 'Vogel',         text: 'Ein Vogel setzt sich zu Capy.',
+    album: 'Der Vogel sitzt am liebsten auf meinem Kopf.' },
+  { id: 'schildkroete',  at: 7,  name: 'Schildkröte',   text: 'Eine Schildkröte kommt vorbei.',
+    album: 'Die Schildkröte ist langsam, aber sie kommt immer an.' },
+  { id: 'frosch',        at: 11, name: 'Frosch',        text: 'Ein Frosch hüpft herbei!',
+    album: 'Der Frosch wohnt auf dem Seerosenblatt.' },
+  { id: 'ente',          at: 16, name: 'Ente',          text: 'Eine Ente watschelt herbei.',
+    album: 'Die Ente schwimmt gern mit mir im Teich.' },
+  { id: 'baby',          at: 22, name: 'Capybara-Baby', text: 'Ein Capybara-Baby will mitspielen!',
+    album: 'Das Capybara-Baby will immer mitspielen.' },
+  { id: 'tapir',         at: 30,  name: 'Tapir',       besuch: true, text: 'Ein Tapir kommt jetzt zu Besuch!' },
+  { id: 'flamingo',      at: 40,  name: 'Flamingo',    besuch: true, text: 'Ein Flamingo stolziert jetzt vorbei!' },
+  { id: 'ara',           at: 55,  name: 'Ara',         besuch: true, text: 'Ein Ara fliegt jetzt zu uns!' },
+  { id: 'ameisenbaer',   at: 75,  name: 'Ameisenbär',  besuch: true, text: 'Ein Ameisenbär schaut jetzt vorbei!' },
+  { id: 'delfin',        at: 100, name: 'Flussdelfin', besuch: true, text: 'Ein rosa Flussdelfin schwimmt jetzt im Teich!' },
 ];
 const NEUER_FREUND = 'Neuer Freund!';
+const NEU_IM_ALBUM = 'Neu im Album!';   // nur angezeigt, nicht gesprochen
 
 // Tiere, die ab und zu vorbeikommen. Tippt Yuna eines an, sagt Capy etwas dazu.
 const TIERE = {
@@ -231,7 +305,31 @@ const TIERE = {
   frosch:        { name: 'Frosch', saetze: ['Hops! Der Frosch springt hoch.', 'Ein Frosch! Quak, quak!'] },
   tukan:         { name: 'Tukan', saetze: ['Ein Tukan! Was für ein Schnabel!', 'Der Tukan fliegt einen Looping!'] },
   schmetterling: { name: 'Schmetterling', saetze: ['Ein Schmetterling! Wie hübsch.', 'Der Schmetterling flattert davon.'] },
+  alpaka:        { name: 'Alpaka', saetze: ['Ein Alpaka! So flauschig.', 'Das Alpaka summt leise vor sich hin.'] },
+  tapir:         { name: 'Tapir', saetze: ['Ein Tapir! Schau mal, die lustige Rüsselnase.', 'Der Tapir pfeift! So ruft er seine Freunde.'] },
+  flamingo:      { name: 'Flamingo', saetze: ['Ein Flamingo! So schön rosa.', 'Der Flamingo steht am liebsten auf einem Bein.'] },
+  ara:           { name: 'Ara', saetze: ['Ein Ara! So viele Farben.', 'Der Ara krächzt laut. Hallo, Ara!'] },
+  ameisenbaer:   { name: 'Ameisenbär', saetze: ['Ein Ameisenbär! Er sucht Ameisen.', 'Der Ameisenbär hat eine ganz lange Zunge!'] },
+  delfin:        { name: 'Flussdelfin', saetze: ['Ein rosa Flussdelfin! Hallo du!', 'Der Flussdelfin taucht wieder ab. Tschüss!'] },
 };
+
+// Was Capy auf dem Kopf tragen kann. Yuna holt die Stücke in der Schatzkiste
+// mit ihren Mandarinen (preis); satz sagt Capy, wenn es das Stück aufsetzt.
+// Die Zeichnungen dazu stehen in index.html (HUT_BILD).
+const HUETE = [
+  { id: 'mandarine', name: 'Mandarine',  preis: 0,  satz: 'Meine Mandarine! Die mag ich am liebsten.' },
+  { id: 'blume',     name: 'Blume',      preis: 3,  satz: 'Eine Blume! Die duftet fein.' },
+  { id: 'tuch',      name: 'Badetuch',   preis: 4,  satz: 'Ein Badetuch! So bade ich am liebsten.' },
+  { id: 'yuzu',      name: 'Yuzu',       preis: 6,  satz: 'Eine Yuzu! Die duftet so gut.' },
+  { id: 'erdbeere',  name: 'Erdbeere',   preis: 8,  satz: 'Eine Erdbeere! Nicht naschen, Yuna.' },
+  { id: 'schleife',  name: 'Schleife',   preis: 10, satz: 'Eine Schleife! Bin ich nicht schick?' },
+  { id: 'strohhut',  name: 'Strohhut',   preis: 12, satz: 'Ein Strohhut! Perfekt für sonnige Tage.' },
+  { id: 'partyhut',  name: 'Partyhut',   preis: 15, satz: 'Ein Partyhut! Wer hat Geburtstag?' },
+  { id: 'muetze',    name: 'Mütze',      preis: 18, satz: 'Eine Mütze! Die hält meine Ohren warm.' },
+  { id: 'kuerbis',   name: 'Kürbis',     preis: 20, satz: 'Ein Kürbis! Der ist ganz schön schwer.' },
+  { id: 'zauberhut', name: 'Zauberhut',  preis: 25, satz: 'Ein Zauberhut! Hokuspokus, Zahlenzauber!' },
+  { id: 'krone',     name: 'Krone',      preis: 35, satz: 'Eine Krone! Jetzt bin ich ein Königs-Capybara.' },
+];
 
 // Erklärung auf der ersten Karte, zum Vorlesen
 const ANLEITUNG = 'Hallo Yuna! Ich bin Capy. Hilfst du mir, Zahlenpyramiden zu bauen? ' +
@@ -239,15 +337,21 @@ const ANLEITUNG = 'Hallo Yuna! Ich bin Capy. Hilfst du mir, Zahlenpyramiden zu b
   'Fehlt unten ein Stein? Dann rechnest du minus: sieben minus drei gibt vier.';
 
 // So viele Stufen hat das Spiel (wie LEVELS in index.html)
-const STUFEN = 12;
+const STUFEN = 18;
 
 /* =====================================================================
    FAKTEN
    Nach jeder Pyramide einer, keiner doppelt, bis alle dran waren.
    Kurz halten (gut 100 Zeichen), damit sie in die Sprechblase passen.
+   Sie stehen in Gruppen; so zeigt sie auch das Album in der Schatzkiste.
    ===================================================================== */
-const FAKTEN = [
-  // Capybaras
+const FAKTEN = [], FAKTEN_GRUPPEN = [];
+function gruppe(name, fakten) {
+  FAKTEN_GRUPPEN.push({ name, fakten });
+  FAKTEN.push(...fakten);
+}
+
+gruppe('Capybaras', [
   'Capybaras sind die grössten Nagetiere der Welt.',
   'Ein grosses Capybara wiegt fast so viel wie ein erwachsener Mensch.',
   'Capybaras leben in Südamerika, immer in der Nähe von Wasser.',
@@ -282,15 +386,17 @@ const FAKTEN = [
   'Capybara-Männchen haben oben auf der Nase eine Duftdrüse. Damit hinterlassen sie Duftnachrichten.',
   'Capybaras können über zehn Jahre alt werden.',
   'Capybaras schwimmen so gut, dass sie sogar unter Wasser vor Gefahren fliehen.',
+]);
 
-  // Nagetiere und Verwandte
+gruppe('Nagetiere', [
   'Mäuse, Eichhörnchen, Biber und Capybaras sind alle Nagetiere.',
   'Biber bauen Dämme aus Ästen und Schlamm. So stauen sie einen Bach zu einem Teich.',
   'Meerschweinchen kommen aus Südamerika, genau wie Capybaras.',
   'Die kleinsten Mäuse der Welt sind kaum grösser als dein Daumen.',
   'Etwa vier von zehn Säugetierarten sind Nagetiere.',
+]);
 
-  // Südamerika
+gruppe('Südamerika', [
   'Der Amazonas in Südamerika ist der wasserreichste Fluss der Welt.',
   'Im Pantanal, einem riesigen Sumpfgebiet in Brasilien, leben besonders viele Capybaras.',
   'Im Amazonas schwimmen rosa Flussdelfine.',
@@ -323,8 +429,9 @@ const FAKTEN = [
   'Flamingos schlafen oft auf nur einem Bein.',
   'Im Regenwald regnet es sehr oft. Darum ist es dort so grün.',
   'In den Regenwäldern lebt mehr als die Hälfte aller Tier- und Pflanzenarten der Erde.',
+]);
 
-  // Capys Freunde
+gruppe('Capys Freunde', [
   'Schildkröten gab es schon zur Zeit der Dinosaurier.',
   'Eine Schildkröte kann nicht aus ihrem Panzer heraus. Er ist mit ihrem Skelett verwachsen.',
   'Manche Schildkröten werden über hundert Jahre alt.',
@@ -343,16 +450,18 @@ const FAKTEN = [
   'Libellen können in alle Richtungen fliegen, sogar rückwärts.',
   'Wasserläufer sind Insekten, die über das Wasser flitzen, ohne einzusinken.',
   'Viele Seerosen schliessen ihre Blüten am Abend und öffnen sie am Morgen wieder.',
+]);
 
-  // Mandarinen und Pflanzen
+gruppe('Mandarinen und Pflanzen', [
   'Mandarinen kommen ursprünglich aus Asien.',
   'Eine Mandarine hat meistens ungefähr zehn Schnitze. Zähl beim nächsten Mal nach!',
   'Yuzu ist eine Zitrusfrucht aus Japan. Sie duftet so gut, dass man sie ins Badewasser legt.',
   'Mandarinen und Orangen haben viel Vitamin C. Das hilft dir, gesund zu bleiben.',
   'Gras wächst von unten nach. Darum kann es immer wieder abgefressen werden.',
   'Bäume und andere Pflanzen machen den Sauerstoff, den wir zum Atmen brauchen.',
+]);
 
-  // Erde und Wasser
+gruppe('Erde und Wasser', [
   'Wasser kann fest, flüssig oder gasförmig sein: Eis, Wasser und Wasserdampf.',
   'Fast drei Viertel der Erde sind mit Wasser bedeckt.',
   'Ein Regenbogen entsteht, wenn die Sonne durch Regentropfen scheint.',
@@ -360,8 +469,9 @@ const FAKTEN = [
   'Die Erde dreht sich einmal am Tag um sich selbst. Darum gibt es Tag und Nacht.',
   { t: 'Ein Jahr hat 365 Tage, ein Schaltjahr sogar 366.',
     s: 'Ein Jahr hat dreihundertfünfundsechzig Tage, ein Schaltjahr sogar dreihundertsechsundsechzig.' },
+]);
 
-  // Pyramiden und Zahlen
+gruppe('Pyramiden und Zahlen', [
   { t: 'Die grosse Pyramide in Ägypten ist über 4500 Jahre alt.',
     s: 'Die grosse Pyramide in Ägypten ist über viertausendfünfhundert Jahre alt.' },
   'Viele Steine der grossen Pyramide in Ägypten wiegen mehr als ein Auto.',
@@ -382,11 +492,11 @@ const FAKTEN = [
   { t: 'Auf einem Würfel ergeben die gegenüberliegenden Seiten zusammen immer 7.',
     s: 'Auf einem Würfel ergeben die gegenüberliegenden Seiten zusammen immer sieben.' },
   'Eine Woche hat sieben Tage, und ein Tag hat vierundzwanzig Stunden.',
-  { t: 'Das Doppelte von 25 ist 50, die grösste Zahl in deinen Pyramiden.',
-    s: 'Das Doppelte von fünfundzwanzig ist fünfzig, die grösste Zahl in deinen Pyramiden.' },
+  { t: 'Das Doppelte von 50 ist 100, die grösste Zahl in deinen Pyramiden.',
+    s: 'Das Doppelte von fünfzig ist hundert, die grösste Zahl in deinen Pyramiden.' },
   'In einer Zahlenpyramide steht die grösste Zahl immer ganz oben.',
   'Ein Stein in der Zahlenpyramide ist nie kleiner als die zwei Steine darunter.',
-];
+]);
 
 /* =====================================================================
    HILFSFUNKTIONEN (gelten in der App und in make-audio.mjs)
@@ -436,9 +546,10 @@ const stufentext = n => 'Stufe ' + n + '!';
 // Jeder Satz, den die App je abspielen kann, mit gedachtem Satz drumherum
 // (vorher/nachher), damit einzelne Wörter natürlich klingen.
 // Listen, die jubeln und loben (lebhaft); der Rest erklärt und darf ruhiger sein
-const LEBHAFT = ['gruss_morgen', 'gruss_tag', 'gruss_abend', 'start', 'start_hoeher', 'start_gross',
+const LEBHAFT = ['gruss_morgen', 'gruss_tag', 'gruss_abend', 'gruss_fruehling', 'gruss_sommer', 'gruss_herbst',
+  'gruss_winter', 'gruss_nacht', 'start', 'start_hoeher', 'start_gross', 'start_hundert',
   'ok', 'ok_minus', 'ok_nachfehler', 'ok_serie', 'fertig', 'fertig_perfekt', 'fertig_muehsam',
-  'stufe_auf', 'stimme_an'];
+  'stufe_auf', 'stimme_an', 'kiste_huete', 'kiste_tiere', 'hut_probe', 'hut_gekauft', 'hut_tipp'];
 
 function alleSaetze() {
   const liste = [];
@@ -456,12 +567,16 @@ function alleSaetze() {
     for (const e of pool) dazu(sprechtext(e), vorher, nachher, LEBHAFT.includes(name));
   }
   for (const e of FAKTEN) dazu(sprechtext(e), 'Wusstest du?');
-  for (const f of FREUNDE) dazu(sprechtext(f.text), NEUER_FREUND, '', true);
+  for (const f of FREUNDE) {
+    dazu(sprechtext(f.text), NEUER_FREUND, '', true);
+    if (f.album) dazu(sprechtext(f.album));
+  }
+  for (const h of HUETE) dazu(sprechtext(h.satz), '', '', true);
   for (const t of Object.values(TIERE)) for (const s of t.saetze) dazu(sprechtext(s), '', '', true);
   dazu(NEUER_FREUND, '', '', true);
   dazu(sprechtext(ANLEITUNG));
   for (let n = 1; n <= STUFEN; n++) dazu(stufentext(n), '', '', true);
-  for (let n = 0; n <= 50; n++) dazu(zahlwort(n), 'Rechne mal:', 'plus drei.');
+  for (let n = 0; n <= 100; n++) dazu(zahlwort(n), 'Rechne mal:', 'plus drei.');
   dazu('plus', 'Rechne mal: zwölf', 'sieben.');
   dazu('minus', 'Rechne mal: zwölf', 'sieben.');
   dazu('gibt', 'Zwölf plus sieben', 'neunzehn.');
@@ -469,6 +584,6 @@ function alleSaetze() {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { TEXTE, FREUNDE, NEUER_FREUND, TIERE, ANLEITUNG, STUFEN, FAKTEN, SPRECHNAME,
-    anzeigetext, sprechtext, kennung, zahlwort, RECHENWORT, stufentext, alleSaetze };
+  module.exports = { TEXTE, FREUNDE, NEUER_FREUND, NEU_IM_ALBUM, TIERE, HUETE, ANLEITUNG, STUFEN, FAKTEN,
+    FAKTEN_GRUPPEN, SPRECHNAME, anzeigetext, sprechtext, kennung, zahlwort, RECHENWORT, stufentext, alleSaetze };
 }

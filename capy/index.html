@@ -40,6 +40,18 @@
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
   body {
+    /* Landschaft: Sommer am Tag. Jahreszeit und Tageszeit stellen diese Farben um (siehe «Welt»). */
+    --himmel: linear-gradient(180deg, #A4DAF5 0%, #C9EDFC 26%, #EEF9F2 40%, #F6FBE4 46%);
+    --wiese: linear-gradient(180deg, #ABDD88 0%, #93D16E 45%, #82C65E 100%);
+    --tupfen: rgba(80, 150, 50, .12);
+    --huegel-1: #C6E9A6;
+    --huegel-2: #ABDD88;
+    --krone: #79C35C;
+    --krone-2: #86C966;
+    --krone-licht: #8FD371;
+    --frucht: #FF9F1C;
+    --frucht-2: #FFB347;
+    --schatten: 52, 100, 30;   /* Schatten auf der Wiese, als R, G, B */
     margin: 0;
     overflow: hidden;
     overscroll-behavior: none;
@@ -71,15 +83,15 @@
     z-index: 0;
     overflow: hidden;
     pointer-events: none;
-    background: linear-gradient(180deg, #A4DAF5 0%, #C9EDFC 26%, #EEF9F2 40%, #F6FBE4 46%);
+    background: var(--himmel);
   }
   .meadow {
     position: absolute;
     left: 0; right: 0; top: 45%; bottom: 0;
     background:
       radial-gradient(circle at 20% 30%, rgba(255,255,255,.18) 0 2px, transparent 3px) 0 0 / 46px 38px,
-      radial-gradient(circle at 70% 70%, rgba(80,150,50,.12) 0 2px, transparent 3px) 0 0 / 58px 44px,
-      linear-gradient(180deg, #ABDD88 0%, #93D16E 45%, #82C65E 100%);
+      radial-gradient(circle at 70% 70%, var(--tupfen) 0 2px, transparent 3px) 0 0 / 58px 44px,
+      var(--wiese);
   }
   .hills { position: absolute; left: 0; width: 100%; top: 31%; height: 15%; }
   .sun {
@@ -95,9 +107,109 @@
   .cloud.c3 { top: 4%; width: clamp(60px, 9vw, 100px); opacity: .75; animation: drift 120s linear infinite; animation-delay: -35s; }
   .tree { position: absolute; left: 3%; top: calc(45% - clamp(64px, 12vw, 130px) * 1.1); width: clamp(64px, 12vw, 130px); }
   .tree.t2 { left: auto; right: 9%; top: calc(43% - clamp(40px, 7vw, 76px) * 1.1); width: clamp(40px, 7vw, 76px); opacity: .9; }
-  .deco { position: absolute; }
+  .deco { position: absolute; overflow: visible; }
+  .hills .h1 { fill: var(--huegel-1); }
+  .hills .h2 { fill: var(--huegel-2); }
+  .tree .krone { fill: var(--krone); }
+  .tree.t2 .krone { fill: var(--krone-2); }
+  .tree .licht { fill: var(--krone-licht); }
+  .tree .frucht { fill: var(--frucht); }
+  .tree.t2 .frucht { fill: var(--frucht-2); }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes drift { from { transform: translateX(-30vw); } to { transform: translateX(130vw); } }
+
+  /* ---------- Welt: Jahreszeiten, Tag und Nacht ----------
+     Der Körper trägt je eine Klasse jz-… und zeit-… (siehe «Welt» im Skript). */
+  body.jz-fruehling {
+    --wiese: linear-gradient(180deg, #B9E694 0%, #9FDA79 45%, #8BCE65 100%);
+    --krone: #8FD46E;
+    --krone-2: #9AD97A;
+    --krone-licht: #AAE38B;
+    --frucht: #FFB3D1;          /* Blüten statt Mandarinen */
+    --frucht-2: #FFC9DE;
+  }
+  body.jz-herbst {
+    --himmel: linear-gradient(180deg, #A9D3EC 0%, #CFE8F5 26%, #F2F4E2 40%, #F7F3D2 46%);
+    --wiese: linear-gradient(180deg, #CDDC88 0%, #B9CD6E 45%, #A7BF5E 100%);
+    --tupfen: rgba(150, 110, 30, .14);
+    --huegel-1: #E3DF9E;
+    --huegel-2: #CDDC88;
+    --krone: #F0A63C;
+    --krone-2: #E98B3A;
+    --krone-licht: #F8C866;
+    --frucht: #D9482B;          /* rote Äpfel */
+    --frucht-2: #C73E2A;
+    --schatten: 110, 100, 30;
+  }
+  body.jz-winter {
+    --himmel: linear-gradient(180deg, #98C2E0 0%, #B9D7EC 26%, #D3E5F2 40%, #DBE9F4 46%);
+    --wiese: linear-gradient(180deg, #FAFDFF 0%, #EDF4FA 45%, #DFEBF5 100%);
+    --tupfen: rgba(120, 160, 200, .18);
+    --huegel-1: #FFFFFF;
+    --huegel-2: #EFF5FB;
+    --krone: #7DB58C;
+    --krone-2: #8ABE97;
+    --krone-licht: #9CCBA6;
+    --schatten: 70, 105, 150;
+  }
+  /* Abend- und Morgenrot, dann die Nacht; stehen nach den Jahreszeiten, damit ihr Himmel gilt */
+  body.zeit-abend { --himmel: linear-gradient(180deg, #7FA6D6 0%, #F2B48C 26%, #FAD7A6 40%, #FBE6C0 46%); }
+  body.zeit-nacht {
+    --himmel: linear-gradient(180deg, #2A3F7E 0%, #3D5596 26%, #5169A8 40%, #5B74AE 46%);
+    background: #15224E;
+  }
+  .nur-winter, .nur-fruehling, .nur-herbst { display: none; }
+  body.jz-winter .nur-winter, body.jz-fruehling .nur-fruehling, body.jz-herbst .nur-herbst { display: block; }
+  body.jz-winter .blume, body.jz-herbst .blume { display: none; }
+  /* Ein Schleier über der ganzen Landschaft färbt sie abends warm und nachts dunkel */
+  .schleier { position: absolute; inset: 0; background: rgba(14, 24, 68, 0); transition: background 2s; }
+  body.zeit-abend .schleier { background: rgba(255, 140, 70, .13); }
+  body.zeit-nacht .schleier { background: rgba(14, 24, 68, .56); }
+  .sun { transition: top 2s, opacity 2s; }
+  body.zeit-abend .sun { top: 23%; filter: hue-rotate(-20deg) saturate(1.25); }   /* steht tief hinter den Hügeln */
+  body.zeit-nacht .sun { opacity: 0; }
+  body.zeit-nacht .cloud { opacity: .28; }
+  .mond {
+    position: absolute;
+    top: 6%;
+    right: 5%;
+    width: clamp(62px, 11vw, 112px);
+    opacity: 0;
+    transition: opacity 2s;
+    filter: drop-shadow(0 0 16px rgba(255, 243, 184, .55));
+  }
+  body.zeit-nacht .mond { opacity: 1; }
+  .sterne, .gluehen { position: absolute; left: 0; right: 0; opacity: 0; transition: opacity 2s; }
+  .sterne { top: 0; height: 42%; }
+  .gluehen { top: 47%; bottom: 10%; }
+  body.zeit-nacht .sterne, body.zeit-nacht:not(.jz-winter) .gluehen { opacity: 1; }
+  .sterne i { position: absolute; border-radius: 50%; background: #FFF6C8; animation: funkeln 3s ease-in-out infinite; }
+  .gluehen i {
+    position: absolute;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #F6FF8A;
+    box-shadow: 0 0 10px 4px rgba(240, 255, 120, .5);
+    animation: gluehen 4s ease-in-out infinite, treiben 13s ease-in-out infinite alternate;
+  }
+  /* Was vom Himmel fällt: Schnee, Laub oder Blütenblätter */
+  .wetter { position: absolute; inset: 0; }
+  .wetter i { position: absolute; top: -5%; animation: fallen linear infinite; }
+  .wetter i::before { content: ""; display: block; width: 100%; height: 100%; animation: wehen 3.6s ease-in-out infinite alternate; }
+  .wetter .flocke::before { border-radius: 50%; background: #fff; box-shadow: 0 0 4px rgba(255, 255, 255, .8); }
+  .wetter .laub::before { border-radius: 2px 70% 2px 70%; background: var(--c); animation-name: trudeln; }
+  .wetter .blatt::before { border-radius: 60% 60% 60% 10%; background: #FFC2DA; animation-name: trudeln; }
+  @keyframes funkeln { 0%, 100% { opacity: .3; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.2); } }
+  @keyframes gluehen { 0%, 100% { opacity: .12; } 50% { opacity: 1; } }
+  @keyframes treiben { from { transform: translate(0, 0); } to { transform: translate(44px, -28px); } }
+  @keyframes fallen { to { transform: translateY(112vh); } }
+  @keyframes wehen { from { transform: translateX(-14px); } to { transform: translateX(14px); } }
+  @keyframes trudeln { from { transform: translateX(-22px) rotate(-50deg); } to { transform: translateX(22px) rotate(70deg); } }
+  body.zeit-nacht .title { color: #E3F1FF; text-shadow: 0 2px 0 rgba(10, 20, 60, .55); }
+  /* Im Querformat verdeckt der Teich die rechte Seite: Sonne und Mond rücken daneben */
+  @media (orientation: landscape) and (min-width: 700px) and (max-width: 1500px) {
+    .sun, .mond { right: calc(clamp(310px, 31vw, 410px) + 5%); }
+  }
 
   /* ---------- Aufbau ---------- */
   .app {
@@ -154,9 +266,23 @@
     letter-spacing: .01em;
     visibility: hidden;
   }
-  .count { display: flex; align-items: center; gap: 5px; padding: 3px 14px 3px 5px; font-size: 21px; font-weight: 800; }
+  .count { position: relative; display: flex; align-items: center; gap: 5px; padding: 3px 14px 3px 5px; font-size: 21px; font-weight: 800; }
   .count svg { width: 34px; height: 34px; }
   .count.bump { animation: bump .5s ease-out; }
+  .count:active { transform: translateY(2px); }
+  /* Punkt am Zähler: Es reicht für etwas Neues aus der Schatzkiste */
+  .count.neu::after {
+    content: "";
+    position: absolute;
+    top: -3px; right: -3px;
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    background: #FF5C8A;
+    border: 2.5px solid #fff;
+    animation: glow 1.3s ease-in-out infinite;
+  }
+  .round.album { display: none; }      /* nur wo Platz ist; sonst führt der Zähler zum Album */
+  @media (min-width: 560px) { .round.album { display: grid; } }
   .round {
     width: 44px; height: 44px; flex: none;
     border-radius: 50%;
@@ -206,7 +332,7 @@
     left: -6%; right: -6%;
     bottom: calc(var(--bh) * -0.32);
     height: calc(var(--bh) * 0.6);
-    background: radial-gradient(ellipse at center, rgba(52, 100, 30, 0.32), rgba(52, 100, 30, 0) 70%);
+    background: radial-gradient(ellipse at center, rgba(var(--schatten), 0.32), rgba(var(--schatten), 0) 70%);
     z-index: -1;
   }
   .crown { width: calc(var(--bh) * 0.9); height: calc(var(--bh) * 0.8); display: grid; place-items: end center; }
@@ -242,6 +368,7 @@
     color: #2D6E8E;
   }
   .cell.blank.sel { background: #FFFDF0; border: 3px solid var(--sel); }
+  .cell.lang { font-size: calc(var(--bw) * 0.36); }   /* 100 */
   .cell.wrong { background: #FFE0DA !important; border-color: var(--err) !important; }
   .cell::after {
     content: "";
@@ -304,7 +431,7 @@
     cursor: pointer;
     touch-action: manipulation;
     will-change: transform;
-    filter: drop-shadow(0 3px 0 rgba(52, 100, 30, 0.18));
+    filter: drop-shadow(0 3px 0 rgba(var(--schatten), 0.18));
   }
   .besucher .huepf, .besucher .dreh { width: 100%; height: 100%; }
   .besucher.links .dreh { transform: scaleX(-1); }
@@ -324,6 +451,24 @@
   .besucher.rollt .huepf { animation: none; }
   .besucher .kopf { transform-box: fill-box; transform-origin: 0 50%; transition: transform .25s ease-in; }
   .besucher.versteckt .kopf { transform: translateX(-55%) scale(.55); }
+  .tier .kugel, .zunge { display: none; }                 /* .tier: Bild im Album und in Meldungen */
+  .besucher.schleckt .zunge { display: inline; transform-box: fill-box; transform-origin: 0 50%; animation: schlecken .3s ease-in-out infinite alternate; }
+  .besucher.einbein .bein.b { animation: none; transform: translateY(-28%) scaleY(.55); }
+  @keyframes schlecken { from { transform: scaleX(.25); } to { transform: scaleX(1); } }
+  /* Gast im Teich (Flussdelfin): taucht neben Capy hinter einer kleinen Welle auf */
+  .teich {
+    position: absolute;
+    z-index: 1;
+    right: clamp(96px, 24%, 190px);
+    bottom: calc(100% - var(--kopf, 0px) - 4px);
+    width: clamp(58px, 15vw, 88px);
+    aspect-ratio: 90 / 80;
+    pointer-events: none;
+  }
+  .teich .loch { position: absolute; inset: -60% 0 0 0; overflow: hidden; }
+  .teich .besucher { left: 0; bottom: 0; width: 100%; height: 62.5%; filter: none; }
+  .teich .welle { position: absolute; left: -8%; width: 116%; bottom: -2px; height: 22%; display: none; }
+  .teich.da .welle { display: block; }
   .etikett {
     position: absolute;
     left: 50%;
@@ -357,7 +502,7 @@
   }
 
   /* Freunde, die nach und nach dazukommen */
-  .friend { position: absolute; display: none; filter: drop-shadow(0 3px 0 rgba(52, 100, 30, 0.2)); }
+  .friend { position: absolute; display: none; filter: drop-shadow(0 3px 0 rgba(var(--schatten), 0.2)); }
   .friend.on { display: block; }
   .friend.arrive { animation: arrive .9s cubic-bezier(.3, 1.5, .5, 1) both; }
   /* Grösse folgt der Höhe des Bodens, damit niemand in die Pyramide ragt */
@@ -370,6 +515,11 @@
   .f-schmetterling { top: 6%; left: 6%; width: clamp(36px, 6vw, 58px); }
   .f-schmetterling.on { animation: flutter 9s ease-in-out infinite; }
   .f-schmetterling svg { animation: flap .35s ease-in-out infinite alternate; }
+  @media (max-width: 480px) {
+    .f-schildkroete { left: 28%; height: 50%; }
+    .f-ente { left: 51%; height: 54%; }
+    .f-baby { right: 9%; height: 66%; }
+  }
   @keyframes arrive { 0% { transform: translateY(40px) scale(.3); opacity: 0; } 100% { transform: none; opacity: 1; } }
   @keyframes flap { from { transform: scaleX(1); } to { transform: scaleX(.55); } }
   @keyframes flutter {
@@ -421,6 +571,17 @@
   .capy.oops .bob { animation: tilt .7s ease-in-out; transform-origin: 70px 120px; }
   .capy .vogel { display: none; }
   .capy .vogel.on { display: inline; }
+  /* Im Winter sitzt Capy im warmen Bad: Es dampft, und Yuzus schwimmen mit */
+  .capy .schwimmt { animation: bob 2.8s ease-in-out infinite; }
+  .capy .schwimmt.b { animation-delay: -1.3s; }
+  .capy .dampf path { transform-box: fill-box; transform-origin: 50% 100%; animation: dampf 3.6s ease-in-out infinite; }
+  .capy .dampf path:nth-child(2) { animation-delay: -1.3s; }
+  .capy .dampf path:nth-child(3) { animation-delay: -2.4s; }
+  @keyframes dampf {
+    0% { opacity: 0; transform: translateY(8px) scaleY(.7); }
+    35% { opacity: .8; }
+    100% { opacity: 0; transform: translateY(-16px) scaleY(1.15); }
+  }
   @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(2.5px); } }
   @keyframes hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-16px); } }
   @keyframes tilt { 25% { transform: rotate(-7deg); } 75% { transform: rotate(5deg); } }
@@ -537,7 +698,8 @@
       justify-content: center;
     }
     /* In der schmalen Spalte sitzt Capy über der Sprechblase statt daneben */
-    .buddy { --capy: clamp(84px, 11.5vw, 150px); padding-left: 0; padding-top: calc(var(--capy) * 0.8); }
+    .buddy { --capy: clamp(84px, 11.5vw, 150px); --kopf: calc(var(--capy) * 0.8); padding-left: 0; padding-top: var(--kopf); }
+    .teich { right: 5%; width: clamp(58px, 7vw, 88px); }
     .f-schildkroete { left: 5%; }
     .f-ente { left: 22%; }
     .f-baby { right: 6%; }
@@ -642,6 +804,131 @@
   .vorlesen svg { width: 22px; height: 22px; }
   .vorlesen:active { transform: translateY(2px); box-shadow: 0 1px 0 #BFE2F1; }
   .welcome { max-width: 400px; }
+
+  /* ---------- Schatzkiste: Hüte, Tier-Album, Fakten ---------- */
+  .overlay.breit { grid-template-columns: minmax(0, 660px); }
+  .kiste {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: min(740px, calc(100vh - 32px));
+    height: min(740px, calc(100dvh - 32px));
+    padding: 14px 14px 14px;
+    overflow: hidden;
+    text-align: left;
+  }
+  .zu {
+    position: absolute;
+    top: 12px; right: 12px;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: #FFE2CF;
+    color: #B4532A;
+    display: grid; place-items: center;
+    box-shadow: 0 3px 0 #E9B697;
+  }
+  .zu svg { width: 22px; height: 22px; }
+  .zu:active { transform: translateY(2px); box-shadow: 0 1px 0 #E9B697; }
+  .kiste .kopf { display: flex; align-items: center; gap: 12px; padding-right: 52px; }
+  .kiste .kopf .capy-big { width: 96px; flex: none; margin: -6px 0 0; }
+  .kiste .kopf .capy-big.freut { animation: hop .5s ease-out 2; }
+  .blase {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    min-height: 56px;
+    padding: 9px 14px;
+    border-radius: 18px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    font-size: clamp(15px, 3.6vmin, 18px);
+    line-height: 1.25;
+    box-shadow: 0 3px 0 rgba(30, 90, 120, 0.13);
+  }
+  .blase::before {
+    content: "";
+    position: absolute;
+    left: -7px; top: 50%;
+    width: 16px; height: 16px;
+    margin-top: -8px;
+    background: #fff;
+    transform: rotate(45deg);
+    border-radius: 3px;
+  }
+  .blase span { position: relative; }
+  .tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0; }
+  .tab {
+    height: 50px;
+    border-radius: 16px;
+    background: #F3E9D2;
+    color: var(--soft);
+    font-size: 18px;
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    box-shadow: 0 3px 0 #E0D2B2;
+  }
+  .tab svg { width: 28px; height: 28px; }
+  .tab[aria-selected="true"] { background: var(--green); color: #fff; box-shadow: 0 3px 0 var(--green-edge); }
+  .seite { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 2px 3px 8px; }
+  .seite[hidden] { display: none; }
+  .zeile { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 2px 3px 10px; font-size: 16px; color: var(--soft); }
+  .zeile b { color: var(--ink); }
+  .kiste h2 { margin: 14px 3px 8px; font-size: 17px; font-weight: 800; color: var(--ink); }
+  .kiste h2 small { margin-left: 6px; font-size: 14px; font-weight: 800; color: var(--soft); }
+  .kiste .track { width: auto; height: 11px; margin: 0 3px 4px; }
+  .raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(98px, 1fr)); gap: 10px; }
+  .kachel {
+    position: relative;
+    min-height: 116px;
+    padding: 8px 6px 9px;
+    border-radius: 18px;
+    background: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px;
+    font-size: 15px;
+    line-height: 1.15;
+    text-align: center;
+    box-shadow: 0 3px 0 #E6D9BC;
+  }
+  .kachel:active { transform: translateY(2px); box-shadow: 0 1px 0 #E6D9BC; }
+  .kachel .bild { flex: none; width: 100%; height: 60px; display: grid; place-items: center; }
+  .kachel .bild svg { width: auto; max-width: 92%; height: 60px; overflow: visible; }
+  .kachel.an { background: #EAF8DF; box-shadow: 0 3px 0 var(--leaf-edge), inset 0 0 0 3px var(--leaf-edge); }
+  .kachel.probe { background: #FFFBE6; box-shadow: 0 3px 0 #E6C25A, inset 0 0 0 3px var(--sel); }
+  .kachel.fehlt { background: #FBF4E2; color: var(--soft); }
+  .kachel.fehlt .bild svg { filter: brightness(0) opacity(.15); }      /* Schattenriss */
+  .kachel.huepft .bild svg { animation: hop .45s ease-out 2; }
+  .preis { display: inline-flex; align-items: center; gap: 3px; font-weight: 800; color: #B85A00; }
+  .preis svg { width: 20px; height: 20px; }
+  .preis.zuviel { color: #B9A88C; }
+  .preis.gross { font-size: 22px; color: var(--ink); }
+  .preis.gross svg { width: 32px; height: 32px; }
+  .marke { color: var(--leaf-ink); font-weight: 800; }
+  .kauf { flex: none; margin-top: 10px; height: 58px; font-size: 21px; display: flex; align-items: center; justify-content: center; gap: 7px; }
+  .kauf[hidden] { display: none; }
+  .kauf svg { width: 28px; height: 28px; }
+  .kauf:disabled { background: #E9DFC8; color: var(--soft); box-shadow: 0 6px 0 #D8CBAC; cursor: default; }
+  .fakt {
+    display: flex; align-items: flex-start; gap: 10px;
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: #fff;
+    font-size: 16px;
+    line-height: 1.3;
+    text-align: left;
+    box-shadow: 0 2px 0 #E6D9BC;
+  }
+  .fakt svg { flex: none; width: 22px; height: 22px; margin-top: 1px; color: #2F7FA8; }
+  .fakt.spricht { background: #E3F4FB; box-shadow: 0 2px 0 #BFE2F1; }
+  .leer { margin: 4px 3px 10px; font-size: 15px; color: var(--soft); }
+  @media (max-width: 420px) {
+    .raster { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .tab { font-size: 16px; gap: 4px; }
+    .tab svg { width: 22px; height: 22px; }
+    .kiste .kopf .capy-big { width: 76px; }
+  }
   .welcome .capy-big { width: 150px; }
   .bilanz { display: flex; justify-content: center; gap: 22px; margin: 14px 0 4px; font-size: 20px; font-weight: 800; }
   .bilanz span { display: inline-flex; align-items: center; gap: 6px; }
@@ -791,7 +1078,90 @@
       <use href="#bluete" x="31" y="4" width="18" height="18"/>
     </symbol>
 
-    <symbol id="capy-froh" viewBox="0 0 140 132">
+    <!-- Was Capy auf dem Kopf tragen kann (siehe HUETE in texte.js und HUT_BILD) -->
+    <symbol id="h-yuzu" viewBox="0 0 40 40">
+      <path d="M20 9 C29 8 35 14 35 23 C35 32 28 38 20 38 C12 38 5 32 5 23 C5 14 11 8 20 9 Z" fill="#FFD83B"/>
+      <ellipse cx="20" cy="31.5" rx="11.5" ry="5.5" fill="#F0B800" opacity=".35"/>
+      <circle cx="14" cy="18" r="4" fill="#FFF2A8" opacity=".9"/>
+      <g fill="#E8B400" opacity=".65"><circle cx="24" cy="17" r=".9"/><circle cx="28" cy="24" r=".9"/><circle cx="21" cy="26" r=".9"/><circle cx="13" cy="27" r=".9"/><circle cx="26" cy="31" r=".9"/></g>
+      <path d="M20 10 C20 8 20.4 6.5 21.5 5.2" stroke="#7A4B22" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+      <path d="M21 8.5 C24 3 31 2.5 34.5 6 C30 10 25 10.8 21 8.5 Z" fill="#5DBB4A"/>
+    </symbol>
+    <symbol id="h-tuch" viewBox="0 0 44 30">
+      <rect x="5" y="8" width="34" height="18" rx="7" fill="#fff"/>
+      <rect x="5" y="13" width="34" height="4.5" fill="#9AD8F0"/>
+      <path d="M10 22 H34" stroke="#DDE8EE" stroke-width="2" stroke-linecap="round"/>
+      <rect x="5" y="8" width="34" height="18" rx="7" fill="none" stroke="#D5E3EA" stroke-width="1.4"/>
+    </symbol>
+    <symbol id="h-erdbeere" viewBox="0 0 40 40">
+      <path d="M20 38 C10 32 5 24 6 17 C7 11 13 9 20 11 C27 9 33 11 34 17 C35 24 30 32 20 38 Z" fill="#F0455A"/>
+      <path d="M10 17 C9 23 13 29 19 34" stroke="#FF8A98" stroke-width="3" fill="none" stroke-linecap="round" opacity=".6"/>
+      <g fill="#FFE08A"><ellipse cx="15" cy="20" rx="1" ry="1.5"/><ellipse cx="22" cy="18" rx="1" ry="1.5"/><ellipse cx="28" cy="21" rx="1" ry="1.5"/><ellipse cx="18" cy="27" rx="1" ry="1.5"/><ellipse cx="25" cy="27" rx="1" ry="1.5"/><ellipse cx="21" cy="33" rx="1" ry="1.5"/></g>
+      <path d="M20 12 C15 6 9 8 8 11.5 C12 13.5 16 13.5 20 12 C24 13.5 28 13.5 32 11.5 C31 8 25 6 20 12 Z" fill="#4EA63A"/>
+      <path d="M20 12 V6.5" stroke="#3E8A30" stroke-width="2.4" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="h-schleife" viewBox="0 0 40 40">
+      <path d="M20 27 C12 15 4 15 3 23 C2 31 10 36 20 29 Z" fill="#FF7FA8"/>
+      <path d="M20 27 C28 15 36 15 37 23 C38 31 30 36 20 29 Z" fill="#FF7FA8"/>
+      <path d="M6 22 C8 19 12 20 15 24 M34 22 C32 19 28 20 25 24" stroke="#FFB8D0" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <rect x="15.5" y="22" width="9" height="11" rx="4.5" fill="#F0558A"/>
+    </symbol>
+    <symbol id="h-strohhut" viewBox="0 0 48 40">
+      <ellipse cx="24" cy="31" rx="23" ry="6.5" fill="#F2CF7A"/>
+      <path d="M10 31 C10 16 16 10 24 10 C32 10 38 16 38 31 C32 34 16 34 10 31 Z" fill="#F7DD96"/>
+      <path d="M10.2 26 C16 29.5 32 29.5 37.8 26 L38 31 C32 34 16 34 10 31 Z" fill="#E0564A"/>
+      <path d="M15 17 C18 13 21 12 24 12" stroke="#FDEDBE" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <ellipse cx="24" cy="31" rx="23" ry="6.5" fill="none" stroke="#DDB45A" stroke-width="1.4"/>
+    </symbol>
+    <symbol id="h-partyhut" viewBox="0 0 40 44">
+      <path d="M20 5 L33 38 C27 41.5 13 41.5 7 38 Z" fill="#7FC8F8"/>
+      <path d="M17 13.5 L23.5 15 M14 21.5 L27 24 M10.5 30 L30.5 33.5" stroke="#FFD43B" stroke-width="3.2" stroke-linecap="round"/>
+      <ellipse cx="20" cy="38.6" rx="13" ry="3.2" fill="#FF7FA8"/>
+      <circle cx="20" cy="5.5" r="4.5" fill="#FF7FA8"/>
+    </symbol>
+    <symbol id="h-muetze" viewBox="0 0 44 40">
+      <path d="M6 30 C6 16 13 9 22 9 C31 9 38 16 38 30 Z" fill="#E0564A"/>
+      <path d="M12 17 C15 13 18 11.5 22 11.5" stroke="#F08A80" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <rect x="3" y="27" width="38" height="10" rx="5" fill="#FFF6EA"/>
+      <path d="M10 29 V35 M16 29 V35 M22 29 V35 M28 29 V35 M34 29 V35" stroke="#E6D6BE" stroke-width="1.4" stroke-linecap="round"/>
+      <circle cx="22" cy="7" r="6" fill="#FFF6EA"/>
+    </symbol>
+    <symbol id="h-kuerbis" viewBox="0 0 44 40">
+      <ellipse cx="22" cy="25" rx="19" ry="13" fill="#F08A1C"/>
+      <ellipse cx="22" cy="25" rx="11.5" ry="13" fill="#FF9F2E"/>
+      <ellipse cx="22" cy="25" rx="4.5" ry="13" fill="#FFB24D"/>
+      <path d="M22 13 C22 9 23 7 26.5 6" stroke="#5E8A2E" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+    </symbol>
+    <symbol id="h-zauberhut" viewBox="0 0 48 48">
+      <ellipse cx="24" cy="39" rx="22" ry="6" fill="#5646B4"/>
+      <path d="M25 3 C27 14 33 27 37 38 C31 41 17 41 11 38 C15 27 21 15 25 3 Z" fill="#6C5BD0"/>
+      <path d="M12.6 33.5 C18 36.6 30 36.6 35.4 33.5 L37 38 C31 41 17 41 11 38 Z" fill="#FFD43B"/>
+      <path d="M24 16 l1.5 3.2 3.5 .4 -2.6 2.4 .7 3.5 -3.1 -1.8 -3.1 1.8 .7 -3.5 -2.6 -2.4 3.5 -.4 Z" fill="#FFD43B"/>
+      <circle cx="29" cy="29" r="1.6" fill="#FFE98A"/><circle cx="19" cy="30" r="1.2" fill="#FFE98A"/>
+    </symbol>
+    <symbol id="h-krone" viewBox="0 0 44 36">
+      <path d="M5 30 L3 10 L13 19 L22 5 L31 19 L41 10 L39 30 Z" fill="#FFC21F" stroke="#F5A300" stroke-width="2" stroke-linejoin="round"/>
+      <rect x="5" y="25.5" width="34" height="7.5" rx="3" fill="#F5A300"/>
+      <circle cx="22" cy="29.2" r="2.6" fill="#F0455A"/><circle cx="12" cy="29.2" r="2" fill="#6AC7F0"/><circle cx="32" cy="29.2" r="2" fill="#6AC7F0"/>
+      <circle cx="3" cy="10" r="2.6" fill="#FF7FA8"/><circle cx="22" cy="5" r="2.6" fill="#FF7FA8"/><circle cx="41" cy="10" r="2.6" fill="#FF7FA8"/>
+    </symbol>
+
+    <!-- Landschaft nach Jahreszeit -->
+    <symbol id="schneehaube" viewBox="0 0 80 100">
+      <path d="M15 31 C18 15 30 9 40 9 C50 9 62 15 65 31 C59 25 52 30 46 25 C40 30 32 24 26 29 C22 27 18 28 15 31 Z" fill="#fff"/>
+      <path d="M6 47 C9 39 17 36 24 38 C19 40.5 13 42.5 6 47 Z M74 47 C71 39 63 36 56 38 C61 40.5 67 42.5 74 47 Z" fill="#fff"/>
+    </symbol>
+    <symbol id="laub" viewBox="0 0 30 30">
+      <path d="M4 26 C4 12 14 4 27 3 C26 16 18 26 4 26 Z" fill="currentColor"/>
+      <path d="M6.5 23.5 C12 17 18 11 24 6" stroke="#fff" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".45"/>
+    </symbol>
+    <symbol id="pilz" viewBox="0 0 30 30">
+      <rect x="11" y="14" width="8" height="13" rx="4" fill="#FFF6EA"/>
+      <path d="M3 17 C3 8 9 3 15 3 C21 3 27 8 27 17 Z" fill="#E0564A"/>
+      <circle cx="10" cy="11" r="2.2" fill="#fff"/><circle cx="18" cy="8" r="2" fill="#fff"/><circle cx="21.5" cy="13.5" r="1.6" fill="#fff"/>
+    </symbol>
+
+    <symbol id="capy-froh" viewBox="0 -8 140 140">
       <ellipse cx="38" cy="34" rx="11" ry="9" fill="#A86E40"/>
       <ellipse cx="102" cy="34" rx="11" ry="9" fill="#A86E40"/>
       <ellipse cx="38" cy="35" rx="5.5" ry="4.2" fill="#7A4A28"/>
@@ -804,7 +1174,7 @@
       <path d="M64 96 Q70 100.5 76 96" stroke="#3B2415" stroke-width="2.6" fill="none" stroke-linecap="round"/>
       <ellipse cx="31" cy="84" rx="8" ry="5" fill="#F59E95" opacity=".55"/>
       <ellipse cx="109" cy="84" rx="8" ry="5" fill="#F59E95" opacity=".55"/>
-      <use href="#mandarine" x="52" y="-1" width="36" height="36"/>
+      <use class="hut" href="#mandarine" x="52" y="-1" width="36" height="36"/>
     </symbol>
     <symbol id="i-stimme" viewBox="0 0 24 24">
       <path d="M4.5 4 H15 a2.5 2.5 0 0 1 2.5 2.5 V12.5 a2.5 2.5 0 0 1 -2.5 2.5 H10 L6 18.5 V15 H4.5 A2.5 2.5 0 0 1 2 12.5 V6.5 A2.5 2.5 0 0 1 4.5 4 Z" fill="currentColor"/>
@@ -840,6 +1210,13 @@
       <path d="M4 9 H8 L13 5 V19 L8 15 H4 Z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
       <path d="M16.5 9.5 L21.5 14.5 M21.5 9.5 L16.5 14.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
     </symbol>
+    <symbol id="i-album" viewBox="0 0 24 24">
+      <path d="M12 6.6 C10 4.9 7 4.4 3.5 4.9 V18.2 C7 17.7 10 18.2 12 19.8 C14 18.2 17 17.7 20.5 18.2 V4.9 C17 4.4 14 4.9 12 6.6 Z" fill="currentColor"/>
+      <path d="M12 7.5 V18.6" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-zu" viewBox="0 0 24 24">
+      <path d="M6 6 L18 18 M18 6 L6 18" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>
+    </symbol>
     <symbol id="i-frage" viewBox="0 0 24 24">
       <path d="M8.5 9 C8.5 6.5 10 5 12 5 C14 5 15.5 6.4 15.5 8.4 C15.5 11 12 11.4 12 14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
       <circle cx="12" cy="18.6" r="1.7" fill="currentColor"/>
@@ -862,35 +1239,72 @@
     <ellipse cx="76" cy="67" rx="5" ry="3" fill="#FF9E6E" opacity=".5"/>
   </svg>
   <svg class="hills" viewBox="0 0 400 100" preserveAspectRatio="none">
-    <path d="M0 44 C50 10 110 14 170 38 C230 62 300 6 400 26 V100 H0 Z" fill="#C6E9A6"/>
-    <path d="M0 74 C70 44 150 56 220 70 C290 84 340 56 400 62 V100 H0 Z" fill="#ABDD88"/>
+    <path class="h1" d="M0 44 C50 10 110 14 170 38 C230 62 300 6 400 26 V100 H0 Z"/>
+    <path class="h2" d="M0 74 C70 44 150 56 220 70 C290 84 340 56 400 62 V100 H0 Z"/>
   </svg>
+  <!-- Die Kronen und Früchte bekommen ihre Farbe von der Jahreszeit (siehe Stil) -->
   <svg class="tree" viewBox="0 0 80 100">
     <rect x="35" y="55" width="10" height="42" rx="5" fill="#A0703F"/>
-    <circle cx="40" cy="38" r="28" fill="#79C35C"/>
-    <circle cx="22" cy="52" r="17" fill="#79C35C"/>
-    <circle cx="58" cy="52" r="17" fill="#79C35C"/>
-    <circle cx="32" cy="28" r="9" fill="#8FD371" opacity=".8"/>
-    <g fill="#FF9F1C">
+    <g class="krone"><circle cx="40" cy="38" r="28"/><circle cx="22" cy="52" r="17"/><circle cx="58" cy="52" r="17"/></g>
+    <circle class="licht" cx="32" cy="28" r="9" opacity=".8"/>
+    <g class="frucht">
       <circle cx="28" cy="34" r="5"/><circle cx="52" cy="28" r="5"/><circle cx="42" cy="50" r="5"/>
       <circle cx="62" cy="48" r="5"/><circle cx="18" cy="54" r="5"/>
     </g>
+    <use class="nur-winter" href="#schneehaube"/>
   </svg>
   <svg class="tree t2" viewBox="0 0 80 100">
     <rect x="35" y="55" width="10" height="42" rx="5" fill="#A0703F"/>
-    <circle cx="40" cy="38" r="28" fill="#86C966"/>
-    <circle cx="22" cy="52" r="17" fill="#86C966"/>
-    <circle cx="58" cy="52" r="17" fill="#86C966"/>
-    <g fill="#FFB347"><circle cx="30" cy="36" r="5"/><circle cx="54" cy="44" r="5"/><circle cx="44" cy="22" r="5"/></g>
+    <g class="krone"><circle cx="40" cy="38" r="28"/><circle cx="22" cy="52" r="17"/><circle cx="58" cy="52" r="17"/></g>
+    <g class="frucht"><circle cx="30" cy="36" r="5"/><circle cx="54" cy="44" r="5"/><circle cx="44" cy="22" r="5"/></g>
+    <use class="nur-winter" href="#schneehaube"/>
   </svg>
   <div class="meadow"></div>
-  <svg class="deco" style="left:7%;top:52%;width:22px" viewBox="0 0 30 30"><use href="#bluete"/></svg>
-  <svg class="deco" style="left:15%;top:60%;width:16px" viewBox="0 0 30 30"><use href="#bluete-weiss"/></svg>
-  <svg class="deco" style="right:8%;top:56%;width:20px" viewBox="0 0 30 30"><use href="#bluete-weiss"/></svg>
-  <svg class="deco" style="right:16%;top:50%;width:16px" viewBox="0 0 30 30"><use href="#bluete"/></svg>
-  <svg class="deco" style="left:44%;top:49%;width:14px" viewBox="0 0 30 30"><use href="#bluete-weiss"/></svg>
-  <svg class="deco" style="right:30%;top:66%;width:18px" viewBox="0 0 30 30"><use href="#bluete"/></svg>
-  <svg class="deco" style="left:28%;top:72%;width:18px" viewBox="0 0 30 30"><use href="#bluete-weiss"/></svg>
+  <svg class="deco blume" style="left:7%;top:52%;width:22px" viewBox="0 0 30 30"><use href="#bluete"/></svg>
+  <svg class="deco blume" style="left:15%;top:60%;width:16px" viewBox="0 0 30 30"><use href="#bluete-weiss"/></svg>
+  <svg class="deco blume" style="right:8%;top:56%;width:20px" viewBox="0 0 30 30"><use href="#bluete-weiss"/></svg>
+  <svg class="deco blume" style="right:16%;top:50%;width:16px" viewBox="0 0 30 30"><use href="#bluete"/></svg>
+  <svg class="deco blume" style="left:44%;top:49%;width:14px" viewBox="0 0 30 30"><use href="#bluete-weiss"/></svg>
+  <svg class="deco blume" style="right:30%;top:66%;width:18px" viewBox="0 0 30 30"><use href="#bluete"/></svg>
+  <svg class="deco blume" style="left:28%;top:72%;width:18px" viewBox="0 0 30 30"><use href="#bluete-weiss"/></svg>
+  <!-- Frühling: noch mehr Blumen -->
+  <svg class="deco nur-fruehling" style="left:20%;top:50%;width:18px" viewBox="0 0 30 30"><use href="#bluete"/></svg>
+  <svg class="deco nur-fruehling" style="left:36%;top:58%;width:16px" viewBox="0 0 30 30"><use href="#bluete"/></svg>
+  <svg class="deco nur-fruehling" style="right:22%;top:62%;width:20px" viewBox="0 0 30 30"><use href="#bluete-weiss"/></svg>
+  <svg class="deco nur-fruehling" style="left:10%;top:68%;width:20px" viewBox="0 0 30 30"><use href="#bluete"/></svg>
+  <svg class="deco nur-fruehling" style="right:6%;top:70%;width:16px" viewBox="0 0 30 30"><use href="#bluete"/></svg>
+  <!-- Herbst: Laub und Pilze -->
+  <svg class="deco nur-herbst" style="left:7%;top:53%;width:22px;color:#E98B3A" viewBox="0 0 30 30"><use href="#laub"/></svg>
+  <svg class="deco nur-herbst" style="left:17%;top:61%;width:20px" viewBox="0 0 30 30"><use href="#pilz"/></svg>
+  <svg class="deco nur-herbst" style="right:9%;top:57%;width:20px;color:#D9482B" viewBox="0 0 30 30"><use href="#laub"/></svg>
+  <svg class="deco nur-herbst" style="right:17%;top:50%;width:16px;color:#F0A63C" viewBox="0 0 30 30"><use href="#laub"/></svg>
+  <svg class="deco nur-herbst" style="right:30%;top:66%;width:18px" viewBox="0 0 30 30"><use href="#pilz"/></svg>
+  <svg class="deco nur-herbst" style="left:28%;top:72%;width:20px;color:#F7C25E" viewBox="0 0 30 30"><use href="#laub"/></svg>
+  <!-- Winter: ein Schneemann -->
+  <svg class="deco nur-winter schneemann" style="left:16%;top:39%;width:clamp(36px, 6vw, 62px)" viewBox="0 0 50 70">
+    <ellipse cx="25" cy="66" rx="20" ry="4" fill="#7FA6C8" opacity=".25"/>
+    <circle cx="25" cy="48" r="18" fill="#fff" stroke="#D6E5F1" stroke-width="2"/>
+    <circle cx="25" cy="23" r="12" fill="#fff" stroke="#D6E5F1" stroke-width="2"/>
+    <circle cx="21" cy="20" r="1.7" fill="#2B1A10"/><circle cx="29" cy="20" r="1.7" fill="#2B1A10"/>
+    <path d="M25 23 L36 26 L25 27.5 Z" fill="#FF8A1C"/>
+    <path d="M20 29 Q25 32 30 29" stroke="#2B1A10" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+    <circle cx="25" cy="44" r="1.8" fill="#4A3121"/><circle cx="25" cy="52" r="1.8" fill="#4A3121"/>
+    <rect x="13" y="32.5" width="24" height="5.5" rx="2.7" fill="#E0564A"/><rect x="29" y="34" width="5.5" height="12" rx="2.7" fill="#E0564A"/>
+    <use href="#mandarine" x="16" y="-3" width="18" height="18"/>
+  </svg>
+  <div class="schleier"></div>
+  <div class="sterne" id="sterne"></div>
+  <svg class="mond" viewBox="0 0 120 120">
+    <circle cx="60" cy="60" r="34" fill="#FFF3B8"/>
+    <circle cx="60" cy="60" r="34" fill="none" stroke="#FFF9DC" stroke-width="4" opacity=".7"/>
+    <g fill="#F0DE98" opacity=".75"><circle cx="45" cy="44" r="6"/><circle cx="77" cy="76" r="7"/><circle cx="74" cy="42" r="3.5"/></g>
+    <path d="M45 60 Q50 64.5 55 60 M65 60 Q70 64.5 75 60" stroke="#B0923A" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M55 71 Q60 75 65 71" stroke="#B0923A" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse cx="44" cy="68" rx="5" ry="3" fill="#FFB98A" opacity=".5"/>
+    <ellipse cx="76" cy="68" rx="5" ry="3" fill="#FFB98A" opacity=".5"/>
+  </svg>
+  <div class="gluehen" id="gluehen"></div>
+  <div class="wetter" id="wetter"></div>
 </div>
 
 <main class="app">
@@ -900,10 +1314,11 @@
       <span class="lbl"><small>Stufe</small><span class="track"><i id="lvlbar"></i></span></span>
     </div>
     <div class="title">Zahlen-Capy</div>
-    <div class="count pill" id="count" aria-label="Mandarinen">
-      <svg viewBox="0 0 40 40" id="countIcon"><use href="#mandarine"/></svg>
+    <button class="count pill" id="count" type="button" aria-label="Mandarinen: Schatzkiste öffnen">
+      <svg viewBox="0 0 40 40" id="countIcon" aria-hidden="true"><use href="#mandarine"/></svg>
       <span id="solved">0</span>
-    </div>
+    </button>
+    <button class="round pill album" id="album" type="button" aria-label="Album"><svg viewBox="0 0 24 24"><use href="#i-album"/></svg></button>
     <button class="round pill" id="stimme" type="button" aria-label="Vorlesen ausschalten"><svg viewBox="0 0 24 24"><use href="#i-stimme"/></svg></button>
     <button class="round pill" id="sound" type="button" aria-label="Geräusche ausschalten"><svg viewBox="0 0 24 24"><use href="#i-ton"/></svg></button>
     <button class="round pill" id="help" type="button" aria-label="So geht's"><svg viewBox="0 0 24 24"><use href="#i-frage"/></svg></button>
@@ -953,12 +1368,25 @@
           <path d="M64 96 Q70 100.5 76 96" stroke="#3B2415" stroke-width="2.6" fill="none" stroke-linecap="round"/>
           <ellipse cx="31" cy="84" rx="8" ry="5" fill="#F59E95" opacity=".55"/>
           <ellipse cx="109" cy="84" rx="8" ry="5" fill="#F59E95" opacity=".55"/>
-          <use href="#mandarine" x="52" y="-1" width="36" height="36"/>
+          <use class="hut" href="#mandarine" x="52" y="-1" width="36" height="36"/>
           <use class="vogel friend-in" data-f="vogel" href="#f-vogel" x="92" y="3" width="36" height="30"/>
+        </g>
+        <g class="nur-winter">
+          <use class="schwimmt" href="#h-yuzu" x="-3" y="98" width="20" height="20"/>
+          <use class="schwimmt b" href="#h-yuzu" x="123" y="100" width="18" height="18"/>
         </g>
         <path d="M0 116 Q6 110 18 116 T42 116 T66 116 T90 116 T114 116 T138 116 Q140 116 140 115 V140 H0 Z" fill="#93DAF0" opacity=".95"/>
         <path d="M10 121 Q20 118 30 121 M98 123 Q108 120 118 123" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".7"/>
+        <g class="nur-winter dampf" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round">
+          <path d="M5 92 C0 84 10 78 5 70"/>
+          <path d="M135 94 C130 86 140 80 135 72"/>
+          <path d="M-8 108 C-12 102 -4 97 -8 91"/>
+        </g>
       </svg>
+      <div class="teich" id="teich" aria-hidden="true">
+        <div class="loch"></div>
+        <svg class="welle" viewBox="0 0 90 14" preserveAspectRatio="none"><path d="M0 6 Q7.5 0 15 6 T30 6 T45 6 T60 6 T75 6 T90 6 V14 H0 Z" fill="#93DAF0"/></svg>
+      </div>
       <div class="bubble" id="bubble" role="button" tabindex="0" aria-label="Nochmal vorlesen"><span id="say" aria-live="polite">Hallo Yuna!</span></div>
       <button class="tipp" id="tipp" type="button" aria-label="Tipp">
         <svg viewBox="0 0 32 32"><use href="#i-birne"/></svg>Tipp
@@ -990,7 +1418,7 @@
 <div class="overlay" id="intro" hidden>
   <!-- Beim ersten Mal und über «?»: so geht's -->
   <div class="card" id="regeln" role="dialog" aria-modal="true" aria-labelledby="regelnT" hidden>
-    <svg class="capy-big" viewBox="0 0 140 132" aria-hidden="true"><use href="#capy-froh"/></svg>
+    <svg class="capy-big" viewBox="0 -8 140 140" aria-hidden="true"><use href="#capy-froh"/></svg>
     <h1 id="regelnT">Hallo Yuna!</h1>
     <p class="lead">Ich bin Capy. Hilfst du mir, Zahlenpyramiden zu bauen?</p>
     <div class="demos">
@@ -1017,7 +1445,7 @@
   <!-- Bei jedem weiteren Öffnen: kurz begrüssen. Der Tipp auf «Los geht's»
        erlaubt dem Browser auch, Capys Stimme abzuspielen. -->
   <div class="card welcome" id="willkommen" role="dialog" aria-modal="true" aria-labelledby="willkommenT" hidden>
-    <svg class="capy-big" viewBox="0 0 140 132" aria-hidden="true"><use href="#capy-froh"/></svg>
+    <svg class="capy-big" viewBox="0 -8 140 140" aria-hidden="true"><use href="#capy-froh"/></svg>
     <h1 id="willkommenT">Hallo Yuna!</h1>
     <p class="lead">Schön, dass du wieder da bist.</p>
     <div class="bilanz">
@@ -1025,6 +1453,42 @@
       <span><svg viewBox="0 0 40 40" aria-hidden="true"><use href="#stern"/></svg>Stufe <b id="bilanzS">1</b></span>
     </div>
     <button class="go" id="los" type="button">Los geht's!</button>
+  </div>
+</div>
+
+<!-- Schatzkiste: Hüte für Capy, das Tier-Album und alle gehörten Fakten -->
+<div class="overlay breit" id="kiste" hidden>
+  <div class="card kiste" role="dialog" aria-modal="true" aria-label="Capys Schatzkiste">
+    <button class="zu" id="kisteZu" type="button" aria-label="Schliessen"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-zu"/></svg></button>
+    <div class="kopf">
+      <svg class="capy-big" id="kisteCapy" viewBox="0 -8 140 140" aria-hidden="true"><use href="#capy-froh"/></svg>
+      <div class="blase"><span id="kisteSagt" aria-live="polite"></span></div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" type="button" role="tab" data-tab="huete"><svg viewBox="0 0 44 36" aria-hidden="true"><use href="#h-krone"/></svg>Hüte</button>
+      <button class="tab" type="button" role="tab" data-tab="tiere"><svg viewBox="0 0 60 50" aria-hidden="true"><use href="#f-frosch"/></svg>Tiere</button>
+      <button class="tab" type="button" role="tab" data-tab="fakten"><svg viewBox="0 0 32 32" aria-hidden="true"><use href="#i-birne"/></svg>Fakten</button>
+    </div>
+    <div class="seite" id="seite-huete" role="tabpanel">
+      <div class="zeile">
+        <span>Deine Mandarinen</span>
+        <span class="preis gross"><svg viewBox="0 0 40 40" aria-hidden="true"><use href="#mandarine"/></svg><b id="kisteM">0</b></span>
+      </div>
+      <div class="raster" id="hutRaster"></div>
+    </div>
+    <div class="seite" id="seite-tiere" role="tabpanel" hidden>
+      <div class="zeile"><span id="tierStand"></span></div>
+      <div class="track"><i id="tierBalken"></i></div>
+      <h2>Freunde</h2>
+      <div class="raster" id="freundRaster"></div>
+      <h2>Besucher<small id="besuchZahl"></small></h2>
+      <div class="raster" id="besuchRaster"></div>
+    </div>
+    <div class="seite" id="seite-fakten" role="tabpanel" hidden>
+      <div class="zeile"><span id="faktStand"></span></div>
+      <div id="faktListe"></div>
+    </div>
+    <button class="go kauf" id="kauf" type="button" hidden></button>
   </div>
 </div>
 
@@ -1054,6 +1518,13 @@ const LEVELS = [
   { n: 5, max: 50, leer: [10, 10], minus: [3, 10] },
   { n: 6, max: 50, leer: [10, 15], minus: [0, 0], unten: true },
   { n: 6, max: 50, leer: [13, 15], minus: [2, 15] },
+  // Ab hier bis 100: zuerst wieder kleine Pyramiden, dafür mit Zehnerübergang
+  { n: 3, max: 100, leer: [3, 3],   minus: [0, 0], unten: true },
+  { n: 3, max: 100, leer: [3, 3],   minus: [1, 3] },
+  { n: 4, max: 100, leer: [4, 6],   minus: [0, 0], unten: true },
+  { n: 4, max: 100, leer: [5, 6],   minus: [1, 3] },
+  { n: 5, max: 100, leer: [8, 10],  minus: [1, 4] },
+  { n: 6, max: 100, leer: [13, 15], minus: [2, 15] },
 ];
 
 /* ===== Hilfsfunktionen ===== */
@@ -1190,8 +1661,16 @@ function baue(level) {
 const STORE = 'y7.pyr.'; // Name von früher (/pyr/), bleibt, damit der Fortschritt erhalten bleibt
 const stand = laden();
 function laden() {
-  // stimme: Capy liest vor · fakten: Kennungen der schon erzählten Fakten
-  const s = { skill: 0, solved: 0, ton: true, stimme: true, intro: false, fakten: [] };
+  // stimme: Capy liest vor · fakten: Kennungen der in dieser Runde schon erzählten Fakten
+  // solved: je gelöste Pyramiden · mandarinen: was davon noch nicht ausgegeben ist
+  // huete, hut: Capys Stücke und was es gerade trägt · hutGesagt, hutGesehen: für
+  //   welches Stück Capy schon «es reicht» gesagt bzw. Yuna schon nachgeschaut hat
+  // tiere: wie oft Yuna welchen Besucher angetippt hat · album: alle je gehörten Fakten
+  // bekannt: Freunde, die Capy schon vorgestellt hat
+  const s = { skill: 0, solved: 0, ton: true, stimme: true, intro: false, fakten: [],
+    mandarinen: 0, huete: ['mandarine'], hut: 'mandarine', hutGesagt: '', hutGesehen: '',
+    tiere: {}, album: [], bekannt: null };
+  const texte = l => (Array.isArray(l) ? l.filter(k => typeof k === 'string') : []);
   try {
     const raw = JSON.parse(localStorage.getItem(STORE + 'stand') || 'null');
     if (raw && typeof raw === 'object') {
@@ -1200,9 +1679,23 @@ function laden() {
       if (typeof raw.ton === 'boolean') s.ton = raw.ton;
       if (typeof raw.stimme === 'boolean') s.stimme = raw.stimme;
       if (raw.intro === true) s.intro = true;
-      if (Array.isArray(raw.fakten)) s.fakten = raw.fakten.filter(k => typeof k === 'string').slice(-500);
+      s.fakten = texte(raw.fakten).slice(-500);
+      // Von früher: Jede gelöste Pyramide hat eine Mandarine gebracht, und keine ist ausgegeben
+      s.mandarinen = Number.isInteger(raw.mandarinen) && raw.mandarinen >= 0 ? raw.mandarinen : s.solved;
+      s.huete = [...new Set(['mandarine', ...texte(raw.huete).filter(h => HUETE.some(x => x.id === h))])];
+      if (s.huete.includes(raw.hut)) s.hut = raw.hut;
+      if (typeof raw.hutGesagt === 'string') s.hutGesagt = raw.hutGesagt;
+      if (typeof raw.hutGesehen === 'string') s.hutGesehen = raw.hutGesehen;
+      if (raw.tiere && typeof raw.tiere === 'object') {
+        for (const [k, n] of Object.entries(raw.tiere)) if (TIERE[k] && Number.isInteger(n) && n > 0) s.tiere[k] = Math.min(n, 9999);
+      }
+      s.album = Array.isArray(raw.album) ? texte(raw.album).slice(-1000) : s.fakten.slice();
+      if (Array.isArray(raw.bekannt)) s.bekannt = texte(raw.bekannt).filter(k => FREUNDE.some(f => f.id === k));
     }
   } catch (e) { /* privater Modus o.ä. */ }
+  // Wer schon vor den neuen Freunden gespielt hat, kennt die sechs, die bei Capy wohnen.
+  // Die späteren stellt Capy der Reihe nach vor, auch wenn Yuna schon weiter ist.
+  if (!s.bekannt) s.bekannt = FREUNDE.filter(f => !f.besuch && f.at <= s.solved).map(f => f.id);
   return s;
 }
 function speichern() {
@@ -1279,6 +1772,11 @@ const Ton = (() => {
     kraechz() { note(900, 0, 0.14, 'sawtooth', 0.045, 520); note(820, 0.16, 0.16, 'sawtooth', 0.045, 480); },
     glitzer() { [1568, 2093, 2637].forEach((f, i) => note(f, i * 0.06, 0.25, 'sine', 0.05)); },
     piep() { note(2200, 0, 0.06, 'sine', 0.07, 2600); note(2400, 0.09, 0.07, 'sine', 0.07, 2900); },
+    pfiff() { note(1400, 0, 0.18, 'sine', 0.09, 2300); note(1800, 0.22, 0.2, 'sine', 0.08, 2600); },
+    troet() { note(420, 0, 0.16, 'sawtooth', 0.05, 520); note(520, 0.2, 0.22, 'sawtooth', 0.05, 400); },
+    summ() { note(250, 0, 0.5, 'triangle', 0.11, 300); },
+    schnueff() { [0, 0.11, 0.22].forEach((t, i) => note(300 + i * 30, t, 0.07, 'triangle', 0.08, 190)); },
+    klick() { [0, 0.07, 0.14].forEach(t => note(1900, t, 0.03, 'square', 0.04)); note(1300, 0.26, 0.3, 'sine', 0.08, 2500); },
   };
 })();
 
@@ -1414,7 +1912,7 @@ let warteTimer = 0;    // Capy meldet sich, wenn lange nichts passiert
 
 function neuePyramide() {
   const lvl = stufe();
-  const vorherN = P ? P.geo.n : 0;
+  const vorherN = P ? P.geo.n : 0, vorherMax = P ? LEVELS[P.level].max : 0;
   let p, key;
   do {
     p = baue(lvl);
@@ -1438,6 +1936,7 @@ function neuePyramide() {
   const n = P.geo.n;
   let text;
   if (stand.solved < 2) text = zieh('erste');
+  else if (vorherMax && LEVELS[P.level].max > 50 && vorherMax <= 50) text = zieh('start_hundert');
   else if (vorherN && n > vorherN) text = zieh('start_hoeher');
   else if (n === 6 && Math.random() < 0.3) text = zieh('start_gross');
   else if (P.minus > 0 && !LEVELS[P.level].unten && Math.random() < 0.25) text = zieh('start_minus');
@@ -1458,7 +1957,7 @@ function wachHalten() {
   clearTimeout(warteTimer);
   if (!P || P.done || P.gewartet) return;
   warteTimer = setTimeout(() => {
-    if (!P || P.done || !$('intro').hidden) return;
+    if (!P || P.done || verdeckt()) return;
     P.gewartet = true;
     sag(zieh('warten'));
   }, 45000);
@@ -1511,10 +2010,14 @@ function einpassen() {
   pyrEl.style.setProperty('--gap', gap + 'px');
 }
 
+// So viele Ziffern hat die grösste Zahl dieser Stufe
+const stellen = () => String(LEVELS[P.level].max).length;
+
 function zeichne(c) {
   const b = zellen[c];
   if (!b) return;
   const bekannt = P.known[c], gegeben = P.given[c];
+  b.classList.toggle('lang', (bekannt ? String(P.values[c]) : c === sel ? getippt : '').length > 2);
   b.classList.toggle('given', gegeben);
   b.classList.toggle('solved', bekannt && !gegeben);
   b.classList.toggle('blank', !bekannt);
@@ -1528,7 +2031,7 @@ function zeichne(c) {
     const t = document.createElement('span');
     t.className = 'typed';
     t.textContent = getippt;
-    if (getippt.length < 2) {
+    if (getippt.length < stellen()) {
       const k = document.createElement('span');
       k.className = 'caret';
       t.appendChild(k);
@@ -1604,8 +2107,9 @@ function naechsterFakt() {
   const gesehen = new Set(stand.fakten);
   let frei = FAKTEN.filter(f => !gesehen.has(kennung(sprechtext(f))));
   if (!frei.length) { stand.fakten = []; frei = FAKTEN.slice(); }
-  const f = pick(frei);
-  stand.fakten.push(kennung(sprechtext(f)));
+  const f = pick(frei), id = kennung(sprechtext(f));
+  stand.fakten.push(id);
+  if (!stand.album.includes(id)) stand.album.push(id);   // fürs Album in der Schatzkiste
   speichern();
   return f;
 }
@@ -1645,7 +2149,7 @@ function stimmung(m, ms) {
 function ziffer(d) {
   if (!P || P.done) return;
   if (sel < 0) waehle(naechster(-1));
-  if (getippt.length >= 2) return;
+  if (getippt.length >= stellen()) return;
   if (getippt === '0') getippt = '';
   getippt += d;
   Ton.tipp();
@@ -1772,6 +2276,14 @@ function fertig() {
   const q = Math.max(0, 1 - fehler / P.leer);
   const sprung = anpassen(q, P.leer);
   stand.solved++;
+  stand.mandarinen++;
+  // Neuer Freund? Auch nachträglich, falls Yuna schon weiter ist: einer pro Pyramide
+  const freund = FREUNDE.find(f => f.at <= stand.solved && !stand.bekannt.includes(f.id));
+  if (freund) stand.bekannt.push(freund.id);
+  // Reicht es zum ersten Mal für das günstigste Stück aus der Schatzkiste? (Nicht, wenn Yuna es dort schon gesehen hat)
+  const stueck = guenstigstes();
+  const hutNeu = !!stueck && stueck.preis <= stand.mandarinen && ![stand.hutGesagt, stand.hutGesehen].includes(stueck.id);
+  if (hutNeu) stand.hutGesagt = stueck.id;
   speichern();
 
   Ton.fertig();
@@ -1787,13 +2299,14 @@ function fertig() {
   setTimeout(stufeZeigen, 1200);
 
   const lob = fehler === 0 ? zieh('fertig_perfekt') : q < 0.5 ? zieh('fertig_muehsam') : zieh('fertig');
-  feiern(diese, lob, sprung > 0, FREUNDE.find(f => f.at === stand.solved));
+  feiern(diese, lob, sprung > 0, freund, hutNeu);
 }
 
-// Nacheinander: Lob, dann neue Stufe und neuer Freund (falls es sie gibt),
-// dann ein Fakt. Jede Zeile erscheint, wenn sie gesprochen wird. Geht es
-// vorher zur nächsten Pyramide, hört die Feier einfach auf.
-async function feiern(diese, lob, aufgestiegen, freund) {
+// Nacheinander: Lob, dann neue Stufe, neuer Freund und der Hinweis auf die
+// Schatzkiste (falls es sie gibt), dann ein Fakt. Jede Zeile erscheint, wenn
+// sie gesprochen wird. Geht es vorher zur nächsten Pyramide, hört die Feier
+// einfach auf.
+async function feiern(diese, lob, aufgestiegen, freund, hutNeu) {
   const gilt = () => P === diese;
   const fakt = naechsterFakt(), vor = zieh('fakt_vor');
   Stimme.vorladen([sprechtext(vor), sprechtext(fakt)]);
@@ -1801,14 +2314,17 @@ async function feiern(diese, lob, aufgestiegen, freund) {
   if (aufgestiegen) {
     const unter = zieh('stufe_auf'), titel = stufentext(stufe() + 1);
     Ton.stufe();
-    if (!(await meldung('stern', titel, anzeigetext(unter), [titel, sprechtext(unter)])) || !gilt()) return;
+    if (!(await meldung(STERN_BILD, titel, anzeigetext(unter), [titel, sprechtext(unter)])) || !gilt()) return;
   }
   if (freund) {
     Ton.freund();
-    freundeZeigen(freund.id);
-    if (!(await meldung('f-' + freund.id, 'Neuer Freund: ' + freund.name, freund.text,
+    if (freund.besuch) Besuch.kommen(freund.id);   // kommt gleich selbst vorbei
+    else freundeZeigen(freund.id);
+    const bild = freund.besuch ? besucherBild(freund.id) : freundBild(freund.id);
+    if (!(await meldung(bild, 'Neuer Freund: ' + freund.name, freund.text,
       [NEUER_FREUND, sprechtext(freund.text)])) || !gilt()) return;
   }
+  if (hutNeu && (!(await sag(zieh('hut_tipp'))) || !gilt())) return;
   await pause(300);
   if (!gilt()) return;
   ansage(esc(anzeigetext(vor)) + ' ' + esc(anzeigetext(fakt)), [sprechtext(vor), sprechtext(fakt)]);
@@ -1847,9 +2363,10 @@ function konfetti() {
 
 // Zähler oben nachführen; mehrfach aufrufen schadet nicht
 function zaehlen() {
+  $('count').classList.toggle('neu', hutLockt());
   const s = $('solved');
-  if (s.textContent === String(stand.solved)) return;
-  s.textContent = stand.solved;
+  if (s.textContent === String(stand.mandarinen)) return;
+  s.textContent = stand.mandarinen;
   const k = $('count');
   k.classList.remove('bump');
   void k.offsetWidth;
@@ -1881,19 +2398,33 @@ function mandarineFliegt() {
 
 // Kleine Meldung oben (neue Stufe, neuer Freund), die Capy vorliest.
 // Erfüllt sich mit false, wenn eine andere Ansage dazwischenkam.
-async function meldung(symbol, titel, text, saetze) {
-  const vb = { stern: '0 0 40 40', 'f-schmetterling': '0 0 60 50', 'f-vogel': '0 0 44 36', 'f-schildkroete': '0 0 72 46', 'f-frosch': '0 0 60 50', 'f-ente': '0 0 58 48', 'f-baby': '0 0 80 74' }[symbol];
-  $('toastIc').innerHTML = `<svg viewBox="${vb}"><use href="#${symbol}"/></svg>`;
+// bild ist das fertige <svg> dazu (STERN_BILD, freundBild(), besucherBild()).
+let meldungNr = 0;
+function meldungZeigen(bild, titel, text) {
+  $('toastIc').innerHTML = bild;
   $('toastT').textContent = titel;
   $('toastS').textContent = text;
   $('toast').classList.add('show');
+  return ++meldungNr;
+}
+const meldungWeg = nr => { if (nr === meldungNr) $('toast').classList.remove('show'); };
+async function meldung(bild, titel, text, saetze) {
+  const nr = meldungZeigen(bild, titel, text);
   const start = Date.now();
   const ganz = await Stimme.sprechen(saetze);
   if (ganz) await pause(Math.max(0, 2000 - (Date.now() - start)));
-  $('toast').classList.remove('show');
+  meldungWeg(nr);
   if (ganz) await pause(450);
   return ganz;
 }
+// Stille Meldung, wenn Capy gerade schon etwas anderes sagt (z.B. «Neu im Album!»)
+function hinweis(bild, titel, text) {
+  const nr = meldungZeigen(bild, titel, text);
+  setTimeout(() => meldungWeg(nr), 2600);
+}
+const STERN_BILD = '<svg viewBox="0 0 40 40"><use href="#stern"/></svg>';
+const FREUND_VB = { schmetterling: '0 0 60 50', vogel: '0 0 44 36', schildkroete: '0 0 72 46', frosch: '0 0 60 50', ente: '0 0 58 48', baby: '0 0 80 74' };
+const freundBild = id => `<svg viewBox="${FREUND_VB[id]}" aria-hidden="true"><use href="#f-${id}"/></svg>`;
 
 function freundeZeigen(neu) {
   for (const f of FREUNDE) {
@@ -1925,6 +2456,133 @@ function tonZeigen() {
 }
 
 /* =====================================================================
+   HÜTE: was Capy auf dem Kopf trägt. Namen, Preise und Sätze stehen in
+   texte.js (HUETE). Hier pro Stück: Symbol, dessen Bildausschnitt und der
+   Platz auf Capys Kopf [x, y, Breite, Höhe] in Capys Bild (140 breit).
+   Ausgesucht und geholt werden sie in der Schatzkiste (weiter unten).
+   ===================================================================== */
+const HUT_BILD = {
+  mandarine: ['mandarine',   '0 0 40 40', [52, -1, 36, 36]],
+  blume:     ['bluete',      '0 0 30 30', [53, 2, 34, 34]],
+  tuch:      ['h-tuch',      '0 0 44 30', [48, 8, 44, 30]],
+  yuzu:      ['h-yuzu',      '0 0 40 40', [52, -1, 36, 36]],
+  erdbeere:  ['h-erdbeere',  '0 0 40 40', [53, -2, 34, 34]],
+  schleife:  ['h-schleife',  '0 0 40 40', [50, 0, 40, 40]],
+  strohhut:  ['h-strohhut',  '0 0 48 40', [44, -4, 52, 43]],
+  partyhut:  ['h-partyhut',  '0 0 40 44', [53, -2, 34, 37]],
+  muetze:    ['h-muetze',    '0 0 44 40', [48, -3, 44, 40]],
+  kuerbis:   ['h-kuerbis',   '0 0 44 40', [50, 0, 40, 36]],
+  zauberhut: ['h-zauberhut', '0 0 48 48', [48, -7, 44, 44]],
+  krone:     ['h-krone',     '0 0 44 36', [50, 2, 40, 33]],
+};
+const hutVon = id => HUETE.find(h => h.id === id) || HUETE[0];
+const hutBild = id => `<svg viewBox="${HUT_BILD[id][1]}" aria-hidden="true"><use href="#${HUT_BILD[id][0]}"/></svg>`;
+const MANDARINE_BILD = '<svg viewBox="0 0 40 40" aria-hidden="true"><use href="#mandarine"/></svg>';
+
+// Setzt allen Capys (im Teich, auf den Karten, in der Schatzkiste) dieses Stück auf
+function hutZeigen(id) {
+  const [symbol, , [x, y, w, h]] = HUT_BILD[id] || HUT_BILD.mandarine;
+  document.querySelectorAll('use.hut').forEach(u => {
+    u.setAttribute('href', '#' + symbol);
+    Object.entries({ x, y, width: w, height: h }).forEach(([k, v]) => u.setAttribute(k, v));
+  });
+}
+// Das günstigste Stück, das Yuna noch nicht hat
+const guenstigstes = () => HUETE.filter(h => !stand.huete.includes(h.id)).sort((a, b) => a.preis - b.preis)[0];
+// Punkt am Mandarinen-Zähler: Es reicht für etwas Neues, und Yuna hat noch nicht nachgeschaut
+function hutLockt() {
+  const h = guenstigstes();
+  return !!h && h.preis <= stand.mandarinen && stand.hutGesehen !== h.id;
+}
+
+/* =====================================================================
+   WELT: Die Landschaft folgt dem Kalender und der Sonne. Frühling,
+   Sommer, Herbst und Winter nach dem Monat; Tag, Abend- oder Morgenrot
+   und Nacht nach Sonnenauf- und -untergang in Zug.
+   Zum Ausprobieren an die Adresse hängen: ?jz=winter (fruehling, sommer,
+   herbst) und ?zeit=nacht (tag, abend), auch beides: ?jz=winter&zeit=nacht
+   ===================================================================== */
+const Welt = (() => {
+  const JAHRESZEITEN = ['fruehling', 'sommer', 'herbst', 'winter'], ZEITEN = ['tag', 'abend', 'nacht'];
+  const wunsch = new URLSearchParams(location.search);
+  let jz = '', zeit = '';
+
+  const jahreszeit = d => JAHRESZEITEN[Math.floor((d.getMonth() + 10) % 12 / 3)];   // März bis Mai: Frühling …
+
+  // Sonnenauf- und -untergang als Stunden auf der Uhr des Geräts
+  function sonne(d) {
+    const tag = Math.round((d - new Date(d.getFullYear(), 0, 1)) / 864e5) + 1;
+    const g = 2 * Math.PI * (tag - 81) / 365;
+    const zeitgleichung = 9.87 * Math.sin(2 * g) - 7.53 * Math.cos(g) - 1.5 * Math.sin(g);   // Minuten
+    const neigung = 23.45 * Math.PI / 180 * Math.sin(g), breite = 47.17 * Math.PI / 180;
+    const halberTag = Math.acos((-0.0145 - Math.sin(breite) * Math.sin(neigung)) / (Math.cos(breite) * Math.cos(neigung))) * 12 / Math.PI;
+    // Mit Schweizer Uhr (UTC+1 oder +2) genau für Zug gerechnet, anderswo steht die Sonne um halb eins am höchsten
+    const versatz = -d.getTimezoneOffset() / 60;
+    const mittag = versatz === 1 || versatz === 2 ? 12 - 8.52 / 15 - zeitgleichung / 60 + versatz : 12.5;
+    return [mittag - halberTag, mittag + halberTag];
+  }
+  function tageszeit(d) {
+    const [auf, unter] = sonne(d), t = d.getHours() + d.getMinutes() / 60;
+    if (t < auf - 0.6 || t > unter + 0.6) return 'nacht';
+    if (t < auf + 0.5 || t > unter - 0.7) return 'abend';   // Morgenrot sieht aus wie Abendrot
+    return 'tag';
+  }
+
+  // Was vom Himmel fällt
+  function wetter() {
+    const w = $('wetter');
+    w.innerHTML = '';
+    const [art, anzahl] = { winter: ['flocke', 26], herbst: ['laub', 10], fruehling: ['blatt', 8] }[jz] || [];
+    if (!art || reduce) return;
+    for (let i = 0; i < anzahl; i++) {
+      const e = document.createElement('i'), gross = art === 'flocke' ? rnd(4, 9) : rnd(9, 15), dauer = rnd(10, 18);
+      e.className = art;
+      e.style.cssText = `left:${rnd(0, 100)}%;width:${gross}px;height:${gross}px;animation-duration:${dauer}s;` +
+        `animation-delay:${-rnd(0, dauer)}s;--c:${pick(['#E98B3A', '#F0A63C', '#D9482B', '#F7C25E'])}`;
+      w.appendChild(e);
+    }
+  }
+
+  function stellen() {
+    const d = new Date(), k = document.body.classList;
+    const j = JAHRESZEITEN.includes(wunsch.get('jz')) ? wunsch.get('jz') : jahreszeit(d);
+    const z = ZEITEN.includes(wunsch.get('zeit')) ? wunsch.get('zeit') : tageszeit(d);
+    if (j !== jz) {
+      if (jz) k.remove('jz-' + jz);
+      k.add('jz-' + (jz = j));
+      wetter();
+    }
+    if (z !== zeit) {
+      if (zeit) k.remove('zeit-' + zeit);
+      k.add('zeit-' + (zeit = z));
+      document.querySelector('meta[name="theme-color"]').content = z === 'nacht' ? '#15224E' : '#A4DAF5';
+    }
+  }
+
+  function start() {
+    // Sterne und Glühwürmchen sind immer da; sichtbar macht sie erst die Nacht
+    for (let i = 0; i < 36; i++) {
+      const e = document.createElement('i'), gross = rnd(2, 5);
+      e.style.cssText = `left:${rnd(1, 99)}%;top:${rnd(2, 96)}%;width:${gross}px;height:${gross}px;animation-delay:${-rnd(0, 30) / 10}s`;
+      $('sterne').appendChild(e);
+    }
+    for (let i = 0; i < 7; i++) {
+      const e = document.createElement('i');
+      e.style.cssText = `left:${rnd(4, 92)}%;top:${rnd(0, 92)}%;animation-delay:${-rnd(0, 40) / 10}s, ${-rnd(0, 130) / 10}s`;
+      $('gluehen').appendChild(e);
+    }
+    stellen();
+    setInterval(stellen, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) stellen(); });
+  }
+
+  return { start, jz: () => jz, zeit: () => zeit };
+})();
+
+// Eine Karte oder die Schatzkiste liegt über dem Spiel
+const verdeckt = () => !$('intro').hidden || !$('kiste').hidden;
+
+/* =====================================================================
    BESUCH: Ab und zu läuft ein Tier über die Wiese oder fliegt vorbei.
    Tippt Yuna es an, reagiert es, und Capy sagt etwas dazu.
    Die Zeichnungen schauen nach rechts; nach links wird gespiegelt.
@@ -1945,17 +2603,21 @@ const CAPY_SEITE = `
   <ellipse cx="92" cy="42" rx="5" ry="3" fill="#F59E95" opacity=".55"/>
   <path d="M105 45 Q108.5 47.5 112 45" stroke="#3B2415" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
 
+// laut: Tierlaut aus Ton · oft: wie oft es im Vergleich kommt (sonst 1) ·
+// fliegt: zieht oben durch · teich: taucht im Teich neben Capy auf.
+// Tapir bis Flussdelfin kommen erst, wenn Capy sie als Freunde vorgestellt
+// hat (FREUNDE in texte.js). Die Reihenfolge hier ist die im Album.
 const BESUCHER = {
-  capybara: { vb: '0 0 120 84', klasse: 'geher', tempo: 0.9, groesse: 0.95, svg: CAPY_SEITE },
+  capybara: { vb: '0 0 120 84', klasse: 'geher', tempo: 0.9, groesse: 0.95, laut: 'quiek', svg: CAPY_SEITE },
   familie: {
-    vb: '0 0 236 84', klasse: 'geher', tempo: 0.75, groesse: 0.95,
+    vb: '0 0 236 84', klasse: 'geher', tempo: 0.75, groesse: 0.95, laut: 'quiek',
     svg: `<g class="mitglied"><g transform="translate(0 40) scale(.52)">${CAPY_SEITE}</g></g>
           <g class="mitglied"><g transform="translate(64 40) scale(.52)">${CAPY_SEITE}</g></g>
           <g class="mitglied"><g transform="translate(116 0)">${CAPY_SEITE}</g></g>`,
   },
-  ente: { vb: '0 0 58 48', klasse: 'ente', tempo: 1.3, groesse: 0.72, svg: '<use href="#f-ente"/>' },
+  ente: { vb: '0 0 58 48', klasse: 'ente', tempo: 1.3, groesse: 0.72, laut: 'quak', svg: '<use href="#f-ente"/>' },
   schildkroete: {
-    vb: '0 0 72 46', klasse: 'geher', tempo: 0.5, groesse: 0.62,
+    vb: '0 0 72 46', klasse: 'geher', tempo: 0.5, groesse: 0.62, laut: 'plopp',
     svg: `
       <ellipse class="bein a" cx="16" cy="38" rx="6.5" ry="6" fill="#8BD17C"/>
       <ellipse class="bein b" cx="45" cy="38" rx="6.5" ry="6" fill="#8BD17C"/>
@@ -1972,7 +2634,7 @@ const BESUCHER = {
       <rect x="4" y="31" width="52" height="6" rx="3" fill="#3F8A34"/>`,
   },
   guerteltier: {
-    vb: '0 0 110 64', klasse: 'geher', tempo: 1, groesse: 0.7,
+    vb: '0 0 110 64', klasse: 'geher', tempo: 1, groesse: 0.7, laut: 'boing',
     svg: `
       <g class="normal">
         <rect class="bein a" x="26" y="42" width="8" height="16" rx="4" fill="#8E7A66"/>
@@ -1993,9 +2655,9 @@ const BESUCHER = {
         <path d="M42 23 Q54 40 42 57 M55 18 V62 M68 23 Q56 40 68 57" stroke="#957E68" stroke-width="3" fill="none"/>
       </g>`,
   },
-  frosch: { vb: '0 0 60 50', klasse: 'frosch', tempo: 1.1, groesse: 0.62, svg: '<use href="#f-frosch"/>' },
+  frosch: { vb: '0 0 60 50', klasse: 'frosch', tempo: 1.1, groesse: 0.62, laut: 'quaak', svg: '<use href="#f-frosch"/>' },
   tukan: {
-    vb: '0 0 110 64', klasse: 'flieger', tempo: 1.9, groesse: 0.8, fliegt: true,
+    vb: '0 0 110 64', klasse: 'flieger', tempo: 1.9, groesse: 0.8, fliegt: true, laut: 'kraechz',
     svg: `
       <path d="M22 36 L2 30 L6 44 Z" fill="#23232B"/>
       <ellipse cx="42" cy="38" rx="24" ry="14" fill="#2B2B35"/>
@@ -2008,15 +2670,122 @@ const BESUCHER = {
       <circle cx="60" cy="28" r="4.2" fill="#6AC7F0"/><circle cx="60.6" cy="28" r="2.1" fill="#111"/><circle cx="61.3" cy="27.2" r=".7" fill="#fff"/>
       <g class="fluegel"><path d="M28 34 C34 12 52 6 58 14 C52 24 42 32 28 36 Z" fill="#1E1E26"/></g>`,
   },
-  schmetterling: { vb: '0 0 60 50', klasse: 'flieger schmetterling', tempo: 0.9, groesse: 0.5, fliegt: true, svg: '<use href="#f-schmetterling"/>' },
+  schmetterling: { vb: '0 0 60 50', klasse: 'flieger schmetterling', tempo: 0.9, groesse: 0.5, fliegt: true, laut: 'glitzer', svg: '<use href="#f-schmetterling"/>' },
+  tapir: {
+    vb: '0 0 124 84', klasse: 'geher', tempo: 0.8, groesse: 0.95, laut: 'pfiff',
+    svg: `
+      <rect class="bein a" x="24" y="56" width="11" height="26" rx="5.5" fill="#57525E"/>
+      <rect class="bein b" x="38" y="56" width="11" height="26" rx="5.5" fill="#625C69"/>
+      <rect class="bein b" x="68" y="56" width="11" height="26" rx="5.5" fill="#57525E"/>
+      <rect class="bein a" x="82" y="56" width="11" height="26" rx="5.5" fill="#625C69"/>
+      <ellipse cx="56" cy="44" rx="44" ry="26" fill="#7A7382"/>
+      <path d="M26 30 C38 23 52 21 66 22" stroke="#958E9D" stroke-width="5" stroke-linecap="round" fill="none" opacity=".7"/>
+      <ellipse cx="82" cy="16" rx="6" ry="7" fill="#625C69"/>
+      <ellipse cx="82" cy="12.5" rx="3.6" ry="2.6" fill="#F4F0F6"/>
+      <path d="M74 24 C74 15 84 12 96 14 C108 16 118 24 120 36 C121 44 121 54 117 57 C113 59 109 55 109 49 C104 53 94 54 86 52 C78 50 74 44 74 36 Z" fill="#7A7382"/>
+      <path d="M113.5 41 C116 45 116.5 50 115 55" stroke="#625C69" stroke-width="2" fill="none" stroke-linecap="round" opacity=".7"/>
+      <ellipse cx="97" cy="29" rx="2.6" ry="3.2" fill="#2B1A10"/><circle cx="97.8" cy="28" r=".9" fill="#fff"/>
+      <ellipse cx="92" cy="41" rx="5" ry="3" fill="#F59E95" opacity=".5"/>`,
+  },
+  flamingo: {
+    vb: '0 0 72 100', klasse: 'geher', tempo: 0.7, groesse: 1, laut: 'troet',
+    svg: `
+      <g class="bein a"><path d="M30 58 V95 H37" stroke="#F4778F" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
+      <g class="bein b"><path d="M38 58 V95 H45" stroke="#F4778F" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
+      <path d="M13 44 L2 53 L15 52 Z" fill="#F56C92"/>
+      <ellipse cx="32" cy="48" rx="22" ry="15" fill="#FF8FB1"/>
+      <path d="M18 46 C26 38 40 38 48 46 C40 55 26 56 18 46 Z" fill="#F56C92"/>
+      <path d="M47 45 C59 41 61 31 55 25 C50 20 51 13 57 11" stroke="#FF8FB1" stroke-width="7" fill="none" stroke-linecap="round"/>
+      <circle cx="58" cy="11" r="7.5" fill="#FF8FB1"/>
+      <path d="M63 7.5 C69 8 72 13 67.5 20 C66.5 16 64.5 14 61.5 14 Z" fill="#FFF3EC"/>
+      <path d="M69.6 13 C70.4 15.5 69.4 18 67.5 20 C67.3 17.5 66.8 15.6 65.8 14.2 Z" fill="#2B1A10"/>
+      <circle cx="59" cy="9" r="1.6" fill="#2B1A10"/>`,
+  },
+  ara: {
+    vb: '0 0 110 64', klasse: 'flieger', tempo: 1.7, groesse: 0.8, fliegt: true, laut: 'kraechz',
+    svg: `
+      <path d="M30 37 C18 39 8 45 0 53 C9 51 15 49 21 46 C15 52 12 56 10 61 C20 55 29 48 35 42 Z" fill="#2F6FDE"/>
+      <path d="M28 34 C16 34 8 38 2 44 C12 44 22 42 32 40 Z" fill="#E23B2E"/>
+      <ellipse cx="44" cy="36" rx="24" ry="13" fill="#E23B2E"/>
+      <circle cx="62" cy="28" r="12.5" fill="#E23B2E"/>
+      <ellipse cx="66.5" cy="29" rx="6.5" ry="7.5" fill="#FFF6EA"/>
+      <path d="M70 20 C80 19 86 27 83 36 C81 41 76 41 74 37 C76 33 75 28 70 27 Z" fill="#F3E2BE"/>
+      <path d="M73 36 C74 40 78 41.5 81 39 C79 39 77 38 76.5 35.5 Z" fill="#3A3A44"/>
+      <circle cx="65.5" cy="27" r="2.2" fill="#111"/><circle cx="66.2" cy="26.3" r=".7" fill="#fff"/>
+      <g class="fluegel">
+        <path d="M28 34 C32 12 50 4 58 12 C54 22 44 30 28 36 Z" fill="#FFC21F"/>
+        <path d="M28 34 C30 18 41 9 49 9.5 C47 20 40 28 28 36 Z" fill="#2F6FDE"/>
+      </g>`,
+  },
+  ameisenbaer: {
+    vb: '0 0 162 84', klasse: 'geher', tempo: 0.7, groesse: 0.9, laut: 'schnueff',
+    svg: `
+      <path d="M36 40 C20 18 2 24 2 46 C2 64 18 70 36 58 Z" fill="#6B5B4E"/>
+      <path d="M9 40 C15 34 23 34 31 40 M7 51 C15 47 23 49 31 53" stroke="#8A776A" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".7"/>
+      <rect class="bein a" x="44" y="56" width="11" height="26" rx="5.5" fill="#5A4C42"/>
+      <rect class="bein b" x="58" y="56" width="11" height="26" rx="5.5" fill="#66574B"/>
+      <rect class="bein b" x="92" y="56" width="11" height="26" rx="5.5" fill="#5A4C42"/>
+      <rect class="bein a" x="106" y="56" width="11" height="26" rx="5.5" fill="#66574B"/>
+      <ellipse cx="78" cy="44" rx="44" ry="24" fill="#8A776A"/>
+      <path d="M84 22 C97 28 106 42 106 62 L95 64 C95 48 89 36 78 29 Z" fill="#2E2622"/>
+      <path d="M84 22 C97 28 106 42 106 62" stroke="#F1EADF" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      <path class="zunge" d="M157 49 C163 49 166 54 172 52" stroke="#F0718C" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      <path d="M106 31 C120 27 136 34 157 45 C160 46.5 160 50.5 156 50.5 C140 51 124 53 112 51 C105 46 102 37 106 31 Z" fill="#9B887A"/>
+      <ellipse cx="110" cy="29" rx="4.2" ry="5.2" fill="#6B5B4E"/>
+      <circle cx="123" cy="38" r="2.3" fill="#2B1A10"/><circle cx="123.7" cy="37.3" r=".8" fill="#fff"/>
+      <circle cx="156.5" cy="48" r="2.1" fill="#2B1A10"/>
+      <ellipse cx="118" cy="45" rx="4.5" ry="2.6" fill="#F59E95" opacity=".45"/>`,
+  },
+  delfin: {
+    vb: '0 0 90 80', klasse: 'delfin', teich: true, oft: 0.7, laut: 'klick',
+    svg: `
+      <path d="M30 62 C20 62 12 68 9 77 C19 75 28 71 35 66 Z" fill="#F784A8"/>
+      <path d="M20 82 C17 52 26 26 46 20 C58 17 65 25 63 34 C74 34 84 38 88 42 C84 46.5 74 48.5 62 46.5 C58 60 56 70 56 82 Z" fill="#FF9EBB"/>
+      <path d="M40 82 C40 64 46 52 59 46.5 C56 58 54 70 54 82 Z" fill="#FFD3DF"/>
+      <path d="M63 43.5 C70 45.2 78 44.6 85 42.6" stroke="#E0668C" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+      <circle cx="54" cy="33" r="2.7" fill="#2B1A10"/><circle cx="54.8" cy="32.1" r=".9" fill="#fff"/>
+      <ellipse cx="49" cy="42" rx="4.6" ry="2.8" fill="#FF7FA8" opacity=".5"/>`,
+  },
+  alpaka: {
+    vb: '0 0 96 100', klasse: 'geher', tempo: 0.85, groesse: 1, oft: 0.3, laut: 'summ',
+    svg: `
+      <rect class="bein a" x="22" y="64" width="10" height="32" rx="5" fill="#E6D5BD"/>
+      <rect class="bein b" x="34" y="64" width="10" height="32" rx="5" fill="#F0E2CD"/>
+      <rect class="bein b" x="50" y="64" width="10" height="32" rx="5" fill="#E6D5BD"/>
+      <rect class="bein a" x="62" y="64" width="10" height="32" rx="5" fill="#F0E2CD"/>
+      <circle cx="11" cy="52" r="6.5" fill="#F4E8D6"/>
+      <rect x="58" y="20" width="17" height="40" rx="8.5" fill="#FBF1E2"/>
+      <g fill="#FBF1E2"><circle cx="24" cy="54" r="15"/><circle cx="42" cy="50" r="17"/><circle cx="60" cy="55" r="15"/><circle cx="34" cy="63" r="13"/><circle cx="52" cy="64" r="13"/></g>
+      <path d="M62 11 L60 1 L67.5 8 Z M73 9.5 L77 .5 L79 10 Z" fill="#E6D5BD"/>
+      <ellipse cx="72" cy="19" rx="12" ry="11" fill="#FBF1E2"/>
+      <g fill="#FFFBF2"><circle cx="64.5" cy="10" r="5"/><circle cx="71.5" cy="7.5" r="5.6"/><circle cx="78.5" cy="10.5" r="4.6"/></g>
+      <ellipse cx="82.5" cy="23" rx="7.5" ry="6.2" fill="#F0E2CD"/>
+      <ellipse cx="87" cy="21.3" rx="1.7" ry="1.3" fill="#6B4423"/>
+      <path d="M82.5 26 Q85.5 28 88.5 25.5" stroke="#6B4423" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+      <ellipse cx="73" cy="18" rx="2.2" ry="2.8" fill="#2B1A10"/><circle cx="73.7" cy="17" r=".8" fill="#fff"/>
+      <ellipse cx="71" cy="25" rx="3.6" ry="2.1" fill="#F59E95" opacity=".55"/>`,
+  },
 };
+// Bild eines Besuchers, für das Album und die Meldungen
+const besucherBild = id => `<svg class="tier" viewBox="${BESUCHER[id].vb}" aria-hidden="true">${BESUCHER[id].svg}</svg>`;
+// Im Album steht, wen Yuna schon angetippt oder von Capy vorgestellt bekommen hat
+const imAlbum = id => stand.tiere[id] > 0 || (stand.bekannt.includes(id) && FREUNDE.some(f => f.id === id && f.besuch));
 
 const Besuch = (() => {
   const vorne = $('besuchVorne'), hinten = $('besuchHinten');
   let timer = 0, letzter = '';
   const zeile = {};
-  const unterwegs = { boden: null, himmel: null };   // höchstens ein Läufer und ein Flieger zugleich
-  const spurVon = id => (BESUCHER[id].fliegt ? 'himmel' : 'boden');
+  // höchstens ein Läufer, ein Flieger und ein Gast im Teich zugleich
+  const unterwegs = { boden: null, himmel: null, teich: null };
+  const spurVon = id => (BESUCHER[id].teich ? 'teich' : BESUCHER[id].fliegt ? 'himmel' : 'boden');
+  // Die späteren Freunde kommen erst, wenn Capy sie vorgestellt hat
+  const darf = id => !FREUNDE.some(f => f.id === id && f.besuch) || stand.bekannt.includes(id);
+  // Zufällig einer aus der Liste; seltene Tiere (oft < 1) entsprechend seltener
+  function waehlen(ids) {
+    let r = Math.random() * ids.reduce((s, k) => s + (BESUCHER[k].oft || 1), 0);
+    for (const k of ids) if ((r -= BESUCHER[k].oft || 1) <= 0) return k;
+    return ids[ids.length - 1];
+  }
 
   // Wie echte Tiere: meist eine Weile nichts, manchmal zwei kurz nacheinander,
   // manchmal lange Ruhe. Die Wartezeit ist exponentiell verteilt.
@@ -2029,12 +2798,13 @@ const Besuch = (() => {
   }
 
   function kommen(wunsch) {
-    if (document.hidden || !$('intro').hidden) { planen(wartezeit(12000)); return; }
-    const frei = Object.keys(BESUCHER).filter(k => k !== letzter && !unterwegs[spurVon(k)]);
-    const id = BESUCHER[wunsch] ? wunsch : frei.length ? pick(frei) : null;
+    if (document.hidden || verdeckt()) { planen(wartezeit(12000)); return; }
+    const frei = Object.keys(BESUCHER).filter(k => k !== letzter && !unterwegs[spurVon(k)] && darf(k));
+    const id = BESUCHER[wunsch] ? wunsch : frei.length ? waehlen(frei) : null;
     if (!id) { planen(wartezeit(12000)); return; }
     letzter = id;
     const d = BESUCHER[id];
+    if (d.teich) { auftauchen(id, d); planen(); return; }
     // jedes Mal ein bisschen anders schnell und gross
     const tempo = d.tempo * (0.8 + Math.random() * 0.4);
     const groesse = d.groesse * (0.88 + Math.random() * 0.12);
@@ -2068,6 +2838,29 @@ const Besuch = (() => {
     el.addEventListener('pointerdown', e => { e.preventDefault(); reagieren(b); });
   }
 
+  // Im Teich: taucht neben Capy auf, schaut sich eine Weile um und taucht wieder ab
+  function auftauchen(id, d) {
+    const ebene = $('teich');
+    const el = document.createElement('div');
+    el.className = `besucher ${id} ${d.klasse}`;
+    el.innerHTML = `<div class="huepf"><div class="dreh"><svg viewBox="${d.vb}">${d.svg}</svg></div></div>`;
+    ebene.querySelector('.loch').appendChild(el);
+    ebene.classList.add('da');
+    const unten = 'translateY(105%)', oben = 'translateY(0)';
+    const lauf = el.animate(
+      [{ transform: unten, easing: 'ease-out' }, { transform: oben, offset: 0.08 },
+        { transform: oben, offset: 0.92, easing: 'ease-in' }, { transform: unten }],
+      { duration: 10000, fill: 'forwards' },
+    );
+    // schild: Das Namensschild hängt am Teich, sonst schnitte es der Rand des Lochs ab
+    const b = (unterwegs.teich = { id, el, lauf, ebene, schild: ebene, zuletzt: 0 });
+    lauf.onfinish = () => {
+      el.remove();
+      if (unterwegs.teich === b) { unterwegs.teich = null; ebene.classList.remove('da'); }
+    };
+    el.addEventListener('pointerdown', e => { e.preventDefault(); reagieren(b); });
+  }
+
   const hops = (ziel, wie, mal = 1, ms = 420) => ziel.animate(
     [{ transform: 'translateY(0)' }, { transform: `translateY(-${wie})`, offset: 0.4 }, { transform: 'translateY(0)' }],
     { duration: ms, iterations: mal, easing: 'ease-out' },
@@ -2082,6 +2875,12 @@ const Besuch = (() => {
     Stimme.einwurf([sprechtext(t.saetze[zeile[b.id]])]);
     etikett(b, t.name);
     herzen(b);
+    // Wer zum ersten Mal angetippt wird, kommt ins Album
+    const neu = !imAlbum(b.id);
+    stand.tiere[b.id] = Math.min(9999, (stand.tiere[b.id] || 0) + 1);
+    speichern();
+    if (neu) hinweis(besucherBild(b.id), NEU_IM_ALBUM, t.name);
+    Ton[BESUCHER[b.id].laut]();
     const huepf = b.el.querySelector('.huepf'), svg = b.el.querySelector('svg');
     // kurz stehen bleiben, dann weiter
     const anhalten = ms => {
@@ -2094,47 +2893,70 @@ const Besuch = (() => {
     };
     switch (b.id) {
       case 'capybara':
-        Ton.quiek(); anhalten(1300); hops(huepf, '30%', 2);
+        anhalten(1300); hops(huepf, '30%', 2);
         break;
       case 'familie':
-        Ton.quiek(); anhalten(1700);
+        anhalten(1700);
         b.el.querySelectorAll('.mitglied').forEach((m, i) => setTimeout(() => {
           hops(m, '14px', 2, 380);
           if (i) Ton.quiek();
         }, i * 180));
         break;
       case 'ente':
-        Ton.quak(); hops(huepf, '35%'); b.lauf.playbackRate = 2.6;
+        hops(huepf, '35%'); b.lauf.playbackRate = 2.6;
         break;
       case 'schildkroete':
-        Ton.plopp(); b.el.classList.add('versteckt'); anhalten(2300);
+        b.el.classList.add('versteckt'); anhalten(2300);
         setTimeout(() => b.el.classList.remove('versteckt'), 2000);
         break;
       case 'guerteltier':
-        Ton.boing(); b.el.classList.add('rollt'); b.lauf.playbackRate = 3.2;
+        b.el.classList.add('rollt'); b.lauf.playbackRate = 3.2;
         break;
       case 'frosch':
-        Ton.quaak(); hops(huepf, '90%', 1, 600); b.lauf.playbackRate = 1.8;
+        hops(huepf, '90%', 1, 600); b.lauf.playbackRate = 1.8;
         break;
       case 'tukan':
-        Ton.kraechz();
         svg.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(-360deg)' }], { duration: 800, easing: 'ease-in-out' });
         b.lauf.playbackRate = 1.5;
         break;
       case 'schmetterling':
-        Ton.glitzer();
         huepf.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-160%)' }], { duration: 1400, easing: 'ease-out', fill: 'forwards' });
         b.lauf.playbackRate = 1.6;
+        break;
+      case 'tapir':
+        anhalten(1400); hops(huepf, '22%', 2);
+        break;
+      case 'flamingo':   // stellt sich auf ein Bein
+        anhalten(1900); b.el.classList.add('einbein');
+        setTimeout(() => b.el.classList.remove('einbein'), 1900);
+        break;
+      case 'ara':
+        svg.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(360deg)' }], { duration: 800, easing: 'ease-in-out' });
+        b.lauf.playbackRate = 1.5;
+        break;
+      case 'ameisenbaer':   // streckt die Zunge heraus
+        anhalten(1600); b.el.classList.add('schleckt');
+        setTimeout(() => b.el.classList.remove('schleckt'), 1500);
+        break;
+      case 'alpaka':
+        hops(huepf, '26%', 3, 330); b.lauf.playbackRate = 2.2;
+        break;
+      case 'delfin':
+        huepf.animate(
+          [{ transform: 'translateY(0) rotate(0)' }, { transform: 'translateY(-42%) rotate(-16deg)', offset: 0.45 }, { transform: 'translateY(0) rotate(0)' }],
+          { duration: 800, easing: 'ease-out' },
+        );
         break;
     }
   }
 
   function etikett(b, text) {
-    b.el.querySelectorAll('.etikett').forEach(x => x.remove());
+    const ort = b.schild || b.el;
+    ort.querySelectorAll('.etikett').forEach(x => x.remove());
     const e = document.createElement('div');
     e.className = 'etikett' + (b.fliegt ? ' unten' : '');
     e.textContent = text;
-    b.el.appendChild(e);
+    ort.appendChild(e);
     setTimeout(() => e.remove(), 2100);
   }
 
@@ -2170,6 +2992,221 @@ document.querySelectorAll('[data-f]').forEach(el => el.addEventListener('pointer
 }));
 capyEl.addEventListener('pointerdown', () => { stimmung('happy', 900); Ton.quiek(); });
 
+/* =====================================================================
+   SCHATZKISTE: drei Seiten hinter dem Mandarinen-Zähler.
+     Hüte    Mit Mandarinen holt Yuna Capy etwas Neues für den Kopf.
+             Erster Tipp: anprobieren. Der grüne Knopf holt das Stück.
+     Tiere   Das Album: Capys Freunde und alle Besucher, die Yuna schon
+             angetippt hat. Die anderen sind nur als Schatten da.
+     Fakten  Alles, was Capy schon erzählt hat, zum Nochmal-Anhören.
+   Was Capy hier sagt, steht in der Blase der Kiste; die Blase im Teich
+   bleibt, wie sie war.
+   ===================================================================== */
+const Kiste = (() => {
+  const el = $('kiste'), SEITEN = ['huete', 'tiere', 'fakten'];
+  let seite = 'huete';
+  let probe = null;          // Stück, das Capy gerade nur anprobiert
+  const zeile = {};
+
+  function sagen(html, saetze) {
+    $('kisteSagt').innerHTML = html;
+    return Stimme.einwurf(saetze);
+  }
+  const sag1 = e => sagen(esc(anzeigetext(e)), [sprechtext(e)]);
+
+  function auf(welche) {
+    Stimme.stopp();
+    el.hidden = false;
+    zeig(welche);
+  }
+  function zu() {
+    el.hidden = true;
+    probe = null;
+    hutZeigen(stand.hut);
+    Stimme.stopp();
+    zaehlen();
+    wachHalten();
+  }
+  function zeig(welche) {
+    seite = welche;
+    probe = null;
+    hutZeigen(stand.hut);
+    el.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.tab === seite));
+    SEITEN.forEach(s => { $('seite-' + s).hidden = s !== seite; });
+    $('kauf').hidden = true;      // gehört nur zu den Hüten; huete() zeigt ihn bei Bedarf wieder
+    ({ huete, tiere, fakten })[seite]();
+    sag1(zieh(seite === 'fakten' && !stand.album.length ? 'kiste_fakten_leer' : 'kiste_' + seite));
+  }
+
+  /* ----- Hüte ----- */
+  function huete() {
+    // Yuna hat nachgeschaut: Der Punkt am Zähler darf weg
+    const g = guenstigstes();
+    if (g && g.preis <= stand.mandarinen && stand.hutGesehen !== g.id) { stand.hutGesehen = g.id; speichern(); }
+    $('kisteM').textContent = stand.mandarinen;
+    const raster = $('hutRaster');
+    raster.innerHTML = '';
+    for (const h of HUETE) {
+      const hat = stand.huete.includes(h.id), an = stand.hut === h.id;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'kachel' + (an ? ' an' : '') + (probe === h.id ? ' probe' : '');
+      b.dataset.hut = h.id;
+      b.setAttribute('aria-label', h.name + (an ? ', trägt Capy gerade' : hat ? '' : `, ${h.preis} Mandarinen`));
+      b.innerHTML = `<span class="bild">${hutBild(h.id)}</span><span>${esc(h.name)}</span>` + (
+        an ? '<span class="marke">✓</span>'
+          : hat ? ''
+            : `<span class="preis${h.preis > stand.mandarinen ? ' zuviel' : ''}">${h.preis}${MANDARINE_BILD}</span>`);
+      raster.appendChild(b);
+    }
+    // Der Knopf unten gehört zum anprobierten Stück
+    const h = probe && hutVon(probe), k = $('kauf');
+    k.hidden = !h;
+    if (!h) return;
+    const fehlt = h.preis - stand.mandarinen;
+    k.disabled = fehlt > 0;
+    k.innerHTML = fehlt > 0 ? `Noch ${fehlt} ${MANDARINE_BILD} sammeln` : `Für ${h.preis} ${MANDARINE_BILD} holen`;
+  }
+  function hutTipp(id) {
+    const h = hutVon(id);
+    Ton.tipp();
+    if (stand.huete.includes(id)) {
+      // gehört Capy schon: aufsetzen
+      probe = null;
+      stand.hut = id;
+      speichern();
+      hutZeigen(id);
+      huete();
+      sag1(h.satz);
+      return;
+    }
+    probe = id;
+    hutZeigen(id);
+    huete();
+    sag1(zieh(h.preis > stand.mandarinen ? 'hut_teuer' : 'hut_probe'));
+  }
+  function holen() {
+    const h = probe && hutVon(probe);
+    if (!h || h.preis > stand.mandarinen || stand.huete.includes(h.id)) return;
+    stand.mandarinen -= h.preis;
+    stand.huete.push(h.id);
+    stand.hut = h.id;
+    probe = null;
+    speichern();
+    zaehlen();
+    Ton.freund();
+    hutZeigen(h.id);
+    huete();
+    const capy = $('kisteCapy');
+    capy.classList.remove('freut');
+    void capy.getBoundingClientRect();
+    capy.classList.add('freut');
+    const dank = zieh('hut_gekauft');
+    sagen(esc(anzeigetext(dank)) + ' ' + esc(anzeigetext(h.satz)), [sprechtext(dank), sprechtext(h.satz)]);
+  }
+
+  /* ----- Tiere ----- */
+  function kachel(raster, daten, bild, name, da, sonst) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'kachel' + (da ? '' : ' fehlt');
+    Object.assign(b.dataset, daten);
+    b.setAttribute('aria-label', da ? name : 'Noch nicht da');
+    b.innerHTML = `<span class="bild">${bild}</span><span>${da ? esc(name) : sonst}</span>`;
+    raster.appendChild(b);
+  }
+  function tiere() {
+    // Wie weit ist es bis zum nächsten Freund?
+    const naechster = FREUNDE.find(f => f.at > stand.solved);
+    const davor = Math.max(0, ...FREUNDE.filter(f => f.at <= stand.solved).map(f => f.at));
+    $('tierStand').innerHTML = `Gebaute Pyramiden: <b>${stand.solved}</b>` +
+      (naechster ? ` · nächster Freund bei <b>${naechster.at}</b>` : ' · alle Freunde sind da!');
+    $('tierBalken').style.width = (naechster ? Math.round((stand.solved - davor) / (naechster.at - davor) * 100) : 100) + '%';
+    const fr = $('freundRaster'), be = $('besuchRaster');
+    fr.innerHTML = be.innerHTML = '';
+    for (const f of FREUNDE.filter(x => !x.besuch)) {
+      kachel(fr, { freund: f.id }, freundBild(f.id), f.name, stand.solved >= f.at, 'bei ' + f.at);
+    }
+    let da = 0;
+    for (const id of Object.keys(BESUCHER)) {
+      const f = FREUNDE.find(x => x.id === id && x.besuch);
+      if (imAlbum(id)) da++;
+      kachel(be, { besuch: id }, besucherBild(id), TIERE[id].name, imAlbum(id), f ? 'bei ' + f.at : '?');
+    }
+    $('besuchZahl').textContent = `${da} von ${Object.keys(BESUCHER).length}`;
+  }
+  function tierTipp(b) {
+    const hopsen = () => {
+      b.classList.remove('huepft');
+      void b.offsetWidth;
+      b.classList.add('huepft');
+    };
+    if (b.dataset.freund) {
+      const f = FREUNDE.find(x => x.id === b.dataset.freund);
+      if (stand.solved < f.at) { Ton.tipp(); sag1(zieh('album_spaeter')); return; }
+      Ton[FREUNDE_LAUT[f.id]]();
+      hopsen();
+      sag1(f.album);
+      return;
+    }
+    const id = b.dataset.besuch;
+    if (!imAlbum(id)) {
+      Ton.tipp();
+      sag1(zieh(FREUNDE.some(x => x.id === id && x.besuch) ? 'album_spaeter' : 'album_unbekannt'));
+      return;
+    }
+    Ton[BESUCHER[id].laut]();
+    hopsen();
+    const s = TIERE[id].saetze;
+    zeile[id] = ((zeile[id] === undefined ? -1 : zeile[id]) + 1) % s.length;
+    sag1(s[zeile[id]]);
+  }
+
+  /* ----- Fakten ----- */
+  function fakten() {
+    const gehoert = new Set(stand.album), liste = $('faktListe');
+    liste.innerHTML = '';
+    let anzahl = 0;
+    for (const g of FAKTEN_GRUPPEN) {
+      const da = g.fakten.filter(f => gehoert.has(kennung(sprechtext(f))));
+      anzahl += da.length;
+      const h = document.createElement('h2');
+      h.innerHTML = `${esc(g.name)}<small>${da.length} von ${g.fakten.length}</small>`;
+      liste.appendChild(h);
+      for (const f of da) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'fakt';
+        b.dataset.fakt = FAKTEN.indexOf(f);
+        b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ton"/></svg><span>${esc(anzeigetext(f))}</span>`;
+        liste.appendChild(b);
+      }
+    }
+    $('faktStand').innerHTML = `<b>${anzahl}</b> von ${FAKTEN.length} Fakten gehört`;
+  }
+  async function faktTipp(b) {
+    el.querySelectorAll('.fakt.spricht').forEach(x => x.classList.remove('spricht'));
+    b.classList.add('spricht');
+    Ton.tipp();
+    await Stimme.einwurf([sprechtext(FAKTEN[+b.dataset.fakt])]);
+    b.classList.remove('spricht');
+  }
+
+  el.addEventListener('click', e => {
+    if (e.target === el) { zu(); return; }             // neben die Kiste getippt
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.id === 'kisteZu') zu();
+    else if (b.id === 'kauf') holen();
+    else if (b.dataset.tab) { Ton.tipp(); zeig(b.dataset.tab); }
+    else if (b.dataset.hut) hutTipp(b.dataset.hut);
+    else if (b.dataset.freund || b.dataset.besuch) tierTipp(b);
+    else if (b.dataset.fakt) faktTipp(b);
+  });
+
+  return { auf, zu };
+})();
+
 /* ---------- Start, Begrüssung und «So geht's» ---------- */
 let resetScharf = false;
 // karte: 'regeln' oder 'willkommen'; null schliesst
@@ -2188,13 +3225,16 @@ function karte(welche) {
     $('reset').hidden = !stand.solved;
   }
   if (welche === 'willkommen') {
-    $('bilanzM').textContent = stand.solved;
+    $('bilanzM').textContent = stand.mandarinen;
     $('bilanzS').textContent = stufe() + 1;
   }
 }
 
+// Meist nach der Uhr, manchmal passend zur Nacht oder zur Jahreszeit draussen
 function gruss() {
   const h = new Date().getHours();
+  if (Welt.zeit() === 'nacht' && Math.random() < 0.5) return zieh('gruss_nacht');
+  if (Math.random() < 0.35) return zieh('gruss_' + Welt.jz());
   return zieh(h < 11 ? 'gruss_morgen' : h < 17 ? 'gruss_tag' : 'gruss_abend');
 }
 
@@ -2231,6 +3271,8 @@ $('stimme').addEventListener('click', () => {
   else Stimme.stopp();
 });
 $('help').addEventListener('click', () => karte('regeln'));
+$('count').addEventListener('click', () => Kiste.auf('huete'));
+$('album').addEventListener('click', () => Kiste.auf('tiere'));
 $('vorlesen').addEventListener('click', () => { audio(); Stimme.sprechen([sprechtext(ANLEITUNG)]); });
 $('go').addEventListener('click', () => {
   const erstesMal = !stand.intro;
@@ -2256,7 +3298,10 @@ $('reset').addEventListener('click', () => {
   stand.skill = 0;
   stand.solved = 0;
   stand.fakten = [];
+  Object.assign(stand, { mandarinen: 0, huete: ['mandarine'], hut: 'mandarine', hutGesagt: '', hutGesehen: '',
+    tiere: {}, album: [], bekannt: [] });
   speichern();
+  hutZeigen(stand.hut);
   zaehlen();
   karte(null);
   neuePyramide();
@@ -2270,7 +3315,10 @@ if (window.ResizeObserver) new ResizeObserver(einpassen).observe(boxEl);
 else window.addEventListener('resize', einpassen);
 
 /* ---------- Los ---------- */
-$('solved').textContent = stand.solved;
+$('solved').textContent = stand.mandarinen;
+zaehlen();
+hutZeigen(stand.hut);
+Welt.start();
 tonZeigen();
 neuePyramide();
 karte(stand.intro ? 'willkommen' : 'regeln');
