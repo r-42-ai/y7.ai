@@ -22,7 +22,7 @@ Begrüssungskarte) öffnet die **Russisch-Ecke**.
 
 - **Karte**: 14 Matrjoschkas, eine pro Station. Jede Station bringt zwei bis fünf
   Buchstaben, in einer Reihenfolge, mit der man früh ganze Wörter lesen kann
-  (А О К Т М → КОТ, МАМА; dann Э Л → «Это лама.»). Nach Station 14 kennt Yuna alle 33.
+  (А О К Т М → МАМА, ТОМАТ, КАКАО; dann Э Л → «Это лама.»). Nach Station 14 kennt Yuna alle 33.
 - **Buchstaben** sind «wie bei uns» (А, О, К, Т, М: sehen aus und klingen wie bei
   uns), «Schwindler» (Н, С, Р, В, У, Е, Х: sehen aus wie unsere, sagen aber etwas
   anderes) oder neu. Jeder hat ein Merkwort mit Bild und einen eigenen kurzen Satz.
