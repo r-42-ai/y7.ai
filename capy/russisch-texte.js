@@ -37,7 +37,9 @@ const LAMA = {
    laut     so steht er bei «Wie klingt er?» zur Wahl (fehlt: diese Aufgabe nicht)
    falle    unser Buchstabe, mit dem man ihn verwechseln kann
    wort     Merkwort mit Bild (steht in WOERTER)
-   text     was das Lama erklärt                                       */
+   text     was das Lama erklärt
+   sprechen falls der Name sonst nicht schön herauskommt: anderer Text, Satz davor
+            und danach und Tempo für die Aufnahme                       */
 const BUCHSTABEN = [
   { b: 'А', k: 'а', art: 'freund', name: 'а', laut: 'A', wort: 'арбуз',
     text: 'Ein echter Freund! Er sieht aus wie unser A und klingt auch so.' },
@@ -64,6 +66,8 @@ const BUCHSTABEN = [
   { b: 'В', k: 'в', art: 'schwindler', name: 'вэ', laut: 'W', falle: 'B', wort: 'волк',
     text: 'Ein Schwindler! Er sieht aus wie unser B, sagt aber W, wie in Wolke.' },
   { b: 'У', k: 'у', art: 'schwindler', name: 'у', laut: 'U', falle: 'Y', wort: 'утка',
+    // als «у». kam ein kurzes «u … u» heraus; gedehnt klingt es sauber
+    sprechen: { text: 'Ууу.', vorher: 'Учительница медленно тянет звук:', tempo: 0.8 },
     text: 'Ein Schwindler! Er sieht aus wie unser Y, sagt aber U, wie in Uhu.' },
   { b: 'Е', k: 'е', art: 'schwindler', name: 'е', laut: 'JE', falle: 'E', wort: 'енот',
     text: 'Fast ein Freund! Er sieht aus wie unser E, klingt aber wie der Anfang von jetzt.' },
@@ -104,6 +108,8 @@ const BUCHSTABEN = [
   { b: 'Щ', k: 'щ', art: 'neu', name: 'ща', wort: 'щенок',
     text: 'Das ist das Sch mit einem Schwänzchen. Es klingt wie das Ende von Fisch, nur länger und weicher.' },
   { b: 'Ъ', k: 'ъ', art: 'neu', name: 'твёрдый знак',
+    // langsam (0.75) zog sich der lange Name; im Satz und fast im normalen Tempo klingt er natürlich
+    sprechen: { text: 'твёрдый знак', vorher: 'Эта буква называется', nachher: '. Она не звучит.', tempo: 0.9 },
     text: 'Das ist das harte Zeichen. Es ist ganz still, kommt fast nie vor und macht nur eine kleine Pause.' },
 ];
 // Reihenfolge im russischen Alphabet (für die Alphabet-Tafel)
@@ -399,7 +405,7 @@ const ichHeisse = () => 'Меня зовут ' + LAMA.name.ru + '!';
 // Aufnahme des Buchstabennamens. In «» mit Punkt und mit dem Satz davor und danach
 // (siehe russischAufnahmen) spricht die Stimme ihn deutlich und lang genug; schlicht
 // («а») kam er oft nur eine Zehntelsekunde kurz heraus.
-const nameAufnahme = b => '«' + b.name + '».';
+const nameAufnahme = b => (b.sprechen ? b.sprechen.text : '«' + b.name + '».');
 // Fassung der Buchstabennamen (siehe datei() in texte.js). 2: ohne Atmen am Schluss,
 // von mehreren Aufnahmen je Buchstabe die längste, die sauber endet.
 const BUCHSTABEN_FASSUNG = 2;
@@ -422,7 +428,13 @@ function russischAufnahmen() {
   };
   const zeile = z => stuecke(z).forEach(x => l(x.ru ? x.t : TX.sprechtext(x.t), x.ru ? 'ausruf' : 'de'));
   for (const v of Object.values(LAMA_TEXTE)) for (const z of (Array.isArray(v) ? v : Object.values(v))) zeile(z);
-  for (const b of BUCHSTABEN) { l(nameAufnahme(b), 'buchstabe', false, BUCHSTABEN_FASSUNG); zeile(b.text); }
+  for (const b of BUCHSTABEN) {
+    l(nameAufnahme(b), 'buchstabe', false, BUCHSTABEN_FASSUNG);
+    if (b.sprechen) {
+      Object.assign(liste[liste.length - 1], { vorher: b.sprechen.vorher, nachher: b.sprechen.nachher || '', tempo: b.sprechen.tempo || 0.75 });
+    }
+    zeile(b.text);
+  }
   for (const s of STATIONEN) zeile(s.start);
   for (const w of WOERTER) {
     l(w.ru, 'wort');
