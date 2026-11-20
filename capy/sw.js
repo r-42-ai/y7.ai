@@ -10,7 +10,7 @@ importScripts('texte.js');
 // Service Worker die fehlenden Aufnahmen nach, ohne alles neu zu laden.
 // Wurden bestehende Aufnahmen neu gesprochen (gleiche Dateinamen, z.B. andere
 // Stimme), stattdessen CACHE hochzählen, damit alte Aufnahmen verschwinden.
-// Stand: Symbol Zahlenpyramide 3 + 4 = 7
+// Stand: Schatzkiste, neue Freunde, Zahlen bis 100, Jahreszeiten
 const CACHE = 'capy-v1';
 const FILES = [
   './',
