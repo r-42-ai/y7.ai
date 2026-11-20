@@ -3,18 +3,21 @@
 // ankommen; nur wenn das nicht klappt, kommt die gespeicherte Kopie.
 'use strict';
 
-// Liefert alleSaetze() und kennung(), um alle Aufnahmen zu kennen
-importScripts('texte.js');
+// Liefern alleAufnahmen(), um alle Aufnahmen zu kennen (Capy und das Lama)
+importScripts('texte.js', 'russisch-texte.js');
 
 // Bei neuen Texten genügt es, die «Stand»-Zeile zu ändern: dann holt der neue
 // Service Worker die fehlenden Aufnahmen nach, ohne alles neu zu laden.
 // Wurden bestehende Aufnahmen neu gesprochen (gleiche Dateinamen, z.B. andere
 // Stimme), stattdessen CACHE hochzählen, damit alte Aufnahmen verschwinden.
-// Stand: Schatzkiste, neue Freunde, Zahlen bis 100, Jahreszeiten
+// Stand: das Lama und die Russisch-Ecke
 const CACHE = 'capy-v1';
 const FILES = [
   './',
   'texte.js',
+  'russisch-texte.js',
+  'russisch.js',
+  'russisch.css',
   'manifest.webmanifest',
   'favicon.svg',
   'apple-touch-icon.png',
@@ -22,7 +25,7 @@ const FILES = [
   'icon-512.png',
   'icon-maskable-512.png',
 ];
-const AUDIO = [...new Set(alleSaetze().map(x => 'audio/' + kennung(x.s) + '.mp3'))];
+const AUDIO = [...new Set(alleAufnahmen().map(x => 'audio/' + x.datei + '.mp3'))];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
