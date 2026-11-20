@@ -184,25 +184,32 @@ body.ru-offen { overflow: hidden; }
 .matrjoschkas { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px 10px; }
 .matr { position: relative; display: block; padding: 0 0 22px; }
 .matr .matr-bild { width: 100%; height: auto; filter: drop-shadow(0 3px 0 rgba(90, 58, 28, 0.15)); }
+/* Bauch der Matrjoschka: der weisse Kreis sitzt bei 50 % der Breite und 60/84 der Höhe.
+   Schriftgrösse in cqw (Breite der Matrjoschka), davor ein Wert für ältere Browser. */
+.matr-koerper { position: relative; display: block; container-type: inline-size; }
 .matr-b {
   position: absolute;
-  left: 18%; right: 18%;
-  top: 56%;
-  transform: translateY(-50%);
-  font-size: clamp(11px, 2.3vmin, 16px);
+  left: 50%;
+  top: 71.4%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 13px;
+  font-size: 14cqw;
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.05;
   color: var(--ink);
-  text-align: center;
-  word-spacing: -.05em;
+  white-space: nowrap;
+  word-spacing: .08em;
 }
-.matr-b.viele { top: 60%; font-size: clamp(9px, 1.7vmin, 12px); word-spacing: -.15em; }
-.matr.gross .matr-b.viele { font-size: clamp(13px, 3vmin, 19px); }
+.matr-b.n3 { font-size: 12px; font-size: 12.5cqw; line-height: 1.25; }   /* Ё braucht Platz für die Pünktchen */
+.matr-b.n5 { font-size: 10px; font-size: 11cqw; line-height: 1.2; }
 .matr-st { position: absolute; left: 0; right: 0; bottom: 0; font-size: 15px; color: #F5A300; letter-spacing: .05em; text-align: center; }
 .matr.gesperrt .matr-bild { filter: grayscale(1); opacity: .42; }
 .matr.gesperrt .matr-b { opacity: .45; }
 .matr.gesperrt .matr-st { font-size: 13px; }
-.matr.jetzt .matr-bild { animation: matr-wackeln 2.4s ease-in-out infinite; transform-origin: 50% 95%; }
+.matr.jetzt .matr-koerper { animation: matr-wackeln 2.4s ease-in-out infinite; transform-origin: 50% 95%; }
 .matr.jetzt::after {
   content: "";
   position: absolute;
@@ -213,7 +220,6 @@ body.ru-offen { overflow: hidden; }
   pointer-events: none;
 }
 .matr.gross { width: clamp(110px, 24vmin, 170px); margin: 0 auto; padding: 0; }
-.matr.gross .matr-b { font-size: clamp(16px, 4vmin, 26px); }
 .matr.gross::after { inset: -6px; }
 @keyframes matr-wackeln { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
 .ru-menue { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: auto; padding-top: 14px; }
