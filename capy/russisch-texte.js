@@ -45,7 +45,7 @@ const BUCHSTABEN = [
     text: 'Das kennst du schon: ein A, genau wie bei uns.' },
   { b: 'О', k: 'о', art: 'freund', name: 'о', laut: 'O', wort: 'облако',
     text: 'Rund wie ein Ball. Auch das O klingt wie bei uns.' },
-  { b: 'К', k: 'к', art: 'freund', name: 'ка', laut: 'K', wort: 'кот',
+  { b: 'К', k: 'к', art: 'freund', name: 'ка', laut: 'K', wort: 'кошка',
     text: 'Das K ist auch dabei. Es klingt wie in Katze.' },
   { b: 'Т', k: 'т', art: 'freund', name: 'тэ', laut: 'T', wort: 'томат',
     text: 'Ein T wie Tiger. Ganz einfach!' },
@@ -154,7 +154,6 @@ const STATIONEN = [
    gruppe: Wörter mit gleichem Bild-Sinn kommen nie zusammen zur Wahl
    sagt: was das Lama danach auf Deutsch sagt (sonst «Das heisst …»)        */
 const WOERTER = [
-  { ru: 'кот', de: 'Katze', bild: '🐱', st: 1 },
   { ru: 'мама', de: 'Mama', bild: '👩', st: 1 },
   { ru: 'томат', de: 'Tomate', bild: '🍅', st: 1 },
   { ru: 'какао', de: 'Kakao', bild: '☕', st: 1 },
@@ -204,6 +203,7 @@ const WOERTER = [
   { ru: 'звезда', de: 'Stern', bild: '⭐', st: 10 },
   { ru: 'зуб', de: 'Zahn', bild: '🦷', st: 10 },
   { ru: 'шар', de: 'Ballon', bild: '🎈', st: 11 },
+  { ru: 'кошка', de: 'Katze', bild: '🐱', st: 11 },
   { ru: 'машина', de: 'Auto', bild: '🚗', st: 11 },
   { ru: 'мышка', de: 'Maus', bild: '🐭', st: 11 },
   { ru: 'шоколад', de: 'Schokolade', bild: '🍫', st: 11 },
@@ -237,9 +237,9 @@ const WOERTER = [
 
 /* ---------- Sätze (lesen, verstehen, bauen) ---------- */
 const SAETZE = [
-  { ru: 'Это кот.', de: 'Das ist eine Katze.', bild: '🐱', st: 2 },
+  { ru: 'Это мама.', de: 'Das ist Mama.', bild: '👩', st: 2 },
   { ru: 'Это лама.', de: 'Das ist ein Lama.', bild: '🦙', st: 2 },
-  { ru: 'Мама и кот.', de: 'Mama und die Katze.', bild: '👩🐱', st: 3 },
+  { ru: 'Мама и лама.', de: 'Mama und das Lama.', bild: '👩🦙', st: 3 },
   { ru: 'Это слон.', de: 'Das ist ein Elefant.', bild: '🐘', st: 4 },
   { ru: 'Вот утка.', de: 'Da ist eine Ente.', bild: '🦆', st: 5 },
   { ru: 'Вот собака.', de: 'Da ist ein Hund.', bild: '🐕', st: 6 },

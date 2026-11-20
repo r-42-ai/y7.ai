@@ -21,7 +21,7 @@
   /* ---------- Lernstand ----------
      da: das Lama ist bei Capy angekommen
      stationen: Nummer → { sterne } der geschafften Stationen
-     items: 'b:М', 'w:кот', 's:Это кот.', 'z:Привет!' → { k: Stärke 0–5, n: so oft gesehen, z: Tag }
+     items: 'b:М', 'w:мама', 's:Это мама.', 'z:Привет!' → { k: Stärke 0–5, n: so oft gesehen, z: Tag }
      heute: Tag der letzten Runde · runden: alle Runden zusammen          */
   const SPEICHER = 'y7.capy.russisch';
   const tagHeute = () => { const d = new Date(); return Math.floor((d - d.getTimezoneOffset() * 6e4) / 864e5); };
