@@ -10,7 +10,7 @@ importScripts('texte.js', 'russisch-texte.js');
 // Service Worker die fehlenden Aufnahmen nach, ohne alles neu zu laden.
 // Wurden bestehende Aufnahmen neu gesprochen (gleiche Dateinamen, z.B. andere
 // Stimme), stattdessen CACHE hochzählen, damit alte Aufnahmen verschwinden.
-// Stand: Buchstabennamen ohne Atmen am Schluss (Fassung 2)
+// Stand: eigene Sätze je Buchstabe, weniger Wiederholungen
 const CACHE = 'capy-v1';
 const FILES = [
   './',

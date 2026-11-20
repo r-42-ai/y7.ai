@@ -139,7 +139,7 @@
     mandarine: '<svg viewBox="0 0 40 40" aria-hidden="true"><use href="#mandarine"/></svg>',
     mikro: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="3" width="7" height="12" rx="3.5" fill="currentColor"/><path d="M5.5 11 A6.5 6.5 0 0 0 18.5 11 M12 17.5 V21" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
   };
-  const ART = { freund: 'Echter Freund', schwindler: 'Schwindler', neu: 'Neu' };
+  const ART = { freund: 'Wie bei uns', schwindler: 'Schwindler', neu: 'Neu' };
   // Die Buchstaben einer Station auf dem weissen Bauch der Matrjoschka:
   // zwei in einer Reihe, drei als 2 + 1, fünf als 3 + 2, damit alle im Kreis bleiben
   function matrjoschka(st) {
@@ -180,6 +180,19 @@
     return sprich(anzeige, vor.concat(st.map(x => lamaAufnahme(x)), nach));
   }
   const nurRu = (ru, langsam) => Stimme.einwurf([lamaWort(ru, langsam)]);
+  // Text in die Blase, ohne zu sprechen
+  function zeigeText(html) {
+    if (!buehne.sagt) return;
+    buehne.sagt.innerHTML = html;
+  }
+  // Wurde diese Anweisung in der Runde schon gesprochen? Beim ersten Mal ja, danach
+  // steht sie nur noch in der Blase, und das Lama sagt bloss das Wort.
+  function ersteMal(art) {
+    if (!R || !R.angesagt) return true;
+    const neu = !R.angesagt.has(art);
+    R.angesagt.add(art);
+    return neu;
+  }
   function freuen(lama, ms = 1100) {
     if (!lama) return;
     lama.classList.remove('oops');
@@ -463,7 +476,7 @@
     inhalt.className = 'ru-inhalt ansicht-liste';
     inhalt.innerHTML = `
       <div class="ru-liste-kopf"><button class="ru-zurueck" type="button">${ICON.weiter} Karte</button>
-        <span class="legende"><i class="art-freund">Echte Freunde</i><i class="art-schwindler">Schwindler</i><i class="art-neu">Neu</i></span></div>
+        <span class="legende"><i class="art-freund">Wie bei uns</i><i class="art-schwindler">Schwindler</i><i class="art-neu">Neu</i></span></div>
       <div class="abc">${ALPHABET.map(x => {
         const b = buchstabe(x), da = gesehen('b:' + x) || geschafft(stationVon(x));
         return `<button class="abc-b ${da ? 'art-' + b.art : 'noch'}" type="button" data-b="${x}" lang="ru">${x}<small>${b.k}</small></button>`;
@@ -604,13 +617,13 @@
 
   function starteStation(nr) {
     audio();
-    R = { art: 'station', nr, plan: planStation(nr), i: -1, fehler: 0, nochmal: new Map() };
+    R = { art: 'station', nr, plan: planStation(nr), i: -1, fehler: 0, nochmal: new Map(), angesagt: new Set() };
     naechste();
   }
   function starteWdh() {
     if (!Object.keys(ru.stationen).length) return;
     audio();
-    R = { art: 'wdh', plan: planWdh(), i: -1, fehler: 0, nochmal: new Map() };
+    R = { art: 'wdh', plan: planWdh(), i: -1, fehler: 0, nochmal: new Map(), angesagt: new Set() };
     naechste();
   }
 
@@ -664,15 +677,19 @@
   /* ----- Kennenlernen ----- */
   function zeigeBNeu(a) {
     const b = a.x, w = b.wort && WORT.get(b.wort);
+    const kennt = gesehen('b:' + b.b);   // bei einer Wiederholung der Station
     merken('b:' + b.b, null);
     geruest(`
       <span class="art-zeichen art-${b.art}">${ART[b.art]}</span>
       <button class="ru-b-gross art-${b.art}" type="button" data-sag="name" lang="ru">${b.b}<small>${b.k}</small></button>
       ${w ? `<button class="ru-merk" type="button" data-sag="wort"><span class="bild">${w.bild}</span><b lang="ru">${esc(GROSS(w.ru))}</b></button>` : ''}`,
     weiterKnopf(), 'neu');
-    R.hoeren = () => sagL(b.text, { vor: [buchstabenAufnahme(b)], nach: w ? [lamaWort(w.ru)] : [] });
+    const erklaeren = () => sagL(b.text, { vor: [buchstabenAufnahme(b)], nach: w ? [lamaWort(w.ru)] : [] });
+    R.hoeren = erklaeren;
     R.sag = { name: () => Stimme.einwurf([buchstabenAufnahme(b)]), wort: () => w && nurRu(w.ru) };
-    R.hoeren();
+    // Schon bekannt: der Satz steht in der Blase, gesprochen werden nur Name und Merkwort
+    if (kennt) sprich(ruHtml(teile(b.text)), [buchstabenAufnahme(b)].concat(w ? [lamaWort(w.ru)] : []));
+    else erklaeren();
   }
   function zeigeWNeu(a) {
     const w = a.x;
@@ -681,9 +698,9 @@
       <div class="ru-bild-gross">${w.bild}</div>
       <button class="ru-wort-gross" type="button" data-sag="wort" lang="ru">${esc(GROSS(w.ru))}</button>
       <p class="ru-de">${esc(w.de)}</p>`, weiterKnopf(), 'neu');
-    const neu = ziehL('wort_neu');
-    R.hoeren = () => sagL(null, { html: ruHtml(teile(neu)) + ` <span class="ru-t" lang="ru">${esc(w.ru)}</span> – ${esc(wortSagt(w))}`,
-      vor: teile(neu).map(x => lamaAufnahme(x)).concat(lamaWort(w.ru)), nach: teile(wortSagt(w)).map(x => lamaAufnahme(x)) });
+    const neu = ersteMal('wort_neu') ? teile(ziehL('wort_neu')) : [];
+    R.hoeren = () => sagL(null, { html: ruHtml(neu) + ` <span class="ru-t" lang="ru">${esc(w.ru)}</span> – ${esc(wortSagt(w))}`,
+      vor: neu.map(x => lamaAufnahme(x)).concat(lamaWort(w.ru)), nach: teile(wortSagt(w)).map(x => lamaAufnahme(x)) });
     R.sag = { wort: langsamWechsel(w.ru) };
     R.hoeren();
   }
@@ -694,9 +711,9 @@
       <div class="ru-bild-gross">${s.bild}</div>
       <button class="ru-satz-gross" type="button" data-sag="satz" lang="ru">${esc(s.ru)}</button>
       <p class="ru-de">${esc(s.de)}</p>`, weiterKnopf(), 'neu');
-    const neu = ziehL('satz_neu');
-    R.hoeren = () => sagL(null, { html: ruHtml(teile(neu)) + ` <span class="ru-t" lang="ru">${esc(s.ru)}</span> – ${esc(satzSagt(s))}`,
-      vor: teile(neu).map(x => lamaAufnahme(x)).concat(lamaWort(s.ru)), nach: teile(satzSagt(s)).map(x => lamaAufnahme(x)) });
+    const neu = ersteMal('satz_neu') ? teile(ziehL('satz_neu')) : [];
+    R.hoeren = () => sagL(null, { html: ruHtml(neu) + ` <span class="ru-t" lang="ru">${esc(s.ru)}</span> – ${esc(satzSagt(s))}`,
+      vor: neu.map(x => lamaAufnahme(x)).concat(lamaWort(s.ru)), nach: teile(satzSagt(s)).map(x => lamaAufnahme(x)) });
     R.sag = { satz: langsamWechsel(s.ru) };
     R.hoeren();
   }
@@ -710,9 +727,9 @@
       <p class="ru-um">${esc(z.um)}</p>
       <p class="ru-de">${esc(z.de)}</p>`,
     `<button class="go ru-weiter ru-gesagt" type="button" data-gesagt="1">${ICON.mikro} Gesagt!</button>`, 'neu');
-    const neu = ziehL('zauber_neu');
-    R.hoeren = () => sagL(null, { html: ruHtml(teile(neu)) + ` <span class="ru-t" lang="ru">${esc(z.ru)}</span> – ${esc(wortSagt(z))}`,
-      vor: teile(neu).map(x => lamaAufnahme(x)).concat(lamaWort(z.ru)), nach: teile(wortSagt(z)).map(x => lamaAufnahme(x)) });
+    const neu = ersteMal('zauber_neu') ? teile(ziehL('zauber_neu')) : [];
+    R.hoeren = () => sagL(null, { html: ruHtml(neu) + ` <span class="ru-t" lang="ru">${esc(z.ru)}</span> – ${esc(wortSagt(z))}`,
+      vor: neu.map(x => lamaAufnahme(x)).concat(lamaWort(z.ru)), nach: teile(wortSagt(z)).map(x => lamaAufnahme(x)) });
     R.sag = { satz: langsamWechsel(z.ru) };
     R.hoeren();
   }
@@ -830,7 +847,9 @@
     R.hoerbar = hoerbar;
     R.hoeren = () => (hoerbar.length ? sagL(anweisung, { nach: hoerbar }) : sagL(anweisung));
     R.nurHoeren = hoerbar.length ? () => Stimme.einwurf(hoerbar) : null;
-    R.hoeren();
+    if (ersteMal(t)) R.hoeren();
+    else if (hoerbar.length) sprich(ruHtml(teile(anweisung)), hoerbar);
+    else zeigeText(ruHtml(teile(anweisung)));
   }
 
   async function wahl(btn) {
@@ -906,7 +925,8 @@
     const anw = ziehL(satz ? 's_bauen' : 'w_legen');
     R.hoeren = () => sagL(anw, { nach: [lamaWort(x.ru)] });
     R.nurHoeren = () => nurRu(x.ru, true);
-    R.hoeren();
+    if (ersteMal(a.typ)) R.hoeren();
+    else sprich(ruHtml(teile(anw)), [lamaWort(x.ru)]);
   }
   async function legen(btn) {
     if (!R || R.gesperrt || btn.disabled) return;
