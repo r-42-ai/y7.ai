@@ -396,24 +396,29 @@ const wortSagt = w => w.sagt || 'Das heisst ' + w.de + (/[.!?]$/.test(w.de) ? ''
 const satzSagt = s => 'Das heisst: ' + s.de;
 const buchstabe = b => BUCHSTABEN.find(x => x.b === b);
 const ichHeisse = () => 'Меня зовут ' + LAMA.name.ru + '!';
+// Aufnahme des Buchstabennamens. In «» mit Punkt und mit dem Satz davor und danach
+// (siehe russischAufnahmen) spricht die Stimme ihn deutlich und lang genug; schlicht
+// («а») kam er oft nur eine Zehntelsekunde kurz heraus.
+const nameAufnahme = b => '«' + b.name + '».';
 const stationVon = b => (STATIONEN.find(s => s.b.includes(b)) || {}).nr;
 
 // Alle Aufnahmen der Russisch-Ecke, mit gedachtem Satz davor (nicht gesprochen),
 // der Sprache und Ton festlegt. tempo: Sprechtempo für ElevenLabs.
 function russischAufnahmen() {
   const liste = [];
-  const RU_VOR = { buchstabe: 'Это буква', wort: 'Повторяй за мной:', ausruf: 'Лама радостно говорит:' };
+  const RU_VOR = { buchstabe: 'Запомни эту букву. Она называется', wort: 'Повторяй за мной:', ausruf: 'Лама радостно говорит:' };
   const l = (s, art, langsam) => {
     const ru = art !== 'de';
     liste.push({
       s, stimme: 'l', datei: TX.datei({ w: 'l', s, langsam }), art, langsam: !!langsam,
       vorher: ru ? RU_VOR[art] : 'Das kleine Lama aus Russland sagt fröhlich:',
-      nachher: '', tempo: langsam ? 0.7 : art === 'wort' || art === 'buchstabe' ? 0.9 : 1,
+      nachher: art === 'buchstabe' ? 'Повтори за мной.' : '',
+      tempo: langsam ? 0.7 : art === 'buchstabe' ? 0.75 : art === 'wort' ? 0.9 : 1,
     });
   };
   const zeile = z => stuecke(z).forEach(x => l(x.ru ? x.t : TX.sprechtext(x.t), x.ru ? 'ausruf' : 'de'));
   for (const v of Object.values(LAMA_TEXTE)) for (const z of (Array.isArray(v) ? v : Object.values(v))) zeile(z);
-  for (const b of BUCHSTABEN) { l(b.name, 'buchstabe'); zeile(b.text); }
+  for (const b of BUCHSTABEN) { l(nameAufnahme(b), 'buchstabe'); zeile(b.text); }
   for (const s of STATIONEN) zeile(s.start);
   for (const w of WOERTER) {
     l(w.ru, 'wort');
@@ -443,5 +448,5 @@ function alleAufnahmen() {
 
 if (typeof module !== 'undefined') {
   module.exports = { LAMA, BUCHSTABEN, ALPHABET, STATIONEN, WOERTER, SAETZE, ZAUBERWOERTER, LAMA_TEXTE, RU_DE, CAPY_LAMA,
-    stuecke, mitName, lamaAufnahme, lamaWort, wortSagt, satzSagt, buchstabe, ichHeisse, stationVon, russischAufnahmen, alleAufnahmen };
+    stuecke, mitName, lamaAufnahme, lamaWort, wortSagt, satzSagt, buchstabe, ichHeisse, nameAufnahme, stationVon, russischAufnahmen, alleAufnahmen };
 }
