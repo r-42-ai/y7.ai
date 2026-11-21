@@ -1,0 +1,131 @@
+/* =====================================================================
+   Otter: Mimik und Bewegungen (die Zeichnung steht in otter.js).
+   Gesicht und Körper verhalten sich wie bei Pieks (stil.css) und beim
+   Hörnchen (hoernchen.css): Klassen am <svg>, der Mund folgt --mund.
+   Dazu kommt sein Schwanz, der rechts am Boden liegt.
+   blinzeln und atmen sind die Bewegungen aus stil.css; eigene heissen ot-…
+   Jede Bewegung sitzt auf ihrer eigenen Gruppe (siehe otter.js). So
+   bricht keine die andere ab, und es ruckt nicht, wenn sich zwei treffen:
+   schüttelt er sich vor Freude, hüpft er dabei einfach weiter.
+   Auf das Ende warten die Kurse nur bei dreht (ot-dreht), schuettelt
+   (ot-schuettelt) und jongliert (ot-jongliert), ohne Bewegung bei ihren
+   Standbildern (ot-ruhe-…): dann nehmen sie die Klasse wieder weg. Was
+   sonst endlich läuft (ot-spritzer, ot-wippt), trägt keinen dieser Namen.
+   Keine Animation am <svg> selbst: daran ziehen die Kurse mit WAAPI.
+   ===================================================================== */
+.otter { overflow: visible; }
+/* Versteckt, bis ein Zustand sie braucht. Tropfen und Kiesel gehören zu seinen Bewegungen. */
+.otter .ot-augen-froh, .otter .ot-augen-zu, .otter .ot-augen-kneif, .otter .ot-brauen, .otter .ot-mund-auf, .otter .ot-mund-o,
+.otter .ot-tropfen, .otter .ot-stein { display: none; }
+/* Er blinzelt und atmet (ot-ganz, unten) nicht im Takt mit Pieks und dem Hörnchen */
+.otter .ot-augen { transform-box: fill-box; transform-origin: center; animation: blinzeln 5s -3.3s infinite; }
+/* Gekitzelt kichert er: so liest man es auch im Standbild */
+.otter.froh .ot-augen, .otter.kitzel .ot-augen, .otter.schlaeft .ot-augen { display: none; }
+.otter.froh .ot-augen-froh, .otter.kitzel .ot-augen-froh, .otter.schlaeft .ot-augen-zu { display: inline; }
+.otter.froh .ot-mund-zu, .otter.kitzel .ot-mund-zu, .otter.spricht .ot-mund-zu, .otter.oops .ot-mund-zu { display: none; }
+.otter.froh .ot-mund-auf, .otter.kitzel .ot-mund-auf, .otter.spricht .ot-mund-auf { display: inline; }
+.otter.oops .ot-brauen, .otter.oops .ot-mund-o { display: inline; }
+.otter.oops.spricht .ot-mund-o { display: none; }
+/* Beim Schütteln kneift er die Augen zu (> <) und lacht, auch wenn er gerade froh, erschrocken oder
+   müde ist: darum steht das nach den Stimmungen. */
+.otter.schuettelt .ot-augen, .otter.schuettelt .ot-augen-froh, .otter.schuettelt .ot-augen-zu,
+.otter.schuettelt .ot-mund-zu, .otter.schuettelt .ot-mund-o { display: none; }
+.otter.schuettelt .ot-augen-kneif, .otter.schuettelt .ot-mund-auf { display: inline; }
+.otter .ot-mund-auf { transform-box: fill-box; transform-origin: 50% 0; }
+.otter.spricht:not(.froh) .ot-mund-auf { transform: scaleY(var(--mund, .3)); }
+
+/* Stimmungen, dieselben Bewegungen wie bei Pieks (hops, wackeln, kitzeln in stil.css): zwei
+   Hüpfer, einmal wackeln, einmal kichern. Wie beim Hörnchen stehen sie am Anfang einer langen
+   Runde von 10 s (1 % = 0,1 s), danach ist Ruhe. Eine endlose Bewegung meldet kein
+   animationend: so kann keine Stimmung eine Bewegung vorzeitig beenden, die gerade läuft. */
+.otter .ot-ganz { transform-origin: 100px 195px; animation: atmen 3.4s -2.3s ease-in-out infinite; }
+.otter.froh .ot-ganz { animation: ot-hops 10s ease-out infinite; }
+.otter.oops .ot-ganz { animation: ot-wackeln 10s ease-in-out infinite; }
+.otter.kitzel .ot-ganz { animation: ot-kitzeln 10s ease-in-out infinite; }
+@keyframes ot-hops { 0%, 5%, 10%, 100% { transform: translateY(0); } 2%, 7% { transform: translateY(-14px); } }
+@keyframes ot-wackeln { 0%, 7%, 100% { transform: rotate(0); } 1.75% { transform: rotate(-6deg); } 5.25% { transform: rotate(5deg); } }
+@keyframes ot-kitzeln {
+  0%, 5%, 100% { transform: rotate(0) scale(1); }
+  1% { transform: rotate(-8deg) scale(1.04); }
+  2% { transform: rotate(7deg) scale(1.04); }
+  3% { transform: rotate(-5deg) scale(1); }
+  4% { transform: rotate(4deg) scale(1); }
+}
+
+/* Der Schwanz liegt am Boden und dreht sich um seine Wurzel. Er hebt sich nur, nie in den Boden:
+   innen (ot-wiegt) ein wenig, immer; aussen (ot-schweif) klatscht er vor Freude zweimal auf. */
+.otter .ot-schweif, .otter .ot-wiegt { transform-origin: 126px 186px; }
+.otter .ot-wiegt { animation: ot-wedeln 4.6s ease-in-out infinite; }
+.otter.froh .ot-schweif { animation: ot-klatscht 10s ease-in-out infinite; }
+@keyframes ot-wedeln { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-3deg); } }
+@keyframes ot-klatscht { 0%, 6%, 100% { transform: rotate(0); } 1.5%, 4.5% { transform: rotate(-11deg); } 3% { transform: rotate(0); } }
+
+/* Seine Drehung: einmal um die Hochachse, mit kleinem Hüpfer. scaleX ist der Kosinus des
+   Drehwinkels, der Winkel läuft weich an und aus. */
+.otter .ot-dreh { transform-origin: 100px 195px; }
+.otter.dreht .ot-dreh { animation: ot-dreht .8s linear; }
+@keyframes ot-dreht {
+  0%, 100% { transform: translateY(0) scaleX(1); }
+  10%, 90% { transform: translateY(-3.7px) scaleX(.985); }
+  20%, 80% { transform: translateY(-7.1px) scaleX(.794); }
+  30%, 70% { transform: translateY(-9.7px) scaleX(.212); }
+  40%, 60% { transform: translateY(-11.4px) scaleX(-.598); }
+  50% { transform: translateY(-12px) scaleX(-1); }
+}
+
+/* Trocken schütteln (1,2 s): er wackelt schnell hin und her, immer schwächer, um die Hüfte; die
+   Füsse bleiben stehen, die Tropfen spritzen nach aussen weg. Es sitzt auf ot-dreh wie die
+   Drehung: zwei Bewegungen laufen nie zugleich. Die Tropfen bleiben nach dem Ende weg (forwards),
+   auch wenn die Klasse etwas länger hängt. */
+.otter.schuettelt .ot-dreh { transform-origin: 100px 172px; animation: ot-schuettelt 1.2s ease-in-out; }
+.otter.schuettelt .ot-tropfen { display: inline; transform-origin: 100px 110px; animation: ot-spritzer 1.2s ease-out forwards; }
+@keyframes ot-schuettelt {
+  0%, 90%, 100% { transform: rotate(0); }
+  8% { transform: rotate(-8deg); } 16% { transform: rotate(8deg); } 24% { transform: rotate(-8deg); }
+  32% { transform: rotate(7deg); } 40% { transform: rotate(-6deg); } 48% { transform: rotate(5deg); }
+  56% { transform: rotate(-4deg); } 64% { transform: rotate(3deg); } 72% { transform: rotate(-2deg); } 80% { transform: rotate(1deg); }
+}
+@keyframes ot-spritzer {
+  0% { opacity: 0; transform: scale(.55); }
+  14% { opacity: 1; }
+  70% { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+
+/* Jonglieren (1,6 s): er wirft den Kiesel aus der linken Pfote hoch über den Kopf in die rechte
+   und zurück. Der Bogen führt aussen um den Kopf, nie quer übers Gesicht, und bleibt aus der Ecke
+   unten links. Die Zeiten folgen dem Wurf: schnell an den Pfoten, oben langsam (wie eine
+   Parabel). Die Pfoten werfen und fangen mit; was er in der Pfote trägt, geht mit.
+   Die Lage des Kiesels steht ganz im translate, er selbst ist um (0,0) gezeichnet. */
+.otter .ot-stein { transform: translate(72px, 156px); }
+.otter.jongliert .ot-stein { display: inline; animation: ot-jongliert 1.6s linear; }
+.otter.jongliert .ot-haende, .otter.jongliert .slot-pfote { animation: ot-wippt 1.6s ease-in-out; }
+@keyframes ot-jongliert {
+  0%, 100% { transform: translate(72px, 156px); }
+  3.2%, 96.8% { transform: translate(36px, 118px); }
+  8.1%, 91.9% { transform: translate(34px, 70px); }
+  14.9%, 85.1% { transform: translate(52px, 24px); }
+  25%, 75% { transform: translate(100px, -2px); }
+  35.1%, 64.9% { transform: translate(148px, 24px); }
+  41.9%, 58.1% { transform: translate(166px, 70px); }
+  46.8%, 53.2% { transform: translate(164px, 118px); }
+  50% { transform: translate(128px, 156px); }
+}
+@keyframes ot-wippt {
+  0%, 9%, 44%, 59%, 94%, 100% { transform: translateY(0); }
+  3%, 53% { transform: translateY(-6px); }
+  48.5%, 98.5% { transform: translateY(3px); }
+}
+
+/* Ohne Bewegung ruht er ganz; von jedem Zustand bleiben Augen, Brauen und Mund stehen. Die
+   Drehung kürzt die Regel am Ende von stil.css auf einen Augenblick (die Kurse lassen sie dann
+   ohnehin aus). Schütteln und Jonglieren wären so nicht zu sehen; darum stehen sie hier als
+   Standbild da, gleich lang wie sonst die Bewegung, und melden so ihr Ende (ot-ruhe-…). */
+@media (prefers-reduced-motion: reduce) {
+  .otter .ot-ganz, .otter .ot-augen, .otter .ot-wiegt, .otter .ot-schweif, .otter.schuettelt .ot-dreh,
+  .otter.jongliert .ot-haende, .otter.jongliert .slot-pfote { animation: none !important; }
+  .otter.schuettelt .ot-tropfen { animation: ot-ruhe-tropfen 1.2s !important; }
+  .otter.jongliert .ot-stein { animation: ot-ruhe-stein 1.6s !important; }
+}
+@keyframes ot-ruhe-tropfen { from, to { opacity: 1; transform: scale(1.08); } }
+@keyframes ot-ruhe-stein { from, to { transform: translate(100px, 22px); } }

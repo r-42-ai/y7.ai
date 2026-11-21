@@ -7,7 +7,8 @@
    auf der Karte. Die Datei kennt weder die Seite noch die Uhr noch
    einen Speicher: Zustand und Datum kommen von aussen herein, und jeder
    Zufall geht durch Lernen.zufall, damit pruefe.mjs ihn festlegen kann.
-   Sie läuft im Browser und in Node.
+   Sie läuft im Browser und in Node. Dasselbe Modell lehrt auch eine
+   andere Sprache: Lernen.kurs() (Vertrag für weitere Kurse, unten).
 
    Nach jeder Änderung: node pieks/pruefe.mjs
    ===================================================================== */
@@ -67,7 +68,8 @@
 
    Lernen.verbuchen(z, schritt, ergebnis, heute)
        → { vorher, stufe, auf, ab, reif }
-     Schreibt die Karte, die Zähler, z.tag.neu und z.tag.frei. vorher
+     Schreibt die Karte, die Zähler, z.tag.neu und z.tag.frei (und in
+     einem Kurs, der doppel zählt, z.doppelwoerter). vorher
      und stufe sind die Stufe davor und danach, auf und ab sagen, ob sie
      gestiegen oder gefallen ist, reif, ob sie gerade Stufe 5 erreicht
      hat. Dasselbe Objekt nimmt Lernen.aepfel(schritt, ergebnis, buchung)
@@ -239,7 +241,10 @@
    legen · Buchstaben legen
      plaetze, kacheln, lueckenwort.
      lueckenwort null («Lege das Wort»): Jeder Buchstabe ist ein Platz,
-     davor der Artikel-Platz, wo die Form le, la, un oder une trägt.
+     davor der Artikel-Platz, wo die Form le, la, un oder une trägt. In
+     einer Sprache ohne grosse Kacheln (Sprachprofil grosseKacheln) ist
+     jede Kachel klein, und satzanfang: true steht dort, wo die Form gross
+     geschrieben ist: «Senin» ist s (satzanfang), e, n, i, n.
      { uebung: 'legen', vorgabe: 'de', teil: 0, form: 0, fr: 'la sœur',
        de: 'die Schwester',
        plaetze: [
@@ -370,11 +375,130 @@
          { nr: 12, fr: 'la chaise', de: 'der Stuhl', clip: { s: 'la chaise', v: 'f' } }] }
    ===================================================================== */
 
-const Lernen = (() => {
-  // In Node kommen die Nachbardateien über require herein, im Browser sind es Globale
-  const V = typeof module !== 'undefined' && typeof require === 'function'
-    ? require('./vokabeln.js')
-    : { VOKABELN, KARTEN, KARTE, LERNZIELE, LERNZIEL_REIHE, UNITE_REIHE, KLANGGRUPPEN, GLEICHKLANG, NIE_ZUSAMMEN, EIGENNAMEN, vokabelClip };
+/* =====================================================================
+   VERTRAG FÜR WEITERE KURSE
+   Lernen ist das Französisch. Lernen.kurs(V, S = V.SPRACHE) baut aus
+   demselben Modell einen weiteren Kurs mit denselben Funktionen, aber
+   eigenen Zwischenspeichern, einem eigenen zufall und einer eigenen Kopie
+   von K. V ist sein Wortschatz mit den Namen aus vokabeln.js (VOKABELN,
+   KARTEN, KARTE, LERNZIELE, LERNZIEL_REIHE, UNITE_REIHE, KLANGGRUPPEN,
+   GLEICHKLANG, NIE_ZUSAMMEN, EIGENNAMEN, vokabelClip), S sein
+   Sprachprofil. Fehlt davon etwas oder stimmt es nicht, wirft kurs() und
+   nennt es: Ein Kurs erbt nie still eine Regel des Französisch.
+   SPRACHE ist das Profil, mit dem ein Kurs gebaut ist (nur lesen):
+   Lernen.SPRACHE das französische, ein zweites Französisch wäre also
+   Lernen.kurs(V, Lernen.SPRACHE). Ein Stand gehört zu seinem Kurs:
+   pruefen() eines anderen liesse keine seiner Karten übrig.
+
+   Das Sprachprofil, und was jedes Feld in einer Sprache ohne Artikel und
+   ohne Akzente heisst:
+     artikel       RegExp | null: der Artikel vorn an einer Form, Gruppe 1
+                   ist er selbst («le », «l’», «un/une »). null: Nichts wird
+                   zerlegt, auch Getipptes nicht («les piano» bleibt ganz),
+                   und keine Kachel, kein Urteil und kein Ablenker fragt
+                   nach einem Artikel.
+     akzente       { Grundbuchstabe: [schlicht, Variante, …] }: die Knöpfe
+                   der Akzent-Übung, zuerst die schlichte Schreibweise
+                   (e: ['e', 'é', 'è', 'ê'], œ: ['oe', 'œ']). Jede weitere
+                   Wahl gilt als Akzent, nur Buchstaben. {}: keine Akzent-
+                   Übung und beim Legen keine Akzente als Störbuchstaben.
+     schlicht      Buchstaben ohne Akzent, aus denen die Akzent-Übung weitere
+                   Lücken macht, damit die Lücke allein nichts verrät
+                   ('eauc'); '' ohne Akzente.
+     verwechsler   { Buchstabe: Störbuchstabe }: was beim Legen lockt, der
+                   Reihe nach. Nur Buchstaben der Sprache, ohne Akzente also
+                   auch hier keine.
+     grosseKacheln true: Ein grosser Buchstabe liegt beim Legen als grosse
+                   Kachel da, sein Störbuchstabe auch («ACM»). false: Jede
+                   Buchstaben-Kachel ist klein, und wo die Form gross
+                   geschrieben ist, trägt der Platz satzanfang: true und zeigt
+                   die Kachel dort gross. Sonst verriete die einzige grosse
+                   Kachel ihren Platz («Senin», «bahasa Jerman»).
+     schriftbild   true: Bei finden und lauschen verrät auch das Schriftbild
+                   nichts, also ein Grossbuchstabe oder ein Fragezeichen am
+                   Schluss. Bei finden tragen die Ablenker zuerst dasselbe
+                   Schriftbild wie die Lösung, so wie ihren Artikel. Bei
+                   lauschen bleiben es die drei ähnlichsten Klänge, nur steht
+                   die Lösung nie als einzige mit ihrem Schriftbild da: Dann
+                   macht die fernste der drei der nächsten Platz, die aussieht
+                   wie die Lösung. false: wie bisher im Französisch, wo die
+                   Ablenker nur den Artikel ausgleichen.
+     neben         { wort: [Stufe 0 … 4], satz: [Stufe 0 … 4] }: die
+                   Nebenaufgaben jeder Stufe als [Übung, Grundgewicht];
+                   Stufe 5 übt wie Stufe 4, 'diktat' ist schreiben nach dem
+                   Ohr. Ohne Artikel und Akzente gehören artikel und akzent
+                   nicht hinein (kann() liesse sie ohnehin fallen), und Stufe
+                   1 braucht etwas anderes: Das Französisch übt dort den
+                   Artikel.
+     akzentUrteil  true: Getipptes kann 'akzent' und 'ligatur' sein,
+                   Gelegtes den Tipp 'akzent' bekommen. false: Ein Akzent ist
+                   ein falscher Buchstabe wie jeder andere (tippfehler oder
+                   anders), und fehler nennt nie 'akzent'.
+     mehrWort      RegExp: Hat der ganze Eintrag mehr als ein Wort, lohnt
+                   sich das Nachsprechen. Passt zu langsamGibt des
+                   Wortschatzes, das den langsamen Clip gibt (/[ ’]/).
+     zaehler       Die Zähler im Stand. Pflicht sind die acht, die verbuchen
+                   und rundeFertig schreiben (runden, perfekt, ohr, lelaLauf,
+                   lelaBest, akzent, saetze, geschrieben); ohne Artikel und
+                   Akzente bleiben lelaLauf, lelaBest und akzent bei 0.
+                   Weitere Namen legt neu() an, und pruefen() lässt sie gelten.
+                   Zwei davon schreibt verbuchen selbst, aber nur, wo zaehler
+                   sie nennt (das Französisch nennt sie nicht, sein Stand
+                   bleibt, wie er ist):
+                     doppel  wie viele verschiedene Wörter mit Bindestrich
+                             (kupu-kupu, anak-anak) beim ersten Versuch
+                             richtig geschrieben wurden, auch im Diktat und im
+                             freien Üben. Ein Wort, also ohne Leerzeichen: «tidak
+                             apa-apa» sind zwei. Welche schon zählen, merkt
+                             sich der Stand in doppelwoerter, einer Liste von
+                             kid, die es nur mit diesem Zähler gibt: So zählt
+                             jedes Wort einmal, wie oft es auch geschrieben
+                             wird. doppel ist immer die Länge dieser Liste.
+                     echo    wie oft nachgesprochen wurde: jeder echo-Schritt,
+                             den verbuchen sieht
+     K             nur wo nötig: Werte aus K, die in diesem Kurs anders sind,
+                   etwa { NEU_PRO_TAG: 4 }. Nur Namen, die es in K gibt.
+     tastatur      { reihen, akzente, tippbar }, die Tastatur für schreiben
+                   als blosse Daten: reihen die Tastenreihen ('q w e r t z u
+                   i o p', dazu back, leer und ok), akzente die Zeichen auf
+                   den Ziffern 1 bis n ([] ohne Akzente), tippbar ein Set mit
+                   jedem Zeichen, das sich tippen lässt, auch dem Leerzeichen.
+                   Das Lernmodell liest sie nicht; uebungen.js und pruefe.mjs
+                   tun es.
+   ===================================================================== */
+
+const Lernen = (function bauen(V, S) {
+  if (V === undefined) {
+    // Ohne Angaben das Französisch. In Node kommen die Nachbardateien über require herein, im Browser
+    // sind es Globale. Sein Sprachprofil sind die Tabellen, nach denen das Lernmodell schon immer lief.
+    V = typeof module !== 'undefined' && typeof require === 'function'
+      ? require('./vokabeln.js')
+      : { VOKABELN, KARTEN, KARTE, LERNZIELE, LERNZIEL_REIHE, UNITE_REIHE, KLANGGRUPPEN, GLEICHKLANG, NIE_ZUSAMMEN, EIGENNAMEN, vokabelClip };
+    // Die Tastatur von uebungen.js: oben die Akzente, an der echten Tastatur auf den Ziffern 1 bis 8
+    const reihen = ['é è ê à â ç û œ ’ -', 'q w e r t z u i o p', 'a s d f g h j k l back', 'y x c v b n m leer ok'];
+    S = {
+      artikel: /^(le |la |les |l’|un\/une |un |une )/,
+      akzente: { e: ['e', 'é', 'è', 'ê'], a: ['a', 'à', 'â'], u: ['u', 'û'], c: ['c', 'ç'], œ: ['oe', 'œ'] },
+      schlicht: 'eauc',
+      verwechsler: { c: 's', s: 'c', k: 'c', q: 'k', g: 'j', j: 'g', i: 'y', y: 'i', f: 'v', v: 'f', m: 'n', n: 'm', e: 'é', a: 'à' },
+      // Gross geschrieben sind hier nur Kürzel aus lauter Grossbuchstaben («ACM», «la BD»): Da verrät
+      // eine grosse Kachel nichts
+      grosseKacheln: true,
+      schriftbild: false,
+      neben: {
+        wort: [[], [['artikel', 4]], [['finden', 2], ['artikel', 2], ['lauschen', 2]],
+          [['akzent', 2], ['diktat', 2], ['artikel', 1], ['lauschen', 1]], [['akzent', 1], ['diktat', 2], ['lauschen', 1]]],
+        satz: [[], [], [['luecke', 3], ['bedeutung', 1]], [['luecke', 2], ['legen', 2], ['hoeren', 1]],
+          [['legen', 2], ['ordnen', 1], ['luecke', 1]]],
+      },
+      akzentUrteil: true,
+      // «c’est», «l’ami»: Der Apostroph trennt zwei Wörter
+      mehrWort: /[ ’]/,
+      zaehler: ['runden', 'perfekt', 'ohr', 'lelaLauf', 'lelaBest', 'akzent', 'saetze', 'geschrieben'],
+      tastatur: { reihen, akzente: ['é', 'è', 'ê', 'à', 'â', 'ç', 'û', 'œ'],
+        tippbar: new Set(reihen.join(' ').split(' ').filter(k => k.length === 1).concat(' ')) },
+    };
+  }
 
   const K = {
     // Tage bis zur nächsten Wiederholung nach dem Aufstieg auf Stufe 1 … 5, dann für reife Karten
@@ -411,6 +535,8 @@ const Lernen = (() => {
     // Bis so viele Buchstaben wird jeder gelegt, darüber fehlt nur ein Wort; längere Formen werden nie getippt
     LEGEN_MAX: 14, SCHREIBEN_MAX: 30,
   };
+  // Was ein Kurs anders braucht (S.K), ersetzt den Wert oben, als eigene Kopie (geprüft hat kurs())
+  for (const [name, wert] of Object.entries(S.K || {})) K[name] = JSON.parse(JSON.stringify(wert));
 
   // Was die Karte vorgibt, wenn der Schritt nichts anderes sagt
   const VORGABE = { kennen: 'fr', bedeutung: 'fr', hoeren: 'ton', finden: 'de', lauschen: 'ton', artikel: 'fr', akzent: 'de',
@@ -554,12 +680,14 @@ const Lernen = (() => {
 
   /* ---------- Formen zerlegen ---------- */
 
-  const ART_RE = /^(le |la |les |l’|un\/une |un |une )/;
+  // Der Artikel vorn an einer Form (Sprachprofil); null in einer Sprache ohne Artikel
+  const ART_RE = S.artikel;
 
   // «l’allemand» → { artikel: 'l’', kern: 'allemand' }. Mit Eintrag entscheidet der Eintrag, ob vorn
   // überhaupt ein Artikel steht («un peu de persil» hat keinen); ohne Eintrag (Getipptes) nur die Form.
+  // Ohne Artikel in der Sprache wird nie zerlegt.
   function zerlegen(form, e) {
-    const m = e && e.artikel === null ? null : String(form).match(ART_RE);
+    const m = !ART_RE || (e && e.artikel === null) ? null : String(form).match(ART_RE);
     return m ? { artikel: m[1].trim(), kern: form.slice(m[1].length) } : { artikel: null, kern: form };
   }
 
@@ -604,11 +732,13 @@ const Lernen = (() => {
 
   /* ---------- Was geht mit welchem Eintrag ---------- */
 
-  const AKZENT_WAHL = { e: ['e', 'é', 'è', 'ê'], a: ['a', 'à', 'â'], u: ['u', 'û'], c: ['c', 'ç'], œ: ['oe', 'œ'] };
+  // Die Knöpfe der Akzent-Übung (Sprachprofil); {} in einer Sprache ohne Akzente
+  const AKZENT_WAHL = S.akzente;
   // é → e, ç → c, œ → œ
   const AKZENT_BASIS = {};
   for (const [basis, wahl] of Object.entries(AKZENT_WAHL)) for (const ch of wahl) if (ch.length === 1) AKZENT_BASIS[ch] = basis;
-  const AKZENT_RE = /[àâçèéêûœ]/;
+  // Ein Akzent ist jede Wahl ausser der ersten, schlichten: im Französisch [àâçèéêûœ], ohne Akzente nichts
+  const AKZENT_RE = new RegExp('[' + Object.values(AKZENT_WAHL).flatMap(wahl => wahl.slice(1)).filter(ch => ch.length === 1).join('') + ']');
 
   // Die Akzent-Übung nimmt immer die erste Form mit einem Akzent, wo auch immer die Karte gerade steht
   function akzentOrt(e) {
@@ -659,7 +789,7 @@ const Lernen = (() => {
       case 'schreiben': return wort && text.length <= K.SCHREIBEN_MAX;
       case 'luecke': case 'bauen': return !wort;
       case 'ordnen': return woerter(text).length >= 3 && (!wort || istLang(text, e));
-      case 'echo': return !!mitTon && (!wort || /[ ’]/.test(e.sprich));
+      case 'echo': return !!mitTon && (!wort || S.mehrWort.test(e.sprich));
       default: return false;
     }
   }
@@ -688,13 +818,8 @@ const Lernen = (() => {
     return mit('legen');
   }
 
-  // Nebenaufgaben je Stufe mit ihrem Grundgewicht; Stufe 5 übt wie Stufe 4. diktat = schreiben nach dem Ohr.
-  const NEBEN = {
-    wort: [[], [['artikel', 4]], [['finden', 2], ['artikel', 2], ['lauschen', 2]],
-      [['akzent', 2], ['diktat', 2], ['artikel', 1], ['lauschen', 1]], [['akzent', 1], ['diktat', 2], ['lauschen', 1]]],
-    satz: [[], [], [['luecke', 3], ['bedeutung', 1]], [['luecke', 2], ['legen', 2], ['hoeren', 1]],
-      [['legen', 2], ['ordnen', 1], ['luecke', 1]]],
-  };
+  // Nebenaufgaben je Stufe mit ihrem Grundgewicht (Sprachprofil); Stufe 5 übt wie Stufe 4. diktat = schreiben nach dem Ohr.
+  const NEBEN = S.neben;
   // Welche Schwäche eine Nebenaufgabe nach vorn holt
   const SCHWACH_VON = { artikel: 'genus', akzent: 'akzent', lauschen: 'hoeren', hoeren: 'hoeren', diktat: 'hoeren' };
 
@@ -741,6 +866,9 @@ const Lernen = (() => {
   const OHNE_NOMEN = ['verb', 'gram'];
   // Wo der gleiche Artikel nicht reicht, wenigstens dieselbe Sorte
   const ARTIKEL_SORTE = { le: 'bestimmt', la: 'bestimmt', 'l’': 'bestimmt', un: 'unbestimmt', une: 'unbestimmt', les: 'mehrzahl', ohne: 'ohne' };
+  // Was man einer Antwort ansieht, ohne sie zu lesen: ob ein Grossbuchstabe darin steht und welches
+  // Satzzeichen am Schluss («Senin», «apa?»). Zählt nur, wo das Sprachprofil es will (schriftbild).
+  const schriftbild = f => (/\p{Lu}/u.test(f) ? 'A' : 'a') + f.match(/[.!?]*$/)[0];
 
   // n falsche Antworten zu einem Teil: [{ e, teil }]. seite 'de' zeigt zeigeDe (bedeutung, hoeren),
   // 'fr' die erste Form des Teils (finden), 'klang' die erste Form von Teil 0 (lauschen).
@@ -772,17 +900,32 @@ const Lernen = (() => {
       const ziel = ohneAkzente(normV(zielForm));
       const nah = mische(pool.filter(k => k.art === 'wort')).map(k => ({ k, d: abstand(ziel, ohneAkzente(normV(k.teile[0].fr[0]))) }));
       for (const x of nah.sort((a, b) => a.d - b.d)) nimm(x.k, 0);
+      // Steht die Lösung als einzige gross da oder als einzige mit Fragezeichen (S.schriftbild), macht
+      // die fernste der drei der nächsten Karte Platz, die so aussieht wie sie. Der Klang bleibt
+      // vorn: «satu» behält «Sabtu», nur «Senin» steht nie allein unter kleinen Wörtern.
+      const bild = schriftbild(zielForm), wie = k => schriftbild(k.teile[0].fr[0]);
+      if (S.schriftbild && aus.length && aus.every(x => wie(x.e) !== bild)) {
+        const gleich = nah.find(x => wie(x.k) === bild && !texte.has(normV(x.k.teile[0].fr[0])));
+        if (gleich) {
+          texte.delete(normV(aus.pop().e.teile[0].fr[0]));
+          nimm(gleich.k, 0);
+        }
+      }
       return aus;
     }
     if (seite === 'fr') {
       // Alle Antworten tragen denselben Artikel wie das Ziel, soweit der Wortschatz reicht:
       // So verrät weder der französische noch der deutsche Artikel die Lösung
       const art = artikelArt(zielForm);
-      const passt = [x => x === art, x => ARTIKEL_SORTE[x] === ARTIKEL_SORTE[art], () => true];
-      for (const p of passt) {
+      const passt = [x => x === art, x => ARTIKEL_SORTE[x] === ARTIKEL_SORTE[art], () => true].map(p => f => p(artikelArt(f)));
+      // Ebenso das Schriftbild (S.schriftbild): zuerst dieselben Stufen, nur mit Antworten, die so
+      // aussehen wie die Lösung («Senin» unter Tagen, «apa?» unter Fragen), dann ohne
+      const bild = schriftbild(zielForm);
+      const runden = S.schriftbild ? [...passt.map(p => f => p(f) && schriftbild(f) === bild), ...passt] : passt;
+      for (const p of runden) {
         for (const stufe of stufen(gleicheArt)) {
           for (const k of mische(stufe.slice())) {
-            const teile = mische(k.teile.map((x, i) => i)).filter(i => p(artikelArt(k.teile[i].fr[0])));
+            const teile = mische(k.teile.map((x, i) => i)).filter(i => p(k.teile[i].fr[0]));
             teile.some(i => nimm(k, i));
           }
         }
@@ -820,8 +963,8 @@ const Lernen = (() => {
 
   /* ---------- Buchstaben legen ---------- */
 
-  // Buchstaben, die sich leicht verwechseln
-  const VERWECHSLER = { c: 's', s: 'c', k: 'c', q: 'k', g: 'j', j: 'g', i: 'y', y: 'i', f: 'v', v: 'f', m: 'n', n: 'm', e: 'é', a: 'à' };
+  // Buchstaben, die sich leicht verwechseln (Sprachprofil)
+  const VERWECHSLER = S.verwechsler;
 
   // Bis zu drei Störbuchstaben: zuerst, was bei den Akzenten lockt, dann die Verwechsler der Reihe nach
   function stoerer(wort) {
@@ -876,13 +1019,19 @@ const Lernen = (() => {
       plaetze.push({ art: 'fest', text: z.artikel, wort: 0 });
       if (z.artikel !== 'l’') plaetze.push({ art: 'fest', text: ' ', wort: 0 });
     }
+    // Ohne grosse Kacheln (Sprachprofil) liegt jeder Buchstabe klein da, auch jeder Störbuchstabe, und
+    // der Platz zeigt ihn gross, wo die Form gross geschrieben ist: Sonst verriete die einzige grosse
+    // Kachel von «Senin», dass sie vorn hingehört
     let wort = 0;
     for (const ch of z.kern) {
-      if (/\p{L}/u.test(ch)) plaetze.push({ art: 'buchstabe', soll: ch, wort });
-      else plaetze.push({ art: 'fest', text: ch, wort });
+      const klein = S.grosseKacheln ? ch : ch.toLowerCase();
+      if (!/\p{L}/u.test(ch)) plaetze.push({ art: 'fest', text: ch, wort });
+      else if (klein === ch) plaetze.push({ art: 'buchstabe', soll: ch, wort });
+      else plaetze.push({ art: 'buchstabe', soll: klein, satzanfang: true, wort });
       if (ch === ' ') wort++;
     }
-    return { plaetze, kacheln: mitKennung([...artikel, ...buchstabenKacheln(plaetze, z.kern)]), lueckenwort: null };
+    const stoererVon = S.grosseKacheln ? z.kern : z.kern.toLowerCase();
+    return { plaetze, kacheln: mitKennung([...artikel, ...buchstabenKacheln(plaetze, stoererVon)]), lueckenwort: null };
   }
 
   // Die Form ist vorgedruckt, nur ein Wort wird gelegt. Welches, wechselt mit jedem Erfolg der Karte.
@@ -913,12 +1062,12 @@ const Lernen = (() => {
   /* ---------- Akzente ---------- */
 
   // Die Form mit zwei bis vier Lücken: überall, wo ein Akzent steht, und dazu ein paar schlichte
-  // e, a, u, c, damit die Lücke allein nichts verrät. Der Artikel bleibt immer ganz stehen.
+  // Buchstaben (S.schlicht: e, a, u, c), damit die Lücke allein nichts verrät. Der Artikel bleibt immer ganz stehen.
   function akzentLuecken(form, e) {
     const z = zerlegen(form, e), zeichen = [...z.kern];
     const stellen = was => zeichen.map((ch, i) => (was(ch) ? i : -1)).filter(i => i >= 0);
     let luecken = stellen(ch => AKZENT_RE.test(ch));
-    const schlicht = mische(stellen(ch => 'eauc'.includes(ch)));
+    const schlicht = mische(stellen(ch => S.schlicht.includes(ch)));
     const zahl = Math.min(grenze(luecken.length + 1, 2, 4), luecken.length + schlicht.length);
     if (luecken.length > 4) luecken = mische(luecken).slice(0, 4);
     while (luecken.length < zahl) luecken.push(schlicht.pop());
@@ -979,8 +1128,15 @@ const Lernen = (() => {
   function fremdeWoerter(e, teil, n, laenge) {
     const v = wortVorrat();
     const ziel = woerter(e.teile[teil].fr[0]).map(w => w.kachel);
-    // Nie ein Wort aus dem Satz selbst, nie zwei, die sich nur im Akzent unterscheiden
+    // Nie ein Wort aus dem Satz selbst, nie zwei, die sich nur im Akzent unterscheiden. Auch nie das
+    // Grundwort oder die Verdopplung eines Worts im Satz: «Ibu dan anak di dapur.» stimmte ja auch,
+    // wo «anak-anak» steht (im Französisch gibt es keine Verdopplung, dort ändert das nichts)
     const vergeben = new Set(ziel.map(falte));
+    for (const w of ziel.map(falte)) {
+      vergeben.add(w + '-' + w);
+      const m = w.match(/^(\p{L}+)-\1$/u);
+      if (m) vergeben.add(m[1]);
+    }
     const eigene = v.saetze.filter(s => s.e === e && s.teil !== teil).flatMap(s => s.woerter);
     const stufen = [
       v.saetze.filter(s => s.e.un === e.un && !(s.e === e && s.teil === teil)).flatMap(s => s.woerter),
@@ -1178,15 +1334,16 @@ const Lernen = (() => {
     return 'anders';
   }
 
-  // Urteil über das Wort ohne Artikel, vom Harmlosen zum Groben
+  // Urteil über das Wort ohne Artikel, vom Harmlosen zum Groben. Kennt die Sprache keine Akzente
+  // (S.akzentUrteil), ist ein Akzent ein falscher Buchstabe wie jeder andere.
   function kernUrteil(getippt, soll) {
     if (getippt === soll) return 'ok';
-    if (getippt.replace(/œ/g, 'oe') === soll.replace(/œ/g, 'oe')) return 'ligatur';
-    if (ohneAkzente(getippt) === ohneAkzente(soll)) return 'akzent';
+    if (S.akzentUrteil && getippt.replace(/œ/g, 'oe') === soll.replace(/œ/g, 'oe')) return 'ligatur';
+    if (S.akzentUrteil && ohneAkzente(getippt) === ohneAkzente(soll)) return 'akzent';
     if (ohneZeichen(getippt) === ohneZeichen(soll)) return 'zeichen';
     // Beides zugleich («grand mere»): Die Buchstaben stimmen immer noch alle. urteil() setzt dazu
     // zeichen, denn der Hinweis muss beides nennen, sonst ist nach dem Akzent der zweite Versuch daneben.
-    if (ohneZeichen(ohneAkzente(getippt)) === ohneZeichen(ohneAkzente(soll))) return 'akzent';
+    if (S.akzentUrteil && ohneZeichen(ohneAkzente(getippt)) === ohneZeichen(ohneAkzente(soll))) return 'akzent';
     // Wirklich nur eine Stelle: Kommt ein Akzent dazu, wäre «nur ein Buchstabe» gelogen
     if (buchstabenZahl(soll) >= 4 && abstand(getippt, soll) === 1) return 'tippfehler';
     return 'anders';
@@ -1279,7 +1436,7 @@ const Lernen = (() => {
       // «lallemand», «la grand mère»: Nur Abstand, Apostroph oder Bindestrich stimmen nicht
       Object.assign(u, { artikel: 'ok', kern: 'zeichen', zeichen: false, stellen: inEingabe(abweichungen(ein, soll)) });
       return u;
-    } else if (ohneAkzente(ein) !== ohneAkzente(soll) && ohneZeichen(ohneAkzente(ein)) === ohneZeichen(ohneAkzente(soll))) {
+    } else if (S.akzentUrteil && ohneAkzente(ein) !== ohneAkzente(soll) && ohneZeichen(ohneAkzente(ein)) === ohneZeichen(ohneAkzente(soll))) {
       // «la grand mere», «lage», «l equitation»: Alle Buchstaben stimmen, aber Akzente und die
       // Zeichen dazwischen nicht. Ein «l» ohne Apostroph ist kein fehlender Artikel.
       Object.assign(u, { artikel: 'ok', kern: 'akzent', zeichen: true, stellen: inEingabe(abweichungen(ein, soll)), fehler: ['akzent'] });
@@ -1312,7 +1469,7 @@ const Lernen = (() => {
     if (u.richtig) return u;
     const artikelFalsch = stellen.some(i => plaetze[i].art === 'artikel');
     const rest = stellen.filter(i => plaetze[i].art !== 'artikel');
-    const nurAkzente = rest.length > 0 && rest.every(i => gelegt[i] != null && erlaubt(plaetze[i]).some(s => falte(s) === falte(gelegt[i])));
+    const nurAkzente = S.akzentUrteil && rest.length > 0 && rest.every(i => gelegt[i] != null && erlaubt(plaetze[i]).some(s => falte(s) === falte(gelegt[i])));
     if (artikelFalsch) u.fehler.push('genus');
     if (nurAkzente) u.fehler.push('akzent');
     if (plaetze.some(p => p.art === 'wort')) {
@@ -1344,7 +1501,15 @@ const Lernen = (() => {
 
   /* ---------- Gespeicherter Stand ---------- */
 
-  const ZAEHLER = ['runden', 'perfekt', 'ohr', 'lelaLauf', 'lelaBest', 'akzent', 'saetze', 'geschrieben'];
+  // Die Zähler im Stand (Sprachprofil): mindestens die, die verbuchen und rundeFertig schreiben
+  const ZAEHLER_PFLICHT = ['runden', 'perfekt', 'ohr', 'lelaLauf', 'lelaBest', 'akzent', 'saetze', 'geschrieben'];
+  const ZAEHLER = S.zaehler;
+  // Zwei Zähler, die nur ein Kurs hat, der sie nennt: Wörter mit Bindestrich, jedes einmal, und
+  // Nachsprechen. Wer doppel zählt, merkt sich die Karten dazu in z.doppelwoerter.
+  const DOPPEL = ZAEHLER.includes('doppel'), ECHO = ZAEHLER.includes('echo');
+  // Ein Wort mit Bindestrich (kupu-kupu); «tidak apa-apa» sind zwei Wörter
+  const doppelwort = f => f.includes('-') && !f.includes(' ');
+  const mitDoppelwort = e => e.art === 'wort' && e.teile.some(t => t.fr.some(doppelwort));
   const DATUM_RE = /^\d{4}-\d{2}-\d{2}$/;
   const istObjekt = x => !!x && typeof x === 'object' && !Array.isArray(x);
   const neuerTag = heute => ({ datum: heute, neu: 0, runden: 0, frei: [] });
@@ -1353,8 +1518,10 @@ const Lernen = (() => {
   function neu() {
     const zaehler = {};
     for (const name of ZAEHLER) zaehler[name] = 0;
-    return { v: 1, vorgestellt: false, gehoert: false, unite: null, ziele: {}, neuProTag: K.NEU_PRO_TAG, erklaert: {},
+    const z = { v: 1, vorgestellt: false, gehoert: false, unite: null, ziele: {}, neuProTag: K.NEU_PRO_TAG, erklaert: {},
       tag: neuerTag(''), karten: {}, zaehler };
+    if (DOPPEL) z.doppelwoerter = [];
+    return z;
   }
 
   // Liest einen gespeicherten Stand Feld für Feld ab: Nur was bekannt ist und stimmt, kommt mit.
@@ -1405,6 +1572,12 @@ const Lernen = (() => {
     }
     const zaehler = obj(roh.zaehler);
     for (const name of ZAEHLER) z.zaehler[name] = zahl(zaehler[name]);
+    if (DOPPEL) {
+      // Nur Karten, die es gibt und die ein Wort mit Bindestrich haben, jede einmal; doppel zählt sie
+      const kids = Array.isArray(roh.doppelwoerter) ? roh.doppelwoerter : [];
+      z.doppelwoerter = [...new Set(kids.filter(kid => typeof kid === 'string' && hat(V.KARTE, kid) && mitDoppelwort(V.KARTE[kid])))];
+      z.zaehler.doppel = z.doppelwoerter.length;
+    }
     return z;
   }
 
@@ -1431,6 +1604,7 @@ const Lernen = (() => {
     if (!istObjekt(z.ziele)) z.ziele = {};
     if (!istObjekt(z.zaehler)) z.zaehler = {};
     for (const name of ZAEHLER) if (!(z.zaehler[name] >= 0)) z.zaehler[name] = 0;
+    if (DOPPEL && !Array.isArray(z.doppelwoerter)) z.doppelwoerter = [];
     if (!istObjekt(z.tag) || z.tag.datum !== heute) z.tag = neuerTag(heute);
     if (!Array.isArray(z.tag.frei)) z.tag.frei = [];
     for (const k of Object.values(z.karten)) if (istObjekt(k)) zurueckholen(k, heute);
@@ -1473,6 +1647,8 @@ const Lernen = (() => {
       }
       return fertig();
     }
+    // Nachsprechen kann nicht schiefgehen: Jedes zählt, wo der Kurs es zählt (Sprachprofil zaehler)
+    if (uebung === 'echo' && ECHO) z.zaehler.echo++;
     if (uebung === 'echo' || uebung === 'paare' || !['richtig', 'fast', 'falsch'].includes(art)) return fertig();
 
     k.gesehen++;
@@ -1535,6 +1711,15 @@ const Lernen = (() => {
       if ((uebung === 'ordnen' || uebung === 'bauen') && e.art === 'satz') zae.saetze++;
       if (uebung === 'akzent') zae.akzent++;
       if (uebung === 'schreiben') zae.geschrieben++;
+      // Ein Wort mit Bindestrich zählt nur beim ersten Mal, wie oft es auch geschrieben wird.
+      // Gemessen an der Form, die die Aufgabe fragte (bei «anak, anak-anak» nur die zweite).
+      if (uebung === 'schreiben' && DOPPEL && !z.doppelwoerter.includes(e.kid)) {
+        const o = schreibOrt(e, schritt.teil, schritt.form);
+        if (doppelwort(e.teile[o.teil].fr[o.form])) {
+          z.doppelwoerter.push(e.kid);
+          zae.doppel = z.doppelwoerter.length;
+        }
+      }
     }
     if (uebung === 'artikel' && art !== 'fast') {
       zae.lelaLauf = art === 'richtig' ? zae.lelaLauf + 1 : 0;
@@ -2262,8 +2447,67 @@ const Lernen = (() => {
     };
   }
 
+  /* ---------- Weitere Kurse ---------- */
+
+  // Ein weiterer Kurs mit demselben Modell (Vertrag für weitere Kurse): eigener Wortschatz, eigenes
+  // Sprachprofil, eigene Zwischenspeicher, eigenes zufall und eigenes K. Nie still das Französisch.
+  function kurs(v, s = v && v.SPRACHE) {
+    kursPruefen(v, s);
+    return bauen(v, s);
+  }
+
+  // Wirft mit einem Satz, der nennt, was im Wortschatz oder im Sprachprofil fehlt oder nicht stimmt
+  function kursPruefen(v, s) {
+    const nein = text => {
+      throw new Error('Lernen.kurs: ' + text);
+    };
+    // Ein RegExp ohne g und y: test() und match() merken sich dann nichts
+    const muster = x => Object.prototype.toString.call(x) === '[object RegExp]' && !x.global && !x.sticky;
+    const zeichenListe = x => Array.isArray(x) && x.every(ch => typeof ch === 'string' && ch.length > 0);
+    if (!istObjekt(v)) nein('Der Wortschatz fehlt.');
+    for (const name of ['VOKABELN', 'KARTEN', 'KARTE', 'LERNZIELE', 'LERNZIEL_REIHE', 'UNITE_REIHE', 'KLANGGRUPPEN', 'GLEICHKLANG',
+      'NIE_ZUSAMMEN', 'EIGENNAMEN', 'vokabelClip']) if (v[name] == null) nein('Im Wortschatz fehlt «' + name + '».');
+    if (typeof v.vokabelClip !== 'function') nein('«vokabelClip» im Wortschatz ist keine Funktion.');
+    if (!istObjekt(s)) nein('Das Sprachprofil fehlt (V.SPRACHE oder das zweite Argument).');
+    for (const name of ['artikel', 'akzente', 'schlicht', 'verwechsler', 'grosseKacheln', 'schriftbild', 'neben', 'akzentUrteil', 'mehrWort', 'zaehler',
+      'tastatur']) {
+      if (s[name] === undefined) nein('Im Sprachprofil fehlt «' + name + '».');
+    }
+    const falsch = (name, wie) => nein('«' + name + '» im Sprachprofil stimmt nicht: ' + wie + '.');
+    if (s.artikel !== null && !(muster(s.artikel) && s.artikel.source.startsWith('^'))) falsch('artikel', 'null oder ein RegExp, der vorn beginnt (^)');
+    if (!istObjekt(s.akzente) || !Object.values(s.akzente).every(w => zeichenListe(w) && w.length > 1)) falsch('akzente', '{ Grundbuchstabe: [schlicht, Variante, …] }');
+    if (typeof s.schlicht !== 'string' || ![...s.schlicht].every(ch => Object.values(s.akzente).some(w => w.includes(ch)))) {
+      falsch('schlicht', 'nur Buchstaben, die auch in akzente stehen');
+    }
+    if (!istObjekt(s.verwechsler) || !Object.values(s.verwechsler).every(ch => typeof ch === 'string' && [...ch].length === 1)) {
+      falsch('verwechsler', '{ Buchstabe: Störbuchstabe }');
+    }
+    const neben = [...K.UEBUNGEN.filter(u => !['kennen', 'echo', 'paare'].includes(u)), 'diktat'];
+    for (const art of ['wort', 'satz']) {
+      const stufen = istObjekt(s.neben) ? s.neben[art] : null;
+      if (!Array.isArray(stufen) || stufen.length !== 5 || !stufen.every(st => Array.isArray(st) && st.every(n => Array.isArray(n) && typeof n[1] === 'number'))) {
+        falsch('neben', art + ' braucht fünf Stufen, jede eine Liste aus [Übung, Gewicht]');
+      }
+      for (const [uebung] of stufen.flat()) if (!neben.includes(uebung)) falsch('neben', 'keine Nebenaufgabe «' + uebung + '»');
+    }
+    for (const name of ['grosseKacheln', 'schriftbild', 'akzentUrteil']) if (typeof s[name] !== 'boolean') falsch(name, 'true oder false');
+    if (!muster(s.mehrWort)) falsch('mehrWort', 'ein RegExp');
+    if (!zeichenListe(s.zaehler)) falsch('zaehler', 'eine Liste von Namen');
+    for (const name of ZAEHLER_PFLICHT) if (!s.zaehler.includes(name)) falsch('zaehler', 'es fehlt «' + name + '»');
+    if (!istObjekt(s.tastatur)) falsch('tastatur', '{ reihen, akzente, tippbar }');
+    for (const name of ['reihen', 'akzente', 'tippbar']) if (s.tastatur[name] === undefined) nein('Im Sprachprofil fehlt «tastatur.' + name + '».');
+    if (!zeichenListe(s.tastatur.reihen) || !zeichenListe(s.tastatur.akzente) || !s.tastatur.tippbar || typeof s.tastatur.tippbar.has !== 'function') {
+      falsch('tastatur', 'reihen und akzente sind Listen, tippbar ein Set');
+    }
+    if (s.K !== undefined && !istObjekt(s.K)) falsch('K', 'ein Objekt mit Werten aus K');
+    for (const [name, wert] of Object.entries(s.K || {})) {
+      if (!hat(K, name)) falsch('K', 'K.' + name + ' gibt es nicht');
+      if (typeof wert !== typeof K[name] || Array.isArray(wert) !== Array.isArray(K[name])) falsch('K', 'K.' + name + ' hat die falsche Art');
+    }
+  }
+
   const L = {
-    K, zufall: Math.random,
+    K, zufall: Math.random, SPRACHE: S,
     neu, pruefen, zustand, tag, tagPlus,
     norm, falte, kern, abstand, zerlegen,
     kann, leitaufgabe, nebenaufgaben,
@@ -2271,6 +2515,7 @@ const Lernen = (() => {
     aufgabe, ablenker, buchstaben, wortkacheln, akzentLuecken, kontrast,
     urteil, reihenUrteil, aepfel,
     verbuchen, rundeFertig, zahlen,
+    kurs,
   };
   return L;
 })();

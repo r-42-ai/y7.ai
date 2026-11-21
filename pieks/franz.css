@@ -29,6 +29,8 @@
 .franz-chip:active { transform: translateY(2px); }
 /* Am Ende des ersten Treffens springt sie herein */
 .franz-karte.kommt { animation: popin .5s cubic-bezier(.3, 1.5, .5, 1) both; }
+/* Die Karte des Otters (gleich gebaut): Ihr Balken wächst vom grünen Halm zum goldenen Reis */
+.indo-karte .franz-balken i { background: linear-gradient(90deg, var(--beere-gruen), var(--reis)); }
 
 /* ---------- Erstes Treffen: der Baum schüttelt sich, ein Apfel fällt ---------- */
 
@@ -183,6 +185,13 @@
 .fr-beet-reihe i.s3 { background: #B9DD84; }
 .fr-beet-reihe i.s4 { background: linear-gradient(180deg, #DDEBA8 45%, #E2483D 45%); }
 .fr-beet-reihe i.s5 { background: #E2483D; box-shadow: inset -2px -2px 0 rgba(120, 20, 10, .25); }
+/* Beim Otter ist das Beet ein Reisfeld: unter Wasser, die Rispen werden grün, gelb und golden */
+.fr-heft[data-kurs="indo"] .fr-beet-reihe { background: linear-gradient(180deg, #7FA6B0, #5E8A94); }
+.fr-heft[data-kurs="indo"] .fr-beet-reihe i.s0 { background: #EBC25C; }
+.fr-heft[data-kurs="indo"] .fr-beet-reihe i.s2 { background: #7CCB6A; }
+.fr-heft[data-kurs="indo"] .fr-beet-reihe i.s3 { background: #C3DD74; }
+.fr-heft[data-kurs="indo"] .fr-beet-reihe i.s4 { background: linear-gradient(180deg, #F6DA72 55%, #9CC75C 55%); }
+.fr-heft[data-kurs="indo"] .fr-beet-reihe i.s5 { background: var(--reis); box-shadow: inset -2px -2px 0 rgba(120, 70, 0, .25); }
 .fr-legende { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 15px; font-weight: 700; color: var(--soft); }
 .fr-legende span { display: inline-flex; align-items: center; gap: 5px; }
 .fr-legende b { color: var(--ink); }
@@ -256,6 +265,9 @@
 .fr-eltern-zahl { text-align: right; font-variant-numeric: tabular-nums; }
 .fr-farbe.gekannt { color: #9CD68E; }
 .fr-farbe.frucht { color: var(--beere); }
+/* Beim Otter: mit Rispe golden statt erdbeerrot */
+.fr-eltern[data-kurs="indo"] .fr-eltern-balken i.frucht { background: var(--reis); }
+.fr-eltern[data-kurs="indo"] .fr-farbe.frucht { color: var(--reis); }
 .fr-schwer { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
 .fr-schwer li {
   display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px;

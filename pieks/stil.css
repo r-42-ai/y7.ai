@@ -28,6 +28,10 @@
   --creme: #F6D9B6;
   --beere: #E2483D;
   --beere-gruen: #9CCB6A;
+  /* Indonesisch: das Wasser des Otters (Diagramm der Eltern, Hör-Knopf), sein Reis */
+  --indo: #1A8F8A;
+  --indo-d: #0F6662;
+  --reis: #E2A12A;
   --font: ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", "Quicksand", "Arial Rounded MT Bold", "Segoe UI", system-ui, sans-serif;
 
   /* Landschaft (Tag, Herbst) */
@@ -159,7 +163,7 @@ body.winter .laub-farbig { opacity: .25; }
   pointer-events: none;
 }
 .app button, .app .karte, .app .blase, .app .pill, .app .dock, .app .themen, .app .menue, .app .notiz,
-.app .fr-eingabe, .app .fr-hoernchen, .app .fr-gast, .app .held-hoernchen { pointer-events: auto; }
+.app .fr-eingabe, .app .fr-hoernchen, .app .fr-gast, .app .held-hoernchen, .app .held-otter { pointer-events: auto; }
 
 /* Kopfzeile */
 .kopfzeile { display: flex; align-items: center; gap: 8px; padding: 10px 14px 6px; flex: none; }
@@ -255,8 +259,8 @@ button.mini.leise { background: #F1E6D3; color: var(--soft); box-shadow: 0 3px 0
 .blase .say button.mini { margin: 8px 8px 0 0; }
 /* Spricht das Hörnchen, färbt sich der untere Rand der Blase wie sein Fell */
 .blase.von-hoernchen { box-shadow: 0 4px 0 #E9B08A, 0 12px 24px -16px rgba(60, 40, 20, .55); }
-/* Wer spricht: kleiner Kopf an der Ecke oben links. Nur wo zwei Figuren stehen,
-   denn im Hochformat kann der Zipfel nicht auf eine von beiden zeigen. Er hängt
+/* Wer spricht: kleiner Kopf an der Ecke oben links. Nur wo mehr als eine Figur steht,
+   denn im Hochformat kann der Zipfel nicht auf eine von ihnen zeigen. Er hängt
    so weit über die Ecke hinaus, dass er den ersten Buchstaben nicht berührt. */
 .blase-wer {
   display: none;
@@ -268,7 +272,10 @@ button.mini.leise { background: #F1E6D3; color: var(--soft); box-shadow: 0 3px 0
 }
 .blase-wer svg { width: 22px; height: 22px; }
 .blase.von-hoernchen .blase-wer { box-shadow: 0 2px 0 #E9B08A, 0 5px 10px -6px rgba(60, 40, 20, .6); }
-.held.zu-zweit .blase-wer, .fr-figur .blase-wer { display: grid; }
+/* Spricht der Otter, ist der Rand so hell wie das Wasser vor seinem Gesicht (t-indo) */
+.blase.von-otter { box-shadow: 0 4px 0 #9ED3CF, 0 12px 24px -16px rgba(60, 40, 20, .55); }
+.blase.von-otter .blase-wer { box-shadow: 0 2px 0 #9ED3CF, 0 5px 10px -6px rgba(60, 40, 20, .6); }
+.held.zu-zweit .blase-wer, .held.zu-dritt .blase-wer, .fr-figur .blase-wer { display: grid; }
 @keyframes reden { 0% { transform: scale(.95); } 60% { transform: scale(1.02); } 100% { transform: none; } }
 
 /* ---------- Lichtung ---------- */
@@ -287,16 +294,25 @@ button.mini.leise { background: #F1E6D3; color: var(--soft); box-shadow: 0 3px 0
   --figur-abstand: clamp(8px, 2vw, 28px);
   grid-area: held; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 0; position: relative;
 }
-/* Pieks und rechts von ihm das Hörnchen: Füsse auf einer Linie, mit Abstand («Pieks, du piekst.») */
+/* Pieks und rechts von ihm das Hörnchen: Füsse auf einer Linie, mit Abstand («Pieks, du piekst.»).
+   Der Otter steht links. Sein Kopf ist so gross wie ihrer, darum hat er ihre Breite. */
 .held-figuren { flex: none; display: flex; align-items: flex-end; justify-content: center; gap: var(--figur-abstand); }
 .held-pieks { width: var(--pieks-b); flex: none; cursor: pointer; pointer-events: auto; position: relative; }
-.held-hoernchen { width: calc(var(--pieks-b) * .78); flex: none; cursor: pointer; position: relative; }
-.held-pieks svg, .held-hoernchen svg { width: 100%; height: auto; }
+.held-hoernchen, .held-otter { width: calc(var(--pieks-b) * .78); flex: none; cursor: pointer; position: relative; }
+.held-pieks svg, .held-hoernchen svg, .held-otter svg { width: 100%; height: auto; }
 .held .blase { max-width: 440px; width: 100%; }
 .held .blase::before { left: calc(var(--zipfel, 50%) - 9px); top: -8px; }
 /* Zu zweit zeigt der Zipfel auf die Mitte dessen, der spricht */
 .held.zu-zweit .blase { --zipfel: calc(50% - (var(--pieks-b) * .78 + var(--figur-abstand)) / 2); }
 .held.zu-zweit .blase.von-hoernchen { --zipfel: calc(50% + (var(--pieks-b) + var(--figur-abstand)) / 2); }
+/* Steht der eine Freund links (der Otter, wenn ihr Kurs fehlt), ist es andersherum (heldZeigen in app.js) */
+.held.zu-zweit.freund-links .blase { --zipfel: calc(50% + (var(--pieks-b) * .78 + var(--figur-abstand)) / 2); }
+.held.zu-zweit.freund-links .blase.von-otter { --zipfel: calc(50% - (var(--pieks-b) + var(--figur-abstand)) / 2); }
+/* Zu dritt steht Pieks in der Mitte, beide Freunde gleich breit daneben: Die Reihe ist um ihn herum gleich */
+.held.zu-dritt { --spalte: calc(.45 * (min(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px), 1320px) - 62px)); }
+.held.zu-dritt .blase { --zipfel: 50%; }
+.held.zu-dritt .blase.von-hoernchen { --zipfel: calc(50% + var(--pieks-b) * .89 + var(--figur-abstand)); }
+.held.zu-dritt .blase.von-otter { --zipfel: calc(50% - var(--pieks-b) * .89 - var(--figur-abstand)); }
 /* Steht in der Blase mehr, als sie zeigt, verblasst die letzte Zeile (app.js rolltZeigen) */
 .held .blase.rollt .say { -webkit-mask-image: linear-gradient(#000 calc(100% - 1.6em), transparent); mask-image: linear-gradient(#000 calc(100% - 1.6em), transparent); }
 /* Quer: Die Figuren stehen, wo sie mit einer Blase aus zwei Zeilen immer standen (mittig samt ihr). Die Blase
@@ -309,6 +325,9 @@ button.mini.leise { background: #F1E6D3; color: var(--soft); box-shadow: 0 3px 0
     justify-items: center; gap: 0;
   }
   .held-figuren { grid-row: 2; }
+  /* Zu dritt so gross wie zu zweit, aber nie breiter als die Spalte (--spalte: die linke Spalte der Lichtung,
+     .45 ihrer Breite ohne Rand und Abstand): sonst ragten sie quer auf jedem Tablet in die Karten */
+  .held.zu-dritt { --pieks-b: min(clamp(170px, 26vh, 300px), (var(--spalte) - 2 * var(--figur-abstand)) / 2.56); }
   /* Ihr Raster reicht bis unten an die Lichtung, dazu die Wiese (.boden) bis auf einen Rand */
   .held .blase {
     grid-row: 3 / 5; align-self: start; margin-top: 10px;
@@ -318,6 +337,27 @@ button.mini.leise { background: #F1E6D3; color: var(--soft); box-shadow: 0 3px 0
   .held .blase .say { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 }
 .wahl { grid-area: wahl; display: flex; flex-direction: column; justify-content: center; gap: 14px; min-height: 0; }
+/* Die Karten der Sprachkurse in einer Reihe: eine allein über die ganze Breite, zwei nebeneinander, solange
+   jede 240 px bekommt (auf jedem Tablet, quer und hochkant). Schmaler hätten Gesicht, Name und Pfeil
+   nebeneinander keinen Platz: dann untereinander, auf dem Handy immer (auch quer, dort rollt die Wahl ohnehin). */
+.sprachen { display: flex; flex-wrap: wrap; gap: 12px; }
+.sprachen > .franz-karte { flex: 1 1 240px; min-width: 0; }
+/* Nebeneinander hätte der Balken neben den Chips keinen Platz mehr (franz.css: «balken chips»): Er steht
+   darum in einer eigenen Zeile über ihnen. Untereinander (Handy, unten) bleibt die Karte, wie sie ist. */
+.sprachen.zwei > .franz-karte { grid-template-columns: minmax(0, 1fr); grid-template-areas: "start" "balken" "chips"; row-gap: 10px; }
+.sprachen.zwei > .franz-karte .franz-balken { margin: 0 4px; }
+/* Die Chips etwas knapper: «Wörter 223/223» und «Pelajaran 6» passen so quer auf dem iPad noch in eine Zeile.
+   Wird die Karte schmaler (Handy quer), bricht der zweite um und beide füllen ihre Zeile. */
+.sprachen.zwei > .franz-karte .franz-chips { flex-wrap: wrap; gap: 6px; }
+.sprachen.zwei > .franz-karte .franz-chip { flex: 1 1 auto; padding: 6px 10px; font-size: 14px; }
+/* Quer, aber schmaler als 957 px (Handy quer): Die Wahl hat dann keine 492 px, die beiden Karten stehen
+   untereinander und behalten ihre breite Form */
+@media (min-aspect-ratio: 1001/1000) and (min-width: 761px) and (max-width: 956px) {
+  .sprachen.zwei > .franz-karte { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "start start" "balken chips"; row-gap: 8px; }
+  .sprachen.zwei > .franz-karte .franz-balken { margin: 0 0 0 6px; }
+  .sprachen.zwei > .franz-karte .franz-chips { flex-wrap: nowrap; gap: 8px; }
+  .sprachen.zwei > .franz-karte .franz-chip { flex: none; padding: 6px 14px; font-size: 15px; }
+}
 .wahl-titel { margin: 0; font-size: clamp(22px, 2.2vw, 30px); font-weight: 800; color: #fff; text-shadow: 0 2px 0 rgba(60, 40, 20, .35), 0 0 14px rgba(60,40,20,.25); }
 .themen { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .thema {
@@ -774,14 +814,17 @@ button.mini.leise { background: #F1E6D3; color: var(--soft); box-shadow: 0 3px 0
   box-shadow: 0 6px 0 var(--card-edge), 0 24px 40px -18px rgba(60, 40, 20, .7);
   animation: popin .3s cubic-bezier(.3, 1.4, .5, 1) both;
 }
+/* Höher als der Platz unter dem Knopf (stufenMenueAuf setzt dann max-height): Es rollt, die Seite dahinter nicht */
+.popover.rollt { overflow-y: auto; overscroll-behavior: contain; }
 .pop-titel { font-size: 13px; font-weight: 800; color: var(--soft); text-transform: uppercase; letter-spacing: .05em; margin: 4px 4px 6px; }
 .pop-stufen { display: flex; gap: 6px; margin-bottom: 10px; }
 .pop-themen { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .pop-thema { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 14px; background: #F4EADA; font-size: 15px; font-weight: 800; text-align: left; }
 .pop-thema svg { width: 30px; height: 30px; flex: none; }
 .pop-thema.an { background: #FFE7C2; box-shadow: inset 0 0 0 2px var(--orange); }
-/* Französisch steht als fünfter Eintrag über die ganze Breite und hat keine Schwierigkeit zu wählen */
-.pop-thema[data-fach="franz"] { grid-column: 1 / -1; }
+/* Jeder Kurs (Französisch …) steht unter den Themen als eigener Eintrag über die ganze Breite und hat keine
+   Schwierigkeit zu wählen */
+.pop-thema[data-fach] { grid-column: 1 / -1; }
 body.im-franz #popStufenTitel, body.im-franz #popStufen { display: none; }
 
 /* Fenster: Album, Garderobe, Erfolge, Eltern */
@@ -844,10 +887,12 @@ body.im-franz #popStufenTitel, body.im-franz #popStufen { display: none; }
 .zurueck-link { margin-bottom: 12px; padding: 7px 14px; border-radius: 999px; background: #F1E6D3; font-size: 15px; font-weight: 800; color: var(--soft); }
 .garderobe { display: grid; grid-template-columns: minmax(200px, 300px) 1fr; gap: 18px; align-items: start; }
 .garderobe .vorschau { position: sticky; top: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px; border-radius: 24px; background: linear-gradient(180deg, #DDF0F8, #EAF6E3); }
-.garderobe .vorschau .pieks, .garderobe .vorschau .hoernchen { width: 100%; max-width: 240px; height: auto; }
+.garderobe .vorschau .pieks, .garderobe .vorschau .hoernchen, .garderobe .vorschau .otter { width: 100%; max-width: 240px; height: auto; }
 /* Wer wird angezogen: Schalter als erstes Kind der Vorschau, über der Figur */
 .garderobe-wahl { justify-content: center; }
 .wahl-knoepfe.garderobe-wahl button { min-height: 44px; padding: 8px 18px; font-size: 16px; }
+/* Drei Namen passen so in eine Zeile über der Vorschau (300 px quer) */
+.wahl-knoepfe.garderobe-wahl.drei button { padding: 8px 12px; }
 .garderobe .kasse { display: flex; align-items: center; gap: 6px; font-size: 20px; font-weight: 800; }
 .garderobe .kasse svg { width: 30px; height: 30px; }
 .slot-titel { margin: 14px 0 8px; font-size: 14px; font-weight: 800; color: var(--soft); text-transform: uppercase; letter-spacing: .05em; }
@@ -881,6 +926,7 @@ body.im-franz #popStufenTitel, body.im-franz #popStufen { display: none; }
 .chart-bar.leer { background: #EFE3CF; }
 /* Gestapelt: unten Mathe, oben der Französisch-Anteil (Höhe in Prozent des Balkens) */
 .chart-bar i.fr { position: absolute; left: 0; right: 0; top: 0; display: block; border-radius: inherit; background: var(--f); }
+.chart-bar i.indo { position: absolute; left: 0; right: 0; top: 0; display: block; border-radius: inherit; background: var(--indo); }
 .chart-labels { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; font-size: 10px; color: var(--soft); text-align: center; margin-top: 3px; }
 .verlauf-zeile { display: grid; grid-template-columns: 120px 1fr 54px; gap: 10px; align-items: center; font-size: 15px; padding: 4px 0; }
 .verlauf-balken { height: 12px; border-radius: 6px; background: #EFE3CF; overflow: hidden; }
@@ -930,12 +976,12 @@ body.im-franz #popStufenTitel, body.im-franz #popStufen { display: none; }
 @keyframes wegschweben { to { opacity: 0; transform: translateY(-30px) scale(.94); } }
 
 /* ---------- Niedriges Querformat ----------
-   Mit der Französisch-Karte (also zu zweit) kann die Auswahl höher werden als
-   ihr Platz: dann rollt sie. Die Ränder sind Luft für die Schatten der Karten. */
+   Mit der Karte eines Sprachkurses (also zu zweit oder zu dritt) kann die Auswahl
+   höher werden als ihr Platz: dann rollt sie. Die Ränder sind Luft für die Schatten der Karten. */
 @media (max-height: 700px) and (min-aspect-ratio: 1001/1000) and (min-width: 761px) {
-  .held.zu-zweit ~ .wahl { justify-content: flex-start; overflow-y: auto; margin: -8px -12px; padding: 8px 12px; pointer-events: auto; }
-  .held.zu-zweit ~ .wahl > :first-child { margin-top: auto; }
-  .held.zu-zweit ~ .wahl > :last-child { margin-bottom: auto; }
+  .held.zu-zweit ~ .wahl, .held.zu-dritt ~ .wahl { justify-content: flex-start; overflow-y: auto; margin: -8px -12px; padding: 8px 12px; pointer-events: auto; }
+  .held.zu-zweit ~ .wahl > :first-child, .held.zu-dritt ~ .wahl > :first-child { margin-top: auto; }
+  .held.zu-zweit ~ .wahl > :last-child, .held.zu-dritt ~ .wahl > :last-child { margin-bottom: auto; }
 }
 
 /* ---------- Hochformat und schmale Bildschirme ---------- */
@@ -949,6 +995,12 @@ body.im-franz #popStufenTitel, body.im-franz #popStufen { display: none; }
   .held.zu-zweit .blase { margin-top: 14px; }
   .held .blase { flex: 1; }
   .held .blase::before { left: -8px; top: calc(50% - 9px); }
+  /* Zu dritt bliebe der Blase daneben kaum Platz (auf dem Handy keine 90 px): Die Figuren stehen in einer
+     Reihe, die Blase darunter in der ganzen Breite, und ihr Zipfel zeigt nach oben auf den, der spricht */
+  .held.zu-dritt { flex-direction: column; align-items: center; gap: 0; }
+  /* Mindestens drei Zeilen hoch (so lang sind fast alle Sätze): Ein neuer Satz schiebt die Karten darunter nicht */
+  .held.zu-dritt .blase { flex: none; align-self: center; width: 100%; max-width: 560px; margin-top: 12px; min-height: calc(3 * 1.28 * clamp(16px, 1.15vw + 0.9vh, 20px) + 24px); }
+  .held.zu-dritt .blase::before { left: calc(var(--zipfel) - 9px); top: -8px; }
   .wahl { justify-content: flex-start; gap: 10px; }
   .wahl-titel { display: none; }
   .lichtung .boden { height: 70px; margin: 0 -14px; }
@@ -988,7 +1040,7 @@ body.im-franz #popStufenTitel, body.im-franz #popStufen { display: none; }
   .fr-eingabe.nur-weiter .fr-pruefen, .fr-eingabe.nur-weiter .fr-weiter { align-self: center; margin: 0 0 0 10px; }
   .garderobe { grid-template-columns: 1fr; }
   .garderobe .vorschau { position: relative; flex-direction: row; justify-content: center; }
-  .garderobe .vorschau .pieks, .garderobe .vorschau .hoernchen { max-width: 140px; }
+  .garderobe .vorschau .pieks, .garderobe .vorschau .hoernchen, .garderobe .vorschau .otter { max-width: 140px; }
   /* Der Schalter liegt hier über der Zeile aus Figur, Blase und Kasse */
   .garderobe-wahl { position: absolute; left: 0; right: 0; top: 10px; }
   .garderobe .vorschau .garderobe-wahl ~ * { margin-top: 50px; }
@@ -1019,6 +1071,15 @@ body.im-franz #popStufenTitel, body.im-franz #popStufen { display: none; }
   .held.zu-zweit { --pieks-b: 96px; --figur-abstand: 8px; }
   .held.zu-zweit .held-hoernchen { width: 76px; }
   .held.zu-zweit .blase { margin-top: 11px; padding: 10px 12px; }
+  /* Zu dritt die Figuren klein in einer Reihe und die Blase darunter, immer vier Zeilen hoch: Mehr rollt in
+     ihr, so schiebt ein langer Satz die Karten nicht hinunter */
+  .held.zu-dritt { --pieks-b: 100px; --figur-abstand: 8px; min-height: 0; }
+  .held.zu-dritt .blase { min-height: calc(4 * 1.28 * 16px + 20px); margin-top: 12px; padding: 10px 12px; }
+  .held.zu-dritt .blase .say { max-height: calc(4 * 1.28em); max-height: 4lh; }
+  .sprachen > .franz-karte { flex-basis: 100%; }
+  .sprachen.zwei > .franz-karte { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "start start" "balken chips"; row-gap: 6px; }
+  .sprachen.zwei > .franz-karte .franz-balken { margin: 0 0 0 6px; }
+  .sprachen.zwei > .franz-karte .franz-chips { gap: 8px; }
   /* Die Blasen sind hier enger gepolstert: ein etwas kleineres Abzeichen lässt dem Text seinen Platz */
   .blase-wer { top: -11px; width: 26px; height: 26px; }
   /* Die Zeile ist so hoch wie die längste Blase hier (vier Zeilen): Sonst schöbe ein langer Tipp Figuren und Karte hinunter */
@@ -1084,6 +1145,7 @@ body.im-franz #popStufenTitel, body.im-franz #popStufen { display: none; }
   .buddy-pieks { width: 64px; }
   .werkzeug span { display: none; }
   .held { --pieks-b: 120px; }
+  .held.zu-dritt { --pieks-b: min(120px, (var(--spalte) - 2 * var(--figur-abstand)) / 2.56); }
   .fr-figur { --hoernchen-b: 90px; }
   .fr-pruefen, .fr-eingabe .fr-weiter { height: 48px; }
 }

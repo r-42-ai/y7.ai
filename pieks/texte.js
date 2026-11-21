@@ -27,6 +27,12 @@ const SPRECHNAME = 'Nea';
 // Pieks und sie den Namen französisch. Nach Gehör ausgewählt (Hörprobe, 15.11.2026).
 const HOERNCHEN = { name: 'Pirouette', sprich: 'Piruett' };
 
+// Pieks' Freund, der Zwergotter aus Java (seine Texte: indo-texte.js). Wie beim Hörnchen
+// die einzige Stelle für seinen Namen: Texte schreiben {O}, angezeigt wird name, gesprochen
+// sprich. «Percik» heisst «Spritzer»; das c ist indonesisch ein «tsch», die deutschen
+// Stimmen läsen es als k. Darum sagen sie «Pertschik».
+const OTTER = { name: 'Percik', sprich: 'Pertschik' };
+
 const TEXTE = {
   /* ---------- Begrüssung nach dem Aufwecken ---------- */
   aufwachen: [
@@ -555,17 +561,65 @@ const ERFOLGE = {
   fr_perfekt: { name: 'Fehlerfrei', text: 'Eine Runde ohne Fehler.', bonus: 15 },
   fr_zwei: { name: 'Doppelstunde', text: 'An einem Tag gerechnet und Französisch geübt.', bonus: 10 },
   fr_partner: { name: 'Partnerlook', text: 'Pieks und seine Freundin tragen dasselbe.', bonus: 10 },
+  // Indonesisch: Bedingungen in indo.js (wie Franz.erfolgBedingungen); INDO_TEXTE.ERFOLGE in
+  // indo-texte.js liest diese Einträge von hier. Die Namen spricht Pieks, darum sind sie deutsch: kein
+  // indonesisches Wort, auch nicht «Pelajaran», und kein Name, den es schon gibt. «Mit Rispe» heisst
+  // Stufe 3 und mehr, «reif» Stufe 5 (goldener Reis). Gemeint ist Nea, darum die weiblichen Formen.
+  indo_erstes: { name: 'Erster Keimling', text: 'Das erste indonesische Wort kennengelernt.', bonus: 5 },
+  indo_runden10: { name: 'Fleissige Reisbäuerin', text: '10 Indonesisch-Runden gespielt.', bonus: 20 },
+  indo_25: { name: 'Rispen-Sammlerin', text: '25 Wörter mit Rispe.', bonus: 20 },
+  indo_100: { name: 'Hundert Rispen', text: '100 Wörter mit Rispe.', bonus: 50 },
+  indo_reif1: { name: 'Erstes goldenes Korn', text: 'Das erste Wort ist reif.', bonus: 10 },
+  indo_reif50: { name: 'Korb voll Reis', text: '50 reife Wörter.', bonus: 50 },
+  // Ohne Zahl: So stimmt der Text auch, wenn die Wortliste wächst (bei ihr: «Alle 210 Wörter sind reif.»)
+  indo_reifAlle: { name: 'Goldenes Reisfeld', text: 'Alle Wörter sind reif.', bonus: 200 },
+  // Wie fr_unite, aber ohne Grundwörter: Es gibt kein Plus
+  indo_pelajaran: { name: 'Lektion geschafft', text: 'Alle Wörter einer Pelajaran mit Rispe.', bonus: 40 },
+  indo_saetze10: { name: 'Satzfischerin', text: '10 Sätze beim ersten Versuch gebaut.', bonus: 25 },
+  // Ohne seine Aufnahmen nicht zu erreichen: Hör-Aufgaben werden dann zu Lese-Aufgaben. Bis es seine
+  // Aufnahmen gibt, in der Erfolgsliste ausblenden (wie indo_plauder).
+  indo_ohr25: { name: 'Gespitzte Ohren', text: '25 Hör-Aufgaben beim ersten Versuch.', bonus: 20 },
+  indo_schreiben25: { name: 'Tastenkünstlerin', text: '25 Wörter fehlerfrei geschrieben.', bonus: 25 },
+  // Ein Sprung ohne Spritzer: ein Wortspiel mit seinem Namen. Gezählt wird wie bei fr_perfekt jede Runde
+  // ohne «falsch» (lernen.js rundeFertig): Ein zweiter Versuch oder ein Fehlgriff bei den Paaren darf
+  // dabei sein, und die Ernte zeigt dann «4 von 5 beim ersten Versuch». Darum nicht «ohne Fehler».
+  indo_perfekt: { name: 'Ohne Spritzer', text: 'Eine Indonesisch-Runde, in der jede Aufgabe geklappt hat.', bonus: 15 },
+  // Heute gerechnet und Indonesisch geübt. Gerechnet ist, was in der Tages-Statistik nach Abzug
+  // beider Sprachen bleibt: indo > 0 && total - fr - indo > 0.
+  indo_zwei: { name: 'Reis und Rechnen', text: 'An einem Tag gerechnet und Indonesisch geübt.', bonus: 10 },
+  // Ohne Zähler, die Oberfläche rechnet es aus: heute fr > 0, indo > 0 und total - fr - indo > 0
+  indo_drei: { name: 'Dreierpack', text: 'An einem Tag gerechnet, Französisch und Indonesisch geübt.', bonus: 15 },
+  // Ohne Zähler, die Oberfläche rechnet es aus: Alle drei tragen auf einem Platz dasselbe Teil (an,
+  // anH und anO)
+  indo_partner: { name: 'Wie Drillinge', text: 'Pieks und seine beiden Freunde tragen dasselbe.', bonus: 10 },
+  // Nur beim Otter, Zähler doppel im Lernmodell: verschiedene Karten, deren Wort ein Doppelwort ist
+  // und beim ersten Versuch richtig geschrieben wurde. lernen.js zählt jedes Wort mit Bindestrich
+  // (tidak apa-apa sind zwei Wörter und zählt nicht); in der Wortliste sind das sechs, alle aus zwei
+  // gleichen Hälften wie anak-anak oder kupu-kupu. pruefe.mjs hält fest, dass jedes so gebaut ist und
+  // dass es mindestens fünf gibt.
+  indo_doppel: { name: 'Doppelt hält besser', text: '5 verschiedene Doppelwörter fehlerfrei geschrieben.', bonus: 20 },
+  // Nur beim Otter, Zähler echo im Lernmodell: jedes «Gesagt!» beim Nachsprechen (ob Nea laut
+  // gesprochen hat, weiss die App nicht). Nachsprechen gibt es nur mit seinen Aufnahmen, vorher ist
+  // der Erfolg nicht zu erreichen: bis dahin ausblenden.
+  indo_plauder: { name: 'Plaudertasche', text: '20-mal beim Nachsprechen mitgemacht.', bonus: 15 },
 };
 
 /* =====================================================================
    HILFSFUNKTIONEN (gelten in der App, in make-audio.mjs und in sw.js)
    ===================================================================== */
-// Angezeigt wird der Name des Hörnchens statt {H}. Französische Stellen stehen in ihren
-// Texten in geschweiften Klammern, geschrieben wie aufgenommen («{Bravo !} Genau.»). In der
-// Blase fallen die Klammern weg und mit ihnen das französische Leerzeichen vor ! und ?.
-const anzeigetext = e => (typeof e === 'string' ? e : e.t)
-  .replace(/\{H\}/g, HOERNCHEN.name)
-  .replace(/\{([^{}]*)\}/g, (m, fr) => fr.replace(/\s+([!?])/g, '$1'));
+// Die Namen der Lehrer stehen in den Texten nur als Platzhalter: {H} das Hörnchen, {O} der
+// Otter. wie ist 'name' für die Anzeige oder 'sprich' für die Stimme. Nur in deutschen
+// Teilen: In einer fremden Stelle steht der Name ausgeschrieben, so sagt ihn die Stimme in
+// jener Sprache.
+const FIGUR_NAMEN = { H: HOERNCHEN, O: OTTER };
+const namenEinsetzen = (s, wie) => s.replace(/\{([HO])\}/g, (m, k) => FIGUR_NAMEN[k][wie]);
+
+// Angezeigt wird der Name statt {H} oder {O}. Fremde Stellen stehen in den Texten der
+// Lehrer in geschweiften Klammern, geschrieben wie aufgenommen («{Bravo !} Genau.»). In der
+// Blase fallen die Klammern weg und mit ihnen das französische Leerzeichen vor ! und ?
+// (indonesisch steht dort keines).
+const anzeigetext = e => namenEinsetzen(typeof e === 'string' ? e : e.t, 'name')
+  .replace(/\{([^{}]*)\}/g, (m, fremd) => fremd.replace(/\s+([!?])/g, '$1'));
 
 // Die Schweizer Schreibweise hat ss, wo im Hochdeutschen ß steht. Nach langem
 // Vokal liest die Stimme ss aber kurz («Grossartig» wie «Ross»). Für die Stimme
@@ -658,23 +712,25 @@ function zahlenSprechen(s) {
 const zusammenschreiben = s => s.replace(/([a-zäöüß])-([A-ZÄÖÜ])(?=[a-zäöü])/g,
   (m, a, b) => (/[aeiouäöü]/.test(a) && /[AEIOUÄÖÜ]/.test(b) ? m : a + b.toLowerCase()));
 const sprechtext = e => {
-  let s = (typeof e === 'string' ? e : e.s || e.t).replace(/\{H\}/g, HOERNCHEN.sprich).replace(/Nea/g, SPRECHNAME);
+  let s = namenEinsetzen(typeof e === 'string' ? e : e.s || e.t, 'sprich').replace(/Nea/g, SPRECHNAME);
   if (!(e && typeof e === 'object' && e.k)) s = zusammenschreiben(s);
   return aussprache(zahlenSprechen(s));
 };
 
-// Eine Zeile des Hörnchens in ihre Aufnahmen teilen. Die Stimme entscheidet sich pro Text
+// Eine Zeile eines Lehrers in ihre Aufnahmen teilen. Die Stimme entscheidet sich pro Text
 // für eine Sprache (ein «Salut» mitten im deutschen Satz kam deutsch heraus), darum ist
-// jedes Stück in einer Sprache eine eigene Aufnahme: {…} französisch und wörtlich, der
-// Rest deutsch und durch sprechtext(). Eine Zeile ohne Klammern ist ein deutsches Stück.
-function segmente(e) {
-  const zeile = (typeof e === 'string' ? e : e.s || e.t).replace(/\{H\}/g, HOERNCHEN.sprich);
+// jedes Stück in einer Sprache eine eigene Aufnahme: {…} in seiner Sprache und wörtlich
+// (fremd: 'fr' beim Hörnchen, 'id' beim Otter, LEHRER unten), der Rest deutsch und durch
+// sprechtext(). Eine Zeile ohne Klammern ist ein deutsches Stück. Die Namen kommen vor dem
+// Teilen hinein, sonst wäre {H} ein fremdes Stück «H».
+function segmente(e, fremd = 'fr') {
+  const zeile = namenEinsetzen(typeof e === 'string' ? e : e.s || e.t, 'sprich');
   const liste = [];
   // split mit Fanggruppe: an den ungeraden Stellen stehen die Klammern
   zeile.split(/(\{[^{}]*\})/).forEach((stueck, i) => {
-    const fr = i % 2 === 1;
-    const s = fr ? stueck.slice(1, -1).trim() : sprechtext(stueck.trim());
-    if (s) liste.push({ s, sprache: fr ? 'fr' : 'de' });
+    const klammer = i % 2 === 1;
+    const s = klammer ? stueck.slice(1, -1).trim() : sprechtext(stueck.trim());
+    if (s) liste.push({ s, sprache: klammer ? fremd : 'de' });
   });
   return liste;
 }
@@ -690,15 +746,35 @@ function kennung(s) {
 }
 
 // Dateiname einer Aufnahme ohne Endung. Ein Clip ist ein Text (Pieks) oder { s, v } mit der
-// Stimme v: 'p' Pieks, 'hd' und 'hf' das Hörnchen deutsch und französisch, 'f' und 'fl'
-// Vokabeln normal und langsam. Pieks' Dateien heissen weiter nur nach der Kennung; alle
-// anderen tragen die Stimme vorn, damit derselbe Text in zwei Sprachen, Stimmen oder Tempi
-// nie dieselbe Datei trifft.
+// Stimme v: 'p' Pieks, sonst ein Kürzel aus LEHRER: 'hd' und 'hf' das Hörnchen deutsch und
+// französisch, 'f' und 'fl' ihre Vokabeln normal und langsam, beim Otter ebenso 'od', 'oi',
+// 'i' und 'il'. Pieks' Dateien heissen weiter nur nach der Kennung; alle anderen tragen die
+// Stimme vorn, damit derselbe Text in zwei Sprachen, Stimmen oder Tempi nie dieselbe Datei
+// trifft.
 function clipDatei(c) {
   if (typeof c === 'string') return kennung(c);
   return (c.v && c.v !== 'p' ? c.v + '-' : '') + kennung(c.s);
 }
 const clipText = c => (typeof c === 'string' ? c : c.s);
+
+// Wer was aufnimmt, je Lehrer: seine Sprache (für segmente() und lang="…") und die Kürzel
+// v seiner Aufnahmen: deutsche und fremde Stücke seiner Zeilen, Vokabeln normal und
+// langsam. Die eine Tabelle dafür, für make-audio.mjs, die App und pruefe.mjs. Pieks steht
+// nicht darin: Er spricht nur Deutsch, als Text oder mit v 'p'.
+const LEHRER = {
+  h: { sprache: 'fr', de: 'hd', fremd: 'hf', wort: 'f', langsam: 'fl' },
+  o: { sprache: 'id', de: 'od', fremd: 'oi', wort: 'i', langsam: 'il' },
+};
+// Wessen Stimme ein Clip braucht: 'p' Pieks (ein Text, v 'p' oder kein v, wie bei
+// clipDatei), sonst der Lehrer, dem das Kürzel gehört ('h', 'o'). null: kein Clip oder ein
+// unbekanntes Kürzel, so etwas nimmt make-audio.mjs nie auf.
+const stimmeVon = c => {
+  if (typeof c === 'string') return 'p';
+  if (!c || typeof c !== 'object') return null;
+  if (!c.v || c.v === 'p') return 'p';
+  for (const [wer, l] of Object.entries(LEHRER)) if ([l.de, l.fremd, l.wort, l.langsam].includes(c.v)) return wer;
+  return null;
+};
 
 // Listen, die jubeln und loben (lebhaft); der Rest erklärt und darf ruhiger sein
 const LEBHAFT = ['aufwachen', 'gruss_morgen', 'gruss_tag', 'gruss_abend', 'gruss_nacht', 'gruss_wieder', 'gruss_serie', 'gruss_winter',
@@ -736,9 +812,9 @@ function alleSaetze() {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { TEXTE, SERIE, TIPPS, BESUCHER, ITEMS, PLAETZE, RAENGE, ERFOLGE, SPRECHNAME, HOERNCHEN,
-    anzeigetext, sprechtext, segmente, aussprache, zahlenSprechen, zahlwortGross, kennung, clipDatei, clipText,
-    alleSaetze, LEBHAFT,
+  module.exports = { TEXTE, SERIE, TIPPS, BESUCHER, ITEMS, PLAETZE, RAENGE, ERFOLGE, SPRECHNAME, HOERNCHEN, OTTER,
+    FIGUR_NAMEN, namenEinsetzen, anzeigetext, sprechtext, segmente, aussprache, zahlenSprechen, zahlwortGross, kennung,
+    clipDatei, clipText, LEHRER, stimmeVon, alleSaetze, LEBHAFT,
     setFakten: f => { FAKTEN = f; } };
 }
 // In Node kommen die Fakten über setFakten() herein, im Browser aus fakten.js

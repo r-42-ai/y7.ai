@@ -3,10 +3,12 @@
 /* =====================================================================
    MATHE-IGEL: Ablauf der App
    Aufgaben kommen aus aufgaben.js, alles Gesprochene aus texte.js und
-   fakten.js, die Zeichnungen aus grafik.js. Das Französisch mit dem
-   Hörnchen steckt in franz.js und seinen Nachbarn; hier sind nur die
-   Stellen, an denen beide Fächer sich treffen: Bildschirme, Kopfzeile,
-   Kasse, Fenster.
+   fakten.js, die Zeichnungen aus grafik.js. Die Sprachkurse (das
+   Französisch mit dem Hörnchen, das Indonesisch mit dem Otter) stecken
+   in franz.js, indo.js und ihren Nachbarn;
+   hier sind nur die Stellen, an denen die Fächer sich treffen:
+   Bildschirme, Kopfzeile, Kasse, Fenster. Wer da ist und welche Kurse es
+   gibt, sagen FIGUREN und KURSE.
    ===================================================================== */
 
 const $ = id => document.getElementById(id);
@@ -33,18 +35,100 @@ const THEMEN = {
   dreisatz: { name: 'Dreisätze', icon: 't-dreisatz', info: 'direkt und umgekehrt' },
   mix: { name: 'Wald-Mix', icon: 't-mix', info: 'alles gemischt' },
 };
-// Französisch gibt es nur, wenn alle sechs Dateien ganz geladen sind. Bricht
-// eine beim Laden ab, bleiben ihre const-Namen unbelegt und werfen schon beim
-// Lesen: darum try. Geprüft wird je Datei ihr letzter const (langsamGibt in
-// vokabeln.js, H_LEBHAFT in franz-texte.js, FRANZ_SYMBOLE in hoernchen.js), nie eine
-// function: die gibt es auch nach einem Abbruch.
-// franzAus: das Einrichten beim Start ist gescheitert (siehe ganz unten).
-let franzAus = false;
-function franzDa() {
-  try { return !franzAus && !!(Franz && Lernen && Uebungen && VOKABELN && langsamGibt && HTEXTE && H_LEBHAFT && HOERNCHEN_DEFS && FRANZ_SYMBOLE); } catch (e) { return false; }
+/* =====================================================================
+   FIGUREN UND KURSE
+   Wer neben Pieks unterrichtet und welche Sprachkurse es gibt. Was hier
+   steht, braucht die App auch ohne die Dateien eines Kurses (Speicher,
+   Statistik, Erfolge, Lichtung); alles andere weiss der Kurs selbst
+   (KURS_FRANZ in franz.js). Namen aus den Dateien eines Kurses stehen
+   nur in Funktionen: Fehlt eine Datei, wird hier nichts gelesen.
+   ===================================================================== */
+// Die Figuren. klasse: am <svg>; an: was sie trägt (im Stand); blase: die Klasse ihrer Sprechblase;
+// abzeichen: ihr Kopf in der Ecke der Blase; held: ihr Platz auf der Lichtung; kurs: was sie unterrichtet;
+// item: wie ein Teil der Garderobe bei ihr zurechtgerückt wird (ITEM_HOERNCHEN …).
+const FIGUREN = {
+  p: { klasse: 'pieks', an: 'an', blase: 'von-pieks', abzeichen: 'i-pieks-kopf', held: 'heldPieks',
+    name: () => 'Pieks', svg: () => pieksSVG() },
+  h: { kurs: 'fr', klasse: 'hoernchen', an: 'anH', blase: 'von-hoernchen', abzeichen: 't-franz', held: 'heldHoernchen',
+    name: () => HOERNCHEN.name, svg: () => hoernchenSVG(), item: id => ITEM_HOERNCHEN[id] },
+  // Der Otter steht links von Pieks (index.html), sie rechts
+  o: { kurs: 'indo', klasse: 'otter', an: 'anO', blase: 'von-otter', abzeichen: 't-indo', held: 'heldOtter',
+    name: () => OTTER.name, svg: () => otterSVG(), item: id => ITEM_OTTER[id] },
+};
+// Die Kurse, in ihrer Reihenfolge (Lichtung, Album, Eltern, Begrüssung). key: der Kurs in franz.js (Menü,
+// data-kurs, Zurücksetzen); lehrer: wer ihn gibt (FIGUREN); stats: sein Anteil in der Tages-Statistik;
+// erfolge: die Vorsilbe seiner Erfolge; tab: sein Reiter im Album; farbe, segment: sein Teil im Diagramm
+// der Eltern; karte: seine Karte auf der Lichtung.
+// Einen Kurs gibt es nur, wenn alle seine Dateien ganz geladen sind (geladen). Bricht eine beim Laden ab,
+// bleiben ihre const-Namen unbelegt und werfen schon beim Lesen: darum try. Geprüft wird je Datei ihr
+// letzter const (für Französisch langsamGibt in vokabeln.js, H_LEBHAFT in franz-texte.js, FRANZ_SYMBOLE in
+// hoernchen.js), nie eine function: die gibt es auch nach einem Abbruch. Jede Datei des Kurses gehört
+// hinein, auch die seiner Figur: sprite() und svg() lesen aus ihr.
+// aus: sein Bild oder sein Einrichten ist beim Start gescheitert (siehe ganz unten); die anderen Kurse bleiben.
+const KURSE = {
+  fr: {
+    id: 'fr', key: 'franz', lehrer: 'h', stats: 'fr', erfolge: 'fr_', tab: 'woerter', name: 'Französisch', icon: 't-franz',
+    farbe: 'var(--f)', segment: 'fr', karte: 'franzKarte', aus: false,
+    geladen: () => Franz && Lernen && Uebungen && VOKABELN && langsamGibt && HTEXTE && H_LEBHAFT && HOERNCHEN_DEFS && FRANZ_SYMBOLE,
+    modul: () => Franz,
+    sprite: () => HOERNCHEN_DEFS + FRANZ_SYMBOLE,
+  },
+  // Indonesisch mit dem Otter. Jede seiner Dateien hat ein Global, das zugleich ihr letzter const ist: VOK_INDO
+  // (indo-vokabeln.js), INDO_TEXTE (indo-texte.js), OTTER_SYMBOLE (otter.js), Indo (indo.js; Kurs aus franz.js
+  // baut ihn); dazu das Lernen und die Übungen. Die Wörter und die Figur des Französisch braucht er nicht:
+  // Fehlen sie, unterrichtet er trotzdem.
+  indo: {
+    id: 'indo', key: 'indo', lehrer: 'o', stats: 'indo', erfolge: 'indo_', tab: 'indo', name: 'Indonesisch', icon: 't-indo',
+    farbe: 'var(--indo)', segment: 'indo', karte: 'indoKarte', aus: false,
+    geladen: () => Indo && Lernen && Lernen.kurs && Uebungen && VOK_INDO && INDO_TEXTE && OTTER_DEFS && OTTER_SYMBOLE,
+    modul: () => Indo,
+    sprite: () => OTTER_DEFS + OTTER_SYMBOLE,
+  },
+};
+const KURS_REIHE = Object.keys(KURSE);
+function kursDa(id) {
+  const k = KURSE[id];
+  try { return !!k && !k.aus && !!k.geladen(); } catch (e) { return false; }
 }
-// Steht das Hörnchen schon auf der Lichtung? Vor dem ersten Treffen zeigt nichts auf sie.
-const hoernchenDa = () => franzDa() && !!frStand && frStand.vorgestellt;
+// So hiess es, als es nur Französisch gab
+const franzDa = () => kursDa('fr');
+// Die Kurse, die es gerade gibt, in ihrer Reihenfolge (die Einträge von KURSE)
+const kurseDa = () => KURS_REIHE.filter(kursDa).map(id => KURSE[id]);
+// Steht die Figur auf der Lichtung? Pieks immer; wer unterrichtet, erst nach dem ersten Treffen.
+function figurDa(wer) {
+  const f = FIGUREN[wer];
+  if (!f) return false;
+  return !f.kurs || (kursDa(f.kurs) && KURSE[f.kurs].modul().vorgestellt());
+}
+// Der Kurs, den eine Figur gibt (sein Objekt aus franz.js), oder null: Pieks, oder der Kurs fehlt
+function kursVon(wer) {
+  const f = FIGUREN[wer];
+  return f && f.kurs && kursDa(f.kurs) ? KURSE[f.kurs].modul() : null;
+}
+// Der Kurs, der auf dem Kurs-Bildschirm unterrichtet (franz.js: Buehne.aktiv), oder null
+const aktiverKurs = () => kurseDa().find(k => k.modul().aktiv()) || null;
+// Wem eine Zeichnung oder eine Blase gehört: der Figur mit dieser Klasse, sonst Pieks
+const werVon = svg => Object.keys(FIGUREN).find(w => w !== 'p' && svg.classList.contains(FIGUREN[w].klasse)) || 'p';
+const werVonBlase = blase => Object.keys(FIGUREN).find(w => w !== 'p' && blase.classList.contains(FIGUREN[w].blase)) || 'p';
+// Wie viele neben Pieks auf der Lichtung stehen, bestimmt ihre Grösse (stil.css: .held.zu-zweit, mit zwei
+// Freunden .zu-dritt). Gezählt wird nur hier; jeder Kurs zeigt oder versteckt nur seine eigene Figur.
+// Dasselbe für die Karten der Kurse: Sie stehen in einer Reihe (#sprachen), die nur da ist, wenn eine zu sehen ist.
+function heldZeigen() {
+  const da = Object.values(FIGUREN).filter(f => f.kurs && $(f.held) && !$(f.held).hidden);
+  const held = document.querySelector('.held');
+  held.classList.toggle('zu-zweit', da.length === 1);
+  held.classList.toggle('zu-dritt', da.length > 1);
+  // Steht der eine Freund links von Pieks (der Otter, wenn ihr Kurs fehlt), zeigt der Zipfel der Blase andersherum
+  held.classList.toggle('freund-links', da.length === 1 && !!($(da[0].held).compareDocumentPosition($('heldPieks')) & Node.DOCUMENT_POSITION_FOLLOWING));
+  const reihe = $('sprachen');
+  if (!reihe) return;
+  const karten = KURS_REIHE.filter(id => { const k = $(KURSE[id].karte); return !!k && !k.hidden; }).length;
+  reihe.hidden = !karten;
+  // Zwei Karten nebeneinander sind schmal: stil.css stellt dann den Balken über die Chips
+  reihe.classList.toggle('zwei', karten > 1);
+}
+// Was jede Figur trägt, bevor etwas angezogen ist
+const leeresOutfit = () => ({ kopf: null, augen: null, hals: null, pfote: null });
 // So heisst die App, sobald sie installiert ist (ihr Name steht nur in texte.js)
 const APP_NAME = 'Pieks & ' + HOERNCHEN.name;
 
@@ -62,12 +146,15 @@ function laden() {
     stufe: { brueche: 'easy', volumen: 'easy', dreisatz: 'easy', mix: 'easy' },
     geloest: { brueche: 0, volumen: 0, dreisatz: 0 },
     schwer: 0, besterLauf: 0,
-    besucher: {}, fakten: [], items: [], an: { kopf: null, augen: null, hals: null, pfote: null },
-    anH: { kopf: null, augen: null, hals: null, pfote: null },   // was das Hörnchen trägt; gekauft ist alles für beide
+    besucher: {}, fakten: [], items: [],
+  };
+  // Was jede Figur trägt (an: Pieks, anH: das Hörnchen …); gekauft ist alles für alle
+  for (const f of Object.values(FIGUREN)) s[f.an] = leeresOutfit();
+  Object.assign(s, {
     erfolge: {}, ton: true, stimme: true, ziel: 10,
     vorgestellt: false, ersteTraining: false, ersterBesuch: false, zuletzt: 0, zielTage: {},
     nachRichtig: 0,
-  };
+  });
   try {
     const raw = JSON.parse(localStorage.getItem(STAND_KEY) || 'null');
     if (raw && typeof raw === 'object') {
@@ -79,8 +166,10 @@ function laden() {
       if (raw.besucher && typeof raw.besucher === 'object') for (const k in raw.besucher) if (BESUCHER[k]) s.besucher[k] = raw.besucher[k];
       if (Array.isArray(raw.fakten)) s.fakten = raw.fakten.filter(k => typeof k === 'string').slice(-2000);
       if (Array.isArray(raw.items)) s.items = raw.items.filter(k => ITEMS[k]);
-      if (raw.an) for (const p in s.an) if (ITEMS[raw.an[p]] && s.items.includes(raw.an[p])) s.an[p] = raw.an[p];
-      if (raw.anH) for (const p in s.anH) if (ITEMS[raw.anH[p]] && s.items.includes(raw.anH[p])) s.anH[p] = raw.anH[p];
+      for (const f of Object.values(FIGUREN)) {
+        const an = raw[f.an], neu = s[f.an];
+        if (an) for (const p in neu) if (ITEMS[an[p]] && s.items.includes(an[p])) neu[p] = an[p];
+      }
       if (raw.erfolge && typeof raw.erfolge === 'object') for (const k in raw.erfolge) if (ERFOLGE[k]) s.erfolge[k] = raw.erfolge[k];
       if (raw.zielTage && typeof raw.zielTage === 'object') s.zielTage = raw.zielTage;
     }
@@ -96,9 +185,10 @@ function statsLaden() { try { return JSON.parse(localStorage.getItem(STATS_KEY))
 function statsSpeichern(s) { try { localStorage.setItem(STATS_KEY, JSON.stringify(s)); } catch (e) { /* voll o.ä. */ } }
 const dateKey = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const heuteKey = () => dateKey(new Date());
-// Ein Prüfversuch. fach 'fr' zählt zusätzlich den Französisch-Anteil (fr fehlt in
-// alten Einträgen und gilt dann als 0). zaehlt false: richtig, aber nicht fürs
-// Tagesziel (im Französisch zählt jede Karte nur einmal pro Runde).
+// Ein Prüfversuch. fach: 'mathe' oder der Anteil eines Kurses (KURSE[…].stats, für
+// Französisch 'fr'), der zusätzlich gezählt wird (er fehlt in alten Einträgen und gilt dann
+// als 0). zaehlt false: richtig, aber nicht fürs Tagesziel (in einem Kurs zählt jede Karte
+// nur einmal pro Runde).
 function ergebnisMerken(richtig, ersterVersuch, fach, zaehlt) {
   const s = statsLaden(), k = heuteKey();
   if (!s[k]) s[k] = { total: 0, correct: 0, firstTry: 0, attempts: 0 };
@@ -106,10 +196,12 @@ function ergebnisMerken(richtig, ersterVersuch, fach, zaehlt) {
   if (richtig) {
     s[k].correct++;
     if (ersterVersuch) s[k].firstTry++;
-    if (zaehlt !== false) { s[k].total++; if (fach === 'fr') s[k].fr = (s[k].fr || 0) + 1; }
+    if (zaehlt !== false) { s[k].total++; if (KURS_REIHE.some(id => KURSE[id].stats === fach)) s[k][fach] = (s[k][fach] || 0) + 1; }
   }
   statsSpeichern(s);
 }
+// Was an einem Tag gerechnet wurde: alles ohne die Anteile der Kurse
+const rechnenVon = t => (+t.total || 0) - KURS_REIHE.reduce((n, id) => n + (+t[KURSE[id].stats] || 0), 0);
 const heuteGeloest = () => (statsLaden()[heuteKey()] || {}).total || 0;
 const alleGeloest = () => Object.values(statsLaden()).reduce((a, x) => a + (x.total || 0), 0);
 // Tage in Folge mit mindestens einer gelösten Aufgabe (heute zählt, sobald gelöst)
@@ -197,6 +289,8 @@ const Ton = (() => {
     // Tierlaute
     klaeff() { note(700, 0, 0.09, 'sawtooth', 0.05, 1100); note(650, 0.13, 0.1, 'sawtooth', 0.05, 1000); },
     keckern() { for (let i = 0; i < 6; i++) note(1400 + (i % 2) * 300, i * 0.05, 0.04, 'square', 0.025); },
+    // Der Otter quietscht: Zwergotter rufen hell und kurz, jeder Ruf steigt an (anders als ihr Keckern)
+    quietschen() { note(1500, 0, 0.07, 'sine', 0.06, 2300); note(1800, 0.09, 0.06, 'sine', 0.05, 2700); note(1350, 0.18, 0.11, 'sine', 0.06, 2200); },
     grunz() { note(140, 0, 0.18, 'sawtooth', 0.06, 100); note(130, 0.22, 0.16, 'sawtooth', 0.05, 95); },
     plopp() { note(520, 0, 0.12, 'sine', 0.12, 180); },
     quiek() { note(1250, 0, 0.09, 'sine', 0.1, 1700); note(1350, 0.12, 0.12, 'sine', 0.09, 1900); },
@@ -493,13 +587,22 @@ const Stimme = (() => {
     }
     return { y, anteil: vorher > 0 ? nachher / vorher : 1 };
   }
-  // Aus der dekodierten Aufnahme wird { buf, faktor }: buf ist entrauscht (nur
-  // ihre Stimme), wo nötig begrenzt und beschnitten, faktor die Verstärkung beim Abspielen
+  // Wie jede Stimme aufbereitet wird (wessen ein Clip ist, sagt stimmeVon in texte.js): Pieks hat den harten
+  // Deckel und rauscht nicht. Das Hörnchen rauscht (nur rund 39 dB über dem Grund) und hat scharfe Spitzen:
+  // entrauschen und begrenzen. Die Stimme des Otters ist sauber (rund 63 dB über dem Grund), der Filter
+  // machte sie nur trocken: nur begrenzen. Eine unbekannte Stimme behandelt es wie das Hörnchen.
+  const KLANG = {
+    p: { entrauschen: false, begrenzer: false },
+    h: { entrauschen: true, begrenzer: true },
+    o: { entrauschen: false, begrenzer: true },
+  };
+  // Aus der dekodierten Aufnahme wird { buf, faktor }: buf ist entrauscht (wo die
+  // Stimme rauscht), wo nötig begrenzt und beschnitten, faktor die Verstärkung beim Abspielen
   async function aufbereiten(c, buf, clip) {
-    const sr = buf.sampleRate, ihre = typeof clip !== 'string' && !!clip.v && clip.v !== 'p';
+    const sr = buf.sampleRate, klang = KLANG[stimmeVon(clip)] || KLANG.h;
     let d = buf.getChannelData(0), w = luft();
     if (w) await w;
-    if (ihre) d = (await entrauschen(d)) || d;
+    if (klang.entrauschen) d = (await entrauschen(d)) || d;
     if ((w = luft())) await w;
     let spitze = 0; for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > spitze) spitze = a; }
     const lufs = await lautheit(d, sr);
@@ -512,7 +615,7 @@ const Stimme = (() => {
     // Pieks bleibt beim harten Deckel: Seine kurzen Rufe («Tipp:», «Faktenfan!») würde der
     // Begrenzer um bis zu 7 dB drücken, und er liegt ohnehin auf der Ziel-Lautheit.
     // Ihre Stimme hat einzelne scharfe Spitzen (Zischlaute), die sonst ganze Sätze leiser machten.
-    if (!ihre) faktor = ohne;
+    if (!klang.begrenzer) faktor = ohne;
     else if (spitze * faktor > VOLL) {
       // Über tief bräuchte die Spitze mehr als 9 dB: dann wird die ganze Aufnahme um den Rest leiser
       const tief = VOLL * TIEFE / spitze, roh = d;
@@ -702,54 +805,62 @@ const Stimme = (() => {
 /* =====================================================================
    WAS DIE FIGUREN SAGEN
    Aus jeder Liste in zufälliger Reihenfolge, ohne Wiederholung, bis alle
-   einmal dran waren. Pieks' Listen stehen in TEXTE; die des Hörnchens
-   (HTEXTE) und Pieks' Sätze fürs Französisch (PTEXTE) in franz-texte.js.
+   einmal dran waren. Pieks' Listen stehen in TEXTE; die der Lehrerinnen
+   und Pieks' Sätze in einem Kurs in dessen Texten (für Französisch
+   HTEXTE und PTEXTE in franz-texte.js).
    ===================================================================== */
 const beutel = {}, zuletzt = {};
+// Jede andere Quelle hat ihre eigenen Beutel: Zwei Kurse dürfen ihre Listen gleich nennen
+const beutelVon = new WeakMap();
 // Eine Liste, die es nicht gibt oder die leer ist, ergibt null: dann wird nichts gesagt
 function zieh(name, quelle = TEXTE) {
-  const liste = quelle[name], fach = quelle === TEXTE ? name : 'x:' + name;
+  const liste = quelle[name];
   if (!liste || !liste.length) return null;
-  if (!beutel[fach] || !beutel[fach].length) {
-    const b = shuffle(liste.slice());
-    if (b.length > 1 && b[b.length - 1] === zuletzt[fach]) b.unshift(b.pop());
-    beutel[fach] = b;
+  if (quelle !== TEXTE && !beutelVon.has(quelle)) beutelVon.set(quelle, { beutel: {}, zuletzt: {} });
+  const b = quelle === TEXTE ? beutel : beutelVon.get(quelle).beutel, z = quelle === TEXTE ? zuletzt : beutelVon.get(quelle).zuletzt;
+  if (!b[name] || !b[name].length) {
+    const neu = shuffle(liste.slice());
+    if (neu.length > 1 && neu[neu.length - 1] === z[name]) neu.unshift(neu.pop());
+    b[name] = neu;
   }
-  return (zuletzt[fach] = beutel[fach].pop());
+  return (z[name] = b[name].pop());
 }
 
 // Wohin gerade gesprochen wird: Blase und Zeichnung der Figur, die dran ist
-// (wer: 'p' Pieks, 'h' das Hörnchen)
+// (wer: 'p' Pieks, 'h' das Hörnchen, siehe FIGUREN)
 let ziel = { say: null, blase: null, svg: null, wer: 'p' };
 function sprechZiel(blase, svg, wer = 'p') {
   ziel = { blase, say: blase.querySelector('.say'), svg, wer };
   // Die Blase zeigt, wem sie gehört: Zipfel und Farbe über die Klasse, im
   // gestapelten Layout zusätzlich ein kleiner Kopf in der Ecke
-  blase.classList.toggle('von-hoernchen', wer === 'h');
-  blase.classList.toggle('von-pieks', wer !== 'h');
+  const f = wer !== 'p' && FIGUREN[wer] ? FIGUREN[wer] : FIGUREN.p;
+  for (const [w, x] of Object.entries(FIGUREN)) if (w !== 'p') blase.classList.toggle(x.blase, x === f);
+  blase.classList.toggle(FIGUREN.p.blase, f === FIGUREN.p);
   const kopf = blase.querySelector('.blase-wer');
-  if (kopf && franzDa()) kopf.innerHTML = `<svg viewBox="0 0 24 24"><use href="#${wer === 'h' ? 't-franz' : 'i-pieks-kopf'}"/></svg>`;
+  if (kopf && kurseDa().length) kopf.innerHTML = `<svg viewBox="0 0 24 24"><use href="#${f.abzeichen}"/></svg>`;
 }
 // Blase und Figur am Ort, der gerade zu sehen ist. null: diese Figur ist dort
-// nicht da (das Hörnchen im Rechentraining, vor dem ersten Treffen …)
+// nicht da (eine Lehrerin im Rechentraining, vor dem ersten Treffen …)
 function sprecher(wer) {
-  const h = wer === 'h', fr = franzDa() ? Franz.svg || {} : null;
+  const f = FIGUREN[wer], lehrer = !!(f && f.kurs), m = lehrer ? kursVon(wer) : null;
   let blase, svg;
-  if (h && !fr) return null;
+  if (lehrer && !m) return null;
   if (fensterArt === 'garderobe' && garderobeSVG && garderobeSVG.isConnected) {
     // In der Garderobe gehört die Blase der Figur, die gerade anprobiert
-    if (garderobeSVG.classList.contains('hoernchen') !== h) return null;
+    if (werVon(garderobeSVG) !== (lehrer ? wer : 'p')) return null;
     blase = $('blaseGarderobe'); svg = garderobeSVG;
   } else if (bildschirm === 'franz') {
-    if (!fr) return null;
-    blase = $('blaseFranz'); svg = h ? fr.buehne : fr.gast;
+    // Auf dem Kurs-Bildschirm stehen die Lehrerin des Kurses, der dran ist, und der kleine Pieks
+    const a = aktiverKurs();
+    if (!a || (lehrer && a.modul() !== m)) return null;
+    blase = $('blaseFranz'); svg = lehrer ? m.svg.buehne : (a.modul().svg || {}).gast;
   } else if (bildschirm === 'training') {
-    if (h) return null;
+    if (lehrer) return null;
     blase = $('blase'); svg = dockSVG;
   } else {
-    blase = $('blaseHome'); svg = h ? fr.held : heldSVG;
+    blase = $('blaseHome'); svg = lehrer ? m.svg.held : heldSVG;
   }
-  if (!blase || (h && (!svg || svg.closest('[hidden]')))) return null;
+  if (!blase || (lehrer && (!svg || svg.closest('[hidden]')))) return null;
   return { blase, svg: svg || null };
 }
 // Richtet das Ziel auf die Figur; false, wenn sie gerade nicht zu sehen ist
@@ -759,10 +870,13 @@ function zielAuf(wer) {
   return !!s;
 }
 // Pieks' Mund am sichtbaren Ort: Meldungen und Fakten gehören immer ihm,
-// auch wenn die Blase gerade dem Hörnchen gehört
+// auch wenn die Blase gerade einer Lehrerin gehört
 function pieksMund() {
   if (fensterArt === 'garderobe' && garderobeSVG && garderobeSVG.isConnected && garderobeSVG.classList.contains('pieks')) return garderobeSVG;
-  if (bildschirm === 'franz') return (franzDa() && Franz.svg && Franz.svg.gast) || null;
+  if (bildschirm === 'franz') {
+    const a = aktiverKurs(), m = a && a.modul();
+    return (m && m.svg && m.svg.gast) || null;
+  }
   return bildschirm === 'training' ? dockSVG : heldSVG;
 }
 
@@ -772,8 +886,8 @@ function ansage(html, teile, opt = {}) {
   if (ziel.say) {
     // Rückt ein Satz die Figuren (beim Rechnen steht Pieks auf der Blase), gleiten sie an den neuen Platz.
     // Auf dem Handy wächst dabei das Dock: Dann gleiten auch die Werkzeuge darüber und die Tiere auf der
-    // Wiese, die am Dock steht. Im Französisch tut das franz.js (figurenGleiten).
-    gleiten([...['heldPieks', 'heldHoernchen', 'dockPieks'].map($), document.querySelector('#dock .werkzeuge'), ...document.querySelectorAll('#bodenTraining .besucher')], () => {
+    // Wiese, die am Dock steht. Auf dem Kurs-Bildschirm tut das franz.js (figurenGleiten).
+    gleiten([...Object.values(FIGUREN).map(f => $(f.held)), $('dockPieks'), document.querySelector('#dock .werkzeuge'), ...document.querySelectorAll('#bodenTraining .besucher')], () => {
       ziel.say.innerHTML = html;
       // Rollt der Text in der Blase (Lichtung), fängt ein neuer Satz oben an
       ziel.say.scrollTop = 0;
@@ -821,15 +935,59 @@ function hinGleiten(el, von, ms) {
     : [von, da];
   el.animate(bilder, { duration: reduce ? 400 : ms, easing: reduce ? 'linear' : 'cubic-bezier(.3, .7, .4, 1)', id: 'gleiten' });
 }
+// Kommt in der Reihe der Sprachkarten (#sprachen) eine Karte neben eine andere, wird jene schmaler. Sie wird
+// es nach und nach, statt zu springen: gleiten() könnte sie nur strecken, und eine gestreckte Karte sähe aus
+// wie gezoomt. Die neue steht dafür so lange frei an ihrem Platz (sie springt dort herein, franz.css .kommt),
+// die anderen rücken mit Breite und Rand dorthin, wo sie danach stehen, und die Reihe ist schon so hoch wie
+// danach: So rückt nichts unter ihr. Untereinander (Handy) wird keine schmaler; dann gleitet die Reihe als
+// Ganzes mit der Wahl (gleiten), und hier geschieht nichts. Ohne Bewegung (reduce) blendet die andere Karte
+// aus und in ihrer neuen Breite wieder ein, wie in hinGleiten.
+// Gemessen wird vorher (dieser Aufruf) und nachher (die Funktion, die er zurückgibt, nach dem Zeigen).
+function kartenRuecken(neu) {
+  const reihe = neu && neu.parentElement;
+  if (!reihe) return () => {};
+  const vor = new Map([...reihe.children].filter(el => el !== neu && !el.hidden).map(el => [el, el.getBoundingClientRect()]));
+  return () => {
+    const r = reihe.getBoundingClientRect(), n = neu.getBoundingClientRect();
+    // Die anderen, die jetzt neben ihr in derselben Zeile stehen, in ihrer Reihenfolge
+    const neben = [...reihe.children].filter(el => vor.has(el) && !el.hidden).map(el => ({ el, a: vor.get(el), b: el.getBoundingClientRect() }))
+      .filter(x => Math.abs(x.b.top - n.top) < 1);
+    if (neu.hidden || !n.width || !neben.some(x => Math.abs(x.a.width - x.b.width) > 1)) return;
+    const stil = getComputedStyle(reihe), luecke = parseFloat(stil.columnGap) || 0;
+    reihe.style.position = 'relative';
+    reihe.style.minHeight = r.height + 'px';
+    Object.assign(neu.style, { position: 'absolute', left: n.left - r.left - reihe.clientLeft + 'px', top: n.top - r.top - reihe.clientTop + 'px', width: n.width + 'px', zIndex: 1 });
+    // Ohne die neue stünden die anderen dicht an dicht ab dem Anfang der Reihe: Ein Rand links bringt jede
+    // am Ende an ihren Platz von danach. Breite und Rand wachsen gleich schnell, so ist jede auf dem Weg dort.
+    let x = parseFloat(stil.paddingLeft) || 0;
+    const laeufe = neben.map(({ el, a, b }) => {
+      const rand = b.left - r.left - reihe.clientLeft - x;
+      x += rand + b.width + luecke;
+      const von = { flexGrow: 0, flexShrink: 0, flexBasis: a.width + 'px', marginLeft: '0px' };
+      const nach = { flexGrow: 0, flexShrink: 0, flexBasis: b.width + 'px', marginLeft: rand + 'px' };
+      const bilder = reduce
+        ? [{ ...von, opacity: 1 }, { ...von, opacity: 0, offset: .3 }, { ...von, opacity: 0, offset: .45 }, { ...nach, opacity: 0, offset: .45 }, { ...nach, opacity: 0, offset: .6 }, { ...nach, opacity: 1 }]
+        : [von, nach];
+      return el.animate(bilder, { duration: reduce ? 400 : 450, easing: reduce ? 'linear' : 'cubic-bezier(.3, .7, .4, 1)' }).finished.catch(() => {});
+    });
+    Promise.all(laeufe).then(() => {
+      for (const p of ['position', 'left', 'top', 'width', 'zIndex']) neu.style[p] = '';
+      reihe.style.position = '';
+      reihe.style.minHeight = '';
+    });
+  };
+}
 // Steht unten in der Blase noch mehr, als sie zeigt (Lichtung: Handy, und quer am unteren Rand), verblasst die letzte Zeile
 function rolltZeigen(say) {
   say.parentElement.classList.toggle('rollt', say.scrollHeight - say.scrollTop - say.clientHeight > 2);
 }
-// Aus einem Text werden Aufnahmen: bei Pieks eine, beim Hörnchen eine je
-// Sprachstück, weil jede Aufnahme nur eine Sprache kennt
+// Aus einem Text werden Aufnahmen: bei Pieks eine, bei einem Lehrer (LEHRER in texte.js: das
+// Hörnchen, der Otter) eine je Sprachstück, weil jede Aufnahme nur eine Sprache kennt. Die
+// deutschen Stücke tragen sein Kürzel für Deutsch (hd, od), die anderen das seiner Sprache (hf, oi).
 function clipVon(e, wer) {
-  if (wer !== 'h') return [sprechtext(e)];
-  return segmente(e).map(x => ({ s: x.s, v: x.sprache === 'fr' ? 'hf' : 'hd' }));
+  const l = LEHRER[wer];
+  if (!l) return [sprechtext(e)];
+  return segmente(e, l.sprache).map(x => ({ s: x.s, v: x.sprache === 'de' ? l.de : l.fremd }));
 }
 // Eine Figur sagt etwas, in ihrer Blase und mit ihrem Mund. Ein Teil ist ein
 // Text aus den Listen oder { html, clip }: eine Vokabel-Aufnahme mit ihrer
@@ -860,8 +1018,9 @@ function blaseLeeren() {
 
 /* =====================================================================
    PIEKS ZEICHNEN UND ANZIEHEN
-   Das Hörnchen ist auf Pieks' Ankerpunkten gezeichnet: ihr passt jedes
-   Teil. Gekauft wird für beide, getragen wird getrennt (an und anH).
+   Wer unterrichtet, ist auf Pieks' Ankerpunkten gezeichnet: jeder passt
+   jedes Teil. Gekauft wird für alle, getragen wird getrennt (an, anH …,
+   siehe FIGUREN).
    ===================================================================== */
 function pieksEinsetzen(platz) {
   platz.innerHTML = pieksSVG();
@@ -870,16 +1029,16 @@ function pieksEinsetzen(platz) {
   return svg;
 }
 function anziehen(svg) {
-  const h = svg.classList.contains('hoernchen'), an = h ? stand.anH : stand.an;
+  const f = FIGUREN[werVon(svg)], an = stand[f.an];
   for (const p of Object.keys(PLAETZE)) {
     const g = svg.querySelector('.slot-' + p);
     if (!g) continue;
-    // Sitzt ein Teil bei ihr nicht ganz, rückt hoernchen.js es zurecht
-    const id = an[p], zurecht = h && id && franzDa() && ITEM_HOERNCHEN[id];
+    // Sitzt ein Teil bei ihr nicht ganz, rückt die Datei ihrer Figur es zurecht (ITEM_HOERNCHEN …)
+    const id = an[p], zurecht = f.kurs && id && kursDa(f.kurs) && f.item(id);
     g.innerHTML = !id ? '' : zurecht ? `<g transform="${zurecht}">${ITEM_SVG[id]}</g>` : ITEM_SVG[id];
   }
 }
-function alleAnziehen() { document.querySelectorAll('svg.pieks, svg.hoernchen').forEach(anziehen); }
+function alleAnziehen() { document.querySelectorAll(Object.values(FIGUREN).map(f => 'svg.' + f.klasse).join(', ')).forEach(anziehen); }
 // Jede Figur hat ihren eigenen Wecker: sonst bliebe die eine froh, sobald die andere staunt
 const stimmungWecker = new WeakMap();
 function stimmung(svg, m, ms) {
@@ -982,9 +1141,9 @@ function fallen() {
 }
 
 /* =====================================================================
-   OBERFLÄCHE: Lichtung, Rechentraining und Französisch
+   OBERFLÄCHE: Lichtung, Rechentraining und die Sprachkurse
    ===================================================================== */
-let bildschirm = 'lichtung';   // 'lichtung' | 'training' | 'franz'
+let bildschirm = 'lichtung';   // 'lichtung' | 'training' | 'franz' (der Bildschirm der Sprachkurse, franz.js)
 let heldSVG = null, dockSVG = null;
 const sitzung = { thema: 'brueche', stufe: 'easy', nr: 0 };
 
@@ -996,8 +1155,9 @@ function zeigeBildschirm(name) {
   document.body.classList.toggle('auf-lichtung', name === 'lichtung');
   document.body.classList.toggle('im-training', name === 'training');
   document.body.classList.toggle('im-franz', name === 'franz');
-  // Im Französisch gehört die Blase zuerst dem Hörnchen, sonst Pieks
-  zielAuf(name === 'franz' ? 'h' : 'p');
+  // In einem Kurs gehört die Blase zuerst seiner Lehrerin, sonst Pieks
+  const a = name === 'franz' ? aktiverKurs() : null;
+  zielAuf(a ? a.lehrer : 'p');
   Besuch.platzWechsel();
 }
 
@@ -1061,7 +1221,7 @@ function trainingStarten(thema, stufe, still) {
 }
 
 // wer: wer auf der Lichtung etwas sagt. Genau eine Figur, denn zwei Sätze
-// hintereinander fielen einander ins Wort: nach dem Französisch das Hörnchen ('h').
+// hintereinander fielen einander ins Wort: nach einem Kurs seine Lehrerin ('h' …).
 function zurLichtung(wer = 'p') {
   Stimme.stopp();
   notizZu();
@@ -1069,9 +1229,14 @@ function zurLichtung(wer = 'p') {
   zeigeBildschirm('lichtung');
   themenZeichnen();
   kopfZeigen();
-  if (wer === 'h' && franzDa()) return sagAls('h', zieh('h_lichtung', HTEXTE));
-  // Stehen sie zu zweit da, redet Pieks manchmal über beide
-  return sag(hoernchenDa() && Math.random() < 0.2 ? zieh('p_lichtung_zwei', PTEXTE) : zieh('lichtung'));
+  const m = kursVon(wer);
+  if (m) return sagAls(wer, m.zeile('h_lichtung'));
+  // Steht jemand neben ihm, redet Pieks manchmal über alle, die da sind: neben einem Freund über beide
+  // (p_lichtung_zwei aus dessen Kurs), neben zweien über alle drei (p_lichtung_drei aus dem Kurs des
+  // Freundes, der zuletzt dazukam). Fehlt dem Kurs die Liste, sagt er, was er sonst sagt.
+  const freunde = Object.keys(FIGUREN).filter(w => w !== 'p' && figurDa(w));
+  const ueberAlle = () => (freunde.length > 1 ? kursVon(freunde[freunde.length - 1]).zeile('p_lichtung_drei') : kursVon(freunde[0]).zeile('p_lichtung_zwei'));
+  return sag((freunde.length && Math.random() < 0.2 && ueberAlle()) || zieh('lichtung'));
 }
 
 /* ---------- Kopfzeile ---------- */
@@ -1083,16 +1248,17 @@ function kopfZeigen() {
   $('zielRing').style.strokeDashoffset = (88 * (1 - Math.min(1, h / z))).toFixed(1);
   $('ziel').classList.toggle('geschafft', h >= z);
   // Fürs Tagesziel zählt beides: eine Rechenaufgabe oder ein Wort (jede Karte einmal pro Runde)
-  $('ziel').title = franzDa() ? `Tagesziel: ${z} Aufgaben oder Wörter (heute ${h})` : `Tagesziel: ${z} Aufgaben (heute ${h} gelöst)`;
+  $('ziel').title = kurseDa().length ? `Tagesziel: ${z} Aufgaben oder Wörter (heute ${h})` : `Tagesziel: ${z} Aufgaben (heute ${h} gelöst)`;
   const r = rangVon(stand.gesamt), nr = RAENGE.indexOf(r), naechster = RAENGE[nr + 1];
   $('rangNr').textContent = nr + 1;
   $('rangName').textContent = r.name;
   $('rangBalken').style.width = (naechster ? clamp((stand.gesamt - r.ab) / (naechster.ab - r.ab), 0, 1) * 100 : 100) + '%';
   $('rang').setAttribute('aria-label', `Rang ${nr + 1}: ${r.name}`);
-  if (bildschirm === 'franz' && franzDa()) {
-    // Französisch kennt weder Thema noch Stufe: der Knopf zeigt, wo die Runde steht
-    const c = Franz.chip();
-    $('themaIcon').querySelector('use').setAttribute('href', '#t-franz');
+  const a = bildschirm === 'franz' ? aktiverKurs() : null;
+  if (a) {
+    // Ein Kurs kennt weder Thema noch Stufe: der Knopf zeigt sein Zeichen und wo die Runde steht
+    const c = a.modul().chip();
+    $('themaIcon').querySelector('use').setAttribute('href', '#' + c.icon);
     $('themaName').textContent = c.name;
     $('stufeName').textContent = c.klein;
   } else {
@@ -1105,8 +1271,8 @@ function kopfZeigen() {
   $('albumNeu').hidden = !neuImAlbum;
   const leistbar = Object.entries(ITEMS).some(([k, it]) => !stand.items.includes(k) && it.preis <= stand.aepfel);
   $('garderobeNeu').hidden = !leistbar;
-  // Die Französisch-Karte zeigt, was heute wartet
-  if (bildschirm === 'lichtung' && franzDa()) Franz.karteZeichnen();
+  // Die Karte jedes Kurses zeigt, was heute wartet
+  if (bildschirm === 'lichtung') for (const k of kurseDa()) k.modul().karteZeichnen();
 }
 // Die Serie gilt für beide Fächer und zeigt sich in beiden
 function serieZeigen() {
@@ -1478,8 +1644,8 @@ document.addEventListener('click', e => {
   const b = e.target.closest('.blase .mini');
   if (!b) return;
   e.stopPropagation();
-  // Knöpfe des Hörnchens tragen data-fr-…: die kennt franz.js
-  if (Object.keys(b.dataset).some(k => /^fr[A-Z]/.test(k))) { if (franzDa()) Franz.blasenKnopf(b); return; }
+  // Knöpfe einer Lehrerin tragen data-fr-…: die kennt der Kurs, der auf der Bühne unterrichtet (es gibt sie nur dort)
+  if (Object.keys(b.dataset).some(k => /^fr[A-Z]/.test(k))) { const a = bildschirm === 'franz' ? aktiverKurs() : null; if (a) a.modul().blasenKnopf(b); return; }
   if (b.dataset.stufe) stufeWechseln(b.dataset.stufe);
   else { Stimme.stopp(); blaseLeeren(); }
 }, true);
@@ -1674,8 +1840,8 @@ function pruefeErfolge(k = {}) {
     mode: stand.items.length >= 1, modeAlle: stand.items.length >= Object.keys(ITEMS).length,
     kitzel: !!k.kitzel,
   };
-  // Die Französisch-Erfolge kennt franz.js
-  if (franzDa()) Object.assign(bed, Franz.erfolgBedingungen());
+  // Die Erfolge eines Kurses kennt der Kurs (franz.js)
+  for (const k of kurseDa()) Object.assign(bed, k.modul().erfolgBedingungen());
   for (const id of Object.keys(ERFOLGE)) {
     if (stand.erfolge[id] || !bed[id]) continue;
     stand.erfolge[id] = Date.now();
@@ -2108,20 +2274,23 @@ async function einrollen(svg) {
    ===================================================================== */
 let fensterArt = null;
 // art: 'album' | 'garderobe' | 'erfolge' | 'eltern'; tab nur fürs Album
-// ('tiere', 'fakten', 'woerter' oder 'woerter:u2' für eine Unité)
+// ('tiere', 'fakten', der Reiter eines Kurses wie 'woerter', oder 'woerter:u2' für eine Unité)
 function fensterAuf(art, tab) {
   fensterArt = art;
   $('fenster').hidden = false;
   $('fensterTabs').innerHTML = '';
   // In der Garderobe steht zuerst, wer auf dem Bildschirm dahinter unterrichtet
-  if (art === 'garderobe') garderobeWer = bildschirm === 'franz' ? 'h' : 'p';
+  if (art === 'garderobe') {
+    const a = bildschirm === 'franz' ? aktiverKurs() : null;
+    garderobeWer = a ? a.lehrer : 'p';
+  }
   ({ album: albumZeigen, garderobe: garderobeZeigen, erfolge: erfolgeZeigen, eltern: elternZeigen })[art](tab);
 }
 function fensterZu() {
   $('fenster').hidden = true;
   fensterArt = null;
   // Die Blase darunter gehört weiter dem, der dort zuletzt gesprochen hat
-  const ort = sprecher('p'), wer = ort && ort.blase.classList.contains('von-hoernchen') ? 'h' : 'p';
+  const ort = sprecher('p'), wer = ort ? werVonBlase(ort.blase) : 'p';
   zeigeBildschirm(bildschirm);
   zielAuf(wer);
   kopfZeigen();
@@ -2143,17 +2312,21 @@ function albumZeigen(tab = 'tiere') {
   if (neuImAlbum) { neuImAlbum = false; kopfZeigen(); }
   const tiere = Object.keys(stand.besucher).length;
   const liste = [['tiere', `Besucher ${tiere}/${BESUCHER_REIHE.length}`], ['fakten', `Fakten ${stand.fakten.length}/${FAKTEN.length}`]];
-  // Das Wörterheft des Hörnchens: dritter Reiter, sobald sie da ist ('woerter' oder 'woerter:u2' für eine Unité)
-  if (hoernchenDa()) liste.push(['woerter', `Wörter ${Franz.zahlen().gekannt}/${VOKABELN.length}`]);
-  else if (tab.startsWith('woerter')) tab = 'tiere';
-  const heft = tab.startsWith('woerter');
-  tabs(liste, heft ? 'woerter' : tab, albumZeigen);
+  // Das Wörterheft jedes Kurses: ein Reiter, sobald seine Lehrerin da ist ('woerter' oder 'woerter:u2' für
+  // eine Unité). Gibt es nur einen Kurs, heisst sein Reiter «Wörter»; mit mehreren trägt jeder seine Sprache.
+  const kurse = kurseDa().filter(k => figurDa(k.lehrer));
+  for (const k of kurse) liste.push([k.tab, `${kurse.length > 1 ? k.name : 'Wörter'} ${k.modul().zahlen().gekannt}/${k.modul().eintraege()}`]);
+  const vonKurs = KURS_REIHE.map(id => KURSE[id]).find(k => tab === k.tab || tab.startsWith(k.tab + ':'));
+  if (vonKurs && !kurse.includes(vonKurs)) tab = 'tiere';
+  const heft = vonKurs && kurse.includes(vonKurs) ? vonKurs : null;
+  tabs(liste, heft ? heft.tab : tab, albumZeigen);
   const inhalt = $('fensterInhalt');
   if (heft) {
-    // Den Inhalt und seine Tipps besitzt franz.js. onclick wird hier gesetzt wie bei den
+    // Den Inhalt und seine Tipps besitzt der Kurs (franz.js). onclick wird hier gesetzt wie bei den
     // anderen Reitern: so bleibt nie ein Tipp-Empfänger des vorigen Reiters stehen.
-    inhalt.onclick = e => Franz.albumKlick(e);
-    Franz.albumTab(inhalt, tab.slice(8));
+    const m = heft.modul();
+    inhalt.onclick = e => m.albumKlick(e);
+    m.albumTab(inhalt, tab.slice(heft.tab.length + 1));
     return;
   }
   if (tab === 'tiere') {
@@ -2202,14 +2375,15 @@ function albumZeigen(tab = 'tiere') {
 }
 
 /* ---------- Garderobe ----------
-   Ein Schrank für beide: was gekauft ist, können Pieks und das Hörnchen
-   tragen. Ein Schalter über der Vorschau wählt, wer gerade anprobiert. */
+   Ein Schrank für alle: was gekauft ist, können Pieks und jede Lehrerin
+   tragen, die schon da ist. Ein Schalter über der Vorschau wählt, wer
+   gerade anprobiert (FIGUREN). */
 let garderobeSVG = null, garderobeWer = 'p';
 function garderobeZeigen() {
-  const zwei = hoernchenDa();
-  if (!zwei) garderobeWer = 'p';
-  const h = garderobeWer === 'h', an = h ? stand.anH : stand.an, name = h ? HOERNCHEN.name : 'Pieks';
-  $('fensterTitel').textContent = zwei ? 'Garderobe' : 'Pieks\' Garderobe';
+  const wer = Object.keys(FIGUREN).filter(figurDa), mehr = wer.length > 1;
+  if (!wer.includes(garderobeWer)) garderobeWer = 'p';
+  const f = FIGUREN[garderobeWer], an = stand[f.an], name = f.name();
+  $('fensterTitel').textContent = mehr ? 'Garderobe' : 'Pieks\' Garderobe';
   const inhalt = $('fensterInhalt');
   const gruppen = Object.keys(PLAETZE).map(p => {
     const waren = Object.entries(ITEMS).filter(([, it]) => it.platz === p);
@@ -2222,7 +2396,9 @@ function garderobeZeigen() {
       </button>`;
     }).join('') + '</div>';
   }).join('');
-  const schalter = !zwei ? '' : `<div class="wahl-knoepfe garderobe-wahl"><button type="button" data-wer="p" class="${h ? '' : 'an'}">Pieks</button><button type="button" data-wer="h" class="${h ? 'an' : ''}">${esc(HOERNCHEN.name)}</button></div>`;
+  // Zu dritt sind die Knöpfe schmaler (stil.css), sonst bräche der Schalter auf eine zweite Zeile um
+  const schalter = !mehr ? '' : '<div class="wahl-knoepfe garderobe-wahl' + (wer.length > 2 ? ' drei' : '') + '">'
+    + wer.map(w => `<button type="button" data-wer="${w}" class="${w === garderobeWer ? 'an' : ''}">${esc(FIGUREN[w].name())}</button>`).join('') + '</div>';
   inhalt.innerHTML = `<div class="garderobe"><div class="vorschau">${schalter}<div id="garderobePieks" style="width:100%;max-width:240px"></div>
     <div class="blase leer" id="blaseGarderobe" style="width:100%"><span class="say"></span></div>
     <div class="kasse"><svg viewBox="0 0 40 40"><use href="#apfel"/></svg><span id="kasseN">${stand.aepfel}</span> Äpfel</div></div><div>${gruppen}</div></div>`;
@@ -2234,11 +2410,13 @@ function garderobeZeigen() {
     } catch (e) { /* noch nicht sichtbar */ }
   });
   const platz = $('garderobePieks');
-  if (h) { platz.innerHTML = hoernchenSVG(); anziehen(platz.querySelector('svg')); }
-  const svg = (garderobeSVG = h ? platz.querySelector('svg') : pieksEinsetzen(platz));
-  // Antippen: jede Figur kitzelt auf ihre Art. Das Hörnchen rollt sich nie zur
+  platz.innerHTML = f.svg();
+  const svg = (garderobeSVG = platz.querySelector('svg'));
+  anziehen(svg);
+  // Antippen: jede Figur kitzelt auf ihre Art. Eine Lehrerin rollt sich nie zur
   // Igelkugel ein, und aus ihrem Mund kommt kein Satz von Pieks.
-  svg.addEventListener('pointerdown', () => (h ? Franz.kitzeln(svg) : kitzeln(svg)));
+  const m = kursVon(garderobeWer);
+  svg.addEventListener('pointerdown', () => (m ? m.kitzeln(svg) : kitzeln(svg)));
   sprechZiel($('blaseGarderobe'), svg, garderobeWer);
   inhalt.onclick = e => {
     const w = e.target.closest('.garderobe-wahl button');
@@ -2255,10 +2433,10 @@ function garderobeZeigen() {
   };
 }
 // Kaufen, anziehen oder ausziehen für die Figur, die gerade in der Garderobe steht.
-// Pieks' Sätze spricht nur er; steht das Hörnchen da, sagt sie ihre eigenen.
+// Pieks' Sätze spricht nur er; steht eine Lehrerin da, sagt sie ihre eigenen (aus ihrem Kurs).
 function waehleItem(id) {
-  const it = ITEMS[id], h = garderobeWer === 'h', an = h ? stand.anH : stand.an;
-  const sagt = (pieks, hoernchen) => (h ? sagAls('h', zieh(hoernchen, HTEXTE)) : sagAls('p', pieks()));
+  const it = ITEMS[id], an = stand[FIGUREN[garderobeWer].an], m = kursVon(garderobeWer);
+  const sagt = (pieks, lehrerin) => (m ? sagAls(garderobeWer, m.zeile(lehrerin)) : sagAls('p', pieks()));
   if (!stand.items.includes(id)) {
     if (stand.aepfel < it.preis) { Ton.falsch(); sagt(() => zieh('zu_teuer'), 'h_zu_teuer'); return; }
     stand.aepfel -= it.preis;
@@ -2295,10 +2473,15 @@ function erfolgeZeigen() {
     schwer25: [stand.schwer, 25], tage3: [tage, 3], tage7: [tage, 7], tiere5: [tiere, 5], tiereAlle: [tiere, BESUCHER_REIHE.length],
     fakten50: [stand.fakten.length, 50], fakten200: [stand.fakten.length, 200], modeAlle: [stand.items.length, Object.keys(ITEMS).length],
   };
-  if (franzDa()) Object.assign(fort, Franz.erfolgFortschritt());
-  // Die französischen Erfolge erst, wenn es sie zu verdienen gibt: Ohne Französisch oder vor dem
-  // ersten Treffen zeigten sie auf jemanden, den es (noch) nicht gibt. Verdiente bleiben immer sichtbar.
-  const ids = Object.keys(ERFOLGE).filter(id => !id.startsWith('fr_') || hoernchenDa() || stand.erfolge[id]);
+  for (const k of kurseDa()) Object.assign(fort, k.modul().erfolgFortschritt());
+  // Die Erfolge eines Kurses (an ihrer Vorsilbe) erst, wenn es sie zu verdienen gibt: Ohne den Kurs oder
+  // vor dem ersten Treffen zeigten sie auf jemanden, den es (noch) nicht gibt. Verdiente bleiben immer sichtbar.
+  // Ebenso einer, den es nur mit der Stimme des Lehrers gibt, solange die fehlt (erfolgVersteckt in franz.js).
+  const kursVorn = id => KURS_REIHE.map(i => KURSE[i]).find(k => id.startsWith(k.erfolge));
+  const ids = Object.keys(ERFOLGE).filter(id => {
+    const k = kursVorn(id);
+    return !k || stand.erfolge[id] || (figurDa(k.lehrer) && !k.modul().erfolgVersteckt(id));
+  });
   $('fensterInhalt').innerHTML = `<p class="klein" style="margin-top:0">${zahl} von ${ids.length} Erfolgen geschafft. Jeder bringt Bonus-Äpfel.</p><div class="raster">` +
     ids.map(id => {
       const e = ERFOLGE[id], da = !!stand.erfolge[id], f = fort[id];
@@ -2340,20 +2523,23 @@ function elternZeigen() {
   const kurz = d => String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.';
   const lang = k => { if (k === heuteKey()) return 'Heute'; const y = new Date(); y.setDate(y.getDate() - 1); if (k === dateKey(y)) return 'Gestern'; const [yy, mm, dd] = k.split('-'); return `${dd}.${mm}.${yy.slice(2)}`; };
   const verlauf = Object.keys(s).filter(k => s[k].total > 0).sort().reverse().slice(0, 14);
-  // Mit Französisch: die Zahlen zählen Aufgaben und Wörter, und jeder Balken ist gestapelt
-  const fr = franzDa(), frZ = fr ? Franz.zahlen() : null;
+  // Mit Kursen: die Zahlen zählen Aufgaben und Wörter, und jeder Balken ist gestapelt (je Kurs ein Teil, von
+  // oben). Die Teile stehen in der Statistik, auch wenn ein Kurs gerade fehlt: Sie zeigen sich immer.
+  const kurse = kurseDa(), fr = kurse.length > 0, zahlen = kurse.map(k => k.modul().zahlen());
+  const teile = x => KURS_REIHE.map(id => KURSE[id]).map(k => [k, Math.min((x || {}).total || 0, (x || {})[k.stats] || 0)]).filter(([, f]) => f);
+  const balken = (n, x) => { let oben = 0; return teile(x).map(([k, f]) => { const h = Math.round(f / n * 100), i = `<i class="${k.segment}" style="height:${h}%${oben ? ';top:' + oben + '%' : ''}"></i>`; oben += h; return i; }).join(''); };
   $('fensterInhalt').innerHTML = `<div class="eltern">
     <h3>${fr ? 'Gelöste Aufgaben und Wörter' : 'Gelöste Aufgaben'}</h3>
     <div class="agg"><div><b>${heute.total || 0}</b><small>Heute</small></div><div><b>${summe(7)}</b><small>7 Tage</small></div><div><b>${summe(30)}</b><small>30 Tage</small></div><div><b>${alleGeloest()}</b><small>Total</small></div></div>
     <h3>Letzte 14 Tage</h3>
-    <div class="chart">${tage14.map(t => { const x = s[t.key], n = (x || {}).total || 0, f = Math.min(n, (x || {}).fr || 0), q = x && x.attempts ? Math.round(x.correct / x.attempts * 100) : 0;
-      return `<div class="chart-bar${n ? '' : ' leer'}" style="height:${n ? Math.max(4, n / max * 100) : 3}%" title="${kurz(t.d)}: ${n ? n + ' gelöst' + (f ? ' (davon ' + f + ' Französisch)' : '') + ', ' + q + '% Quote' : 'keine Aufgaben'}">${f ? `<i class="fr" style="height:${Math.round(f / n * 100)}%"></i>` : ''}</div>`; }).join('')}</div>
+    <div class="chart">${tage14.map(t => { const x = s[t.key], n = (x || {}).total || 0, davon = teile(x), q = x && x.attempts ? Math.round(x.correct / x.attempts * 100) : 0;
+      return `<div class="chart-bar${n ? '' : ' leer'}" style="height:${n ? Math.max(4, n / max * 100) : 3}%" title="${kurz(t.d)}: ${n ? n + ' gelöst' + (davon.length ? ' (davon ' + davon.map(([k, f]) => f + ' ' + k.name).join(', ') + ')' : '') + ', ' + q + '% Quote' : 'keine Aufgaben'}">${balken(n, x)}</div>`; }).join('')}</div>
     <div class="chart-labels">${tage14.map((t, i) => `<div>${i === 0 || i === 13 || i % 2 === 1 ? kurz(t.d) : ''}</div>`).join('')}</div>
-    ${fr ? '<p class="klein"><span style="color:var(--green-d)">■</span> Rechnen &nbsp; <span style="color:var(--f)">■</span> Französisch</p>' : ''}
+    ${fr ? '<p class="klein"><span style="color:var(--green-d)">■</span> Rechnen' + kurse.map(k => ` &nbsp; <span style="color:${k.farbe}">■</span> ${k.name}`).join('') + '</p>' : ''}
     ${verlauf.length ? '<h3>Trefferquote pro Tag</h3>' + verlauf.map(k => { const x = s[k], q = x.attempts ? Math.round(x.correct / x.attempts * 100) : 0;
       return `<div class="verlauf-zeile"><div>${lang(k)} <span class="klein">(${x.total})</span></div><div class="verlauf-balken"><i style="width:${q}%"></i></div><div>${q}%</div></div>`; }).join('') : ''}
-    <p class="klein">Quote = richtige Antworten ÷ alle Prüfversuche. Brüche ${stand.geloest.brueche} · Volumen ${stand.geloest.volumen} · Dreisätze ${stand.geloest.dreisatz} · davon schwer ${stand.schwer} · beste Serie ${stand.besterLauf}${fr ? ` · Französisch: ${frZ.gekannt} kennengelernt, ${frZ.reif} reif` : ''}</p>
-    ${fr ? Franz.elternHTML() : ''}
+    <p class="klein">Quote = richtige Antworten ÷ alle Prüfversuche. Brüche ${stand.geloest.brueche} · Volumen ${stand.geloest.volumen} · Dreisätze ${stand.geloest.dreisatz} · davon schwer ${stand.schwer} · beste Serie ${stand.besterLauf}${kurse.map((k, i) => ` · ${k.name}: ${zahlen[i].gekannt} kennengelernt, ${zahlen[i].reif} reif`).join('')}</p>
+    ${kurse.map(k => k.modul().elternHTML()).join('')}
     <h3>Einstellungen</h3>
     <div class="einstellung"><span>Tagesziel (Aufgaben${fr ? ' oder Wörter' : ''})</span><span class="wahl-knoepfe" data-set="ziel">${[5, 10, 15, 20, 30].map(z => `<button type="button" data-wert="${z}" class="${stand.ziel === z ? 'an' : ''}">${z}</button>`).join('')}</span></div>
     <div class="einstellung"><span>Vorlesen</span><span class="wahl-knoepfe" data-set="stimme"><button type="button" data-wert="1" class="${stand.stimme ? 'an' : ''}">An</button><button type="button" data-wert="0" class="${stand.stimme ? '' : 'an'}">Aus</button></span></div>
@@ -2366,8 +2552,8 @@ function elternZeigen() {
     <p class="klein">Alles wird nur auf diesem Gerät in diesem Browser gespeichert. Äpfel insgesamt: ${stand.gesamt}, Rang ${RAENGE.indexOf(rangVon(stand.gesamt)) + 1} von ${RAENGE.length}.</p>
   </div>`;
   $('fensterInhalt').onclick = async e => {
-    // Der Französisch-Block gehört franz.js: seine Knöpfe zuerst
-    if (fr && Franz.elternKlick(e)) return;
+    // Der Block eines Kurses gehört dem Kurs (franz.js): seine Knöpfe zuerst
+    for (const k of kurse) if (k.modul().elternKlick(e)) return;
     if (e.target.closest('[data-install]') && installHinweis) {
       const h = installHinweis;
       installHinweis = null;
@@ -2393,11 +2579,14 @@ function elternZeigen() {
     resetScharf = '';
     if (r.dataset.reset === 'stats') { try { localStorage.removeItem(STATS_KEY); } catch (err) { /* egal */ } }
     else {
-      // Die Französisch-Erfolge bleiben: Ihr Grund (frStand, Statistik) wird hier nicht
-      // gelöscht, sonst kämen sie alle mit der nächsten Aufgabe auf einmal zurück, samt
-      // Bonus-Äpfeln. Nur der Partnerlook geht mit der Garderobe.
-      const frErfolge = Object.fromEntries(Object.entries(stand.erfolge).filter(([k]) => k.startsWith('fr_') && k !== 'fr_partner'));
-      Object.assign(stand, { aepfel: 0, gesamt: 0, geloest: { brueche: 0, volumen: 0, dreisatz: 0 }, schwer: 0, besterLauf: 0, besucher: {}, fakten: [], items: [], an: { kopf: null, augen: null, hals: null, pfote: null }, anH: { kopf: null, augen: null, hals: null, pfote: null }, erfolge: frErfolge, zielTage: {}, nachRichtig: 0 });
+      // Die Erfolge der Kurse bleiben (an ihrer Vorsilbe): Ihr Grund (der Stand des Kurses, die
+      // Statistik) wird hier nicht gelöscht, sonst kämen sie alle mit der nächsten Aufgabe auf einmal
+      // zurück, samt Bonus-Äpfeln. Nur der Partnerlook geht mit der Garderobe.
+      const bleibt = k => KURS_REIHE.some(id => { const p = KURSE[id].erfolge; return k.startsWith(p) && k !== p + 'partner'; });
+      const kursErfolge = Object.fromEntries(Object.entries(stand.erfolge).filter(([k]) => bleibt(k)));
+      const neu = { aepfel: 0, gesamt: 0, geloest: { brueche: 0, volumen: 0, dreisatz: 0 }, schwer: 0, besterLauf: 0, besucher: {}, fakten: [], items: [] };
+      for (const f of Object.values(FIGUREN)) neu[f.an] = leeresOutfit();
+      Object.assign(stand, neu, { erfolge: kursErfolge, zielTage: {}, nachRichtig: 0 });
       speichern();
       alleAnziehen();
     }
@@ -2414,32 +2603,44 @@ function tonZeigen() {
 }
 
 /* =====================================================================
-   STUFEN-MENÜ im Training und im Französisch: Stufe und Thema wechseln.
-   Französisch ist ein Eintrag mehr unter den Themen; dort selbst fehlen
+   STUFEN-MENÜ im Training und in den Kursen: Stufe und Thema wechseln.
+   Jeder Kurs ist ein Eintrag mehr unter den Themen; dort selbst fehlen
    die Stufen (stil.css blendet sie aus), denn jede Karte hat ihre eigene.
    ===================================================================== */
 function stufenMenueAuf() {
   const m = $('stufenMenue');
   if (!m.hidden) { m.hidden = true; return; }
-  const fr = bildschirm === 'franz';
+  const fr = bildschirm === 'franz', a = fr ? aktiverKurs() : null;
   $('popStufen').innerHTML = STUFEN_REIHE.map(s => `<button type="button" class="stufe-btn${s === sitzung.stufe ? ' an' : ''}" data-stufe="${s}">${STUFEN[s]}</button>`).join('');
   $('popThemen').innerHTML = Object.entries(THEMEN).map(([id, th]) => `<button type="button" class="pop-thema${!fr && id === sitzung.thema ? ' an' : ''}" data-thema="${id}"><svg viewBox="0 0 80 80"><use href="#${th.icon}"/></svg>${th.name}</button>`).join('')
-    + (hoernchenDa() ? `<button type="button" class="pop-thema${fr ? ' an' : ''}" data-fach="franz"><svg viewBox="0 0 80 80"><use href="#t-franz"/></svg>Französisch</button>` : '');
+    + kurseDa().filter(k => figurDa(k.lehrer)).map(k => `<button type="button" class="pop-thema${a === k ? ' an' : ''}" data-fach="${k.key}"><svg viewBox="0 0 80 80"><use href="#${k.icon}"/></svg>${k.name}</button>`).join('');
   const r = $('themaChip').getBoundingClientRect();
   m.style.left = Math.max(8, Math.min(r.left, innerWidth - 290)) + 'px';
   m.style.top = r.bottom + 8 + 'px';
   m.hidden = false;
+  // Mit jedem Kurs wird es eine Zeile höher: Auf einem Handy quer reichte es sonst unter den Rand. Nur dann rollt
+  // es (stil.css .popover.rollt); passt es, bleibt es, wie es immer war.
+  const platz = innerHeight - r.bottom - 16;
+  m.style.removeProperty('max-height');
+  m.classList.remove('rollt');
+  if (m.offsetHeight > platz) {
+    m.style.maxHeight = Math.max(160, platz) + 'px';
+    m.classList.add('rollt');
+  }
   Ton.tipp();
 }
 $('stufenMenue').addEventListener('click', e => {
   const s = e.target.closest('[data-stufe]'), t = e.target.closest('[data-thema]'), f = e.target.closest('[data-fach]');
+  const nach = f ? kurseDa().find(k => k.key === f.dataset.fach) : null;
   $('stufenMenue').hidden = true;
   if (bildschirm === 'franz') {
-    // Vom Französisch zu einem Rechenthema: still verlassen, Pieks übernimmt
-    if (t && franzDa()) { Franz.verlassen(true); trainingStarten(t.dataset.thema, stand.stufe[t.dataset.thema]); }
+    // Aus einem Kurs zu einem Rechenthema: still verlassen, Pieks übernimmt. Zu einem anderen Kurs: dort beginnen.
+    const a = aktiverKurs();
+    if (t && a) { a.modul().verlassen(true); trainingStarten(t.dataset.thema, stand.stufe[t.dataset.thema]); }
+    else if (nach && a && nach !== a) { a.modul().verlassen(true); nach.modul().starten('runde'); }
     return;
   }
-  if (f) { if (franzDa()) Franz.starten('runde'); return; }
+  if (f) { if (nach) nach.modul().starten('runde'); return; }
   if (s && s.dataset.stufe !== sitzung.stufe) stufeWechseln(s.dataset.stufe);
   else if (t && t.dataset.thema !== sitzung.thema) trainingStarten(t.dataset.thema, stand.stufe[t.dataset.thema]);
 });
@@ -2478,11 +2679,20 @@ async function wecken() {
   const gesagt = sagMehr(teile);
   // Erfolge von früher (z.B. eine Tages-Serie) nach der Begrüssung nachtragen
   const begruesst = erfolgeNebenbei({}, gesagt);
-  // Danach ist das Hörnchen dran: beim ersten Mal stellt sie sich vor, später grüsst
-  // sie kurz. ganz: Begrüssung und Meldungen liefen ohne Unterbrechung, Nea hört also
-  // noch zu. Tiere erst ganz am Schluss (oder wenn Nea schon weitergetippt hat):
-  // sonst kommt beim ersten Start mitten in die Vorstellung Besuch
-  begruesst.then(ganz => (franzDa() ? Franz.begruessen(ganz) : null)).finally(() => Besuch.start());
+  // Danach sind die Lehrerinnen dran (kurseBegruessen). ganz: Begrüssung und Meldungen
+  // liefen ohne Unterbrechung, Nea hört also noch zu. Tiere erst ganz am Schluss (oder
+  // wenn Nea schon weitergetippt hat): sonst kommt beim ersten Start mitten in die Vorstellung Besuch
+  begruesst.then(ganz => kurseBegruessen(ganz)).finally(() => Besuch.start());
+}
+// Die Kurse der Reihe nach: Beim ersten Mal stellt sich die Lehrerin vor, später grüsst sie kurz.
+// Höchstens ein erstes Treffen je Aufwachen, und zwar das des ersten Kurses, der sich noch nicht
+// vorgestellt hat: So trifft Nea eine neue Lehrerin erst, wenn alle vor ihr sich vorgestellt haben, und
+// nie zwei beim selben Aufwachen. Dieses Aufwachen gehört dann ihr allein: Die anderen grüssen diesmal
+// nicht, denn ein Tipp während ihres Grusses nähme der Neuen den Auftritt (sie stünde dann einfach da).
+async function kurseBegruessen(ganz) {
+  const kurse = kurseDa(), neu = kurse.find(k => !k.modul().vorgestellt());
+  if (neu) return neu.modul().begruessen(ganz);
+  for (const k of kurse) ganz = await k.modul().begruessen(ganz);
 }
 function gruss() {
   const tz = tageszeit(), weg = stand.zuletzt ? (Date.now() - stand.zuletzt) / 86400000 : 0;
@@ -2521,8 +2731,9 @@ $('notizZu').addEventListener('click', notizZu);
 $('notizLeeren').addEventListener('click', () => { Ton.tipp(); notizLeeren(); });
 $('homeBtn').addEventListener('click', () => {
   Ton.tipp();
-  // Aus dem Französisch räumt franz.js auf und kommt dann selbst zur Lichtung
-  if (bildschirm === 'franz' && franzDa()) Franz.verlassen();
+  // Aus einem Kurs räumt der Kurs (franz.js) auf und kommt dann selbst zur Lichtung
+  const a = bildschirm === 'franz' ? aktiverKurs() : null;
+  if (a) a.modul().verlassen();
   else zurLichtung();
 });
 $('themaChip').addEventListener('click', stufenMenueAuf);
@@ -2542,8 +2753,9 @@ $('stimmeBtn').addEventListener('click', () => {
   speichern();
   tonZeigen();
   if (!stand.stimme) Stimme.stopp();
-  // Im Französisch hängt mehr daran: Hör-Aufgaben gibt es nur mit Stimme
-  if (bildschirm === 'franz' && franzDa()) Franz.stimmeUm();
+  // In einem Kurs hängt mehr daran: Hör-Aufgaben gibt es nur mit Stimme
+  const a = bildschirm === 'franz' ? aktiverKurs() : null;
+  if (a) a.modul().stimmeUm();
   else if (stand.stimme) sag(zieh('stimme_an'));
 });
 $('weckenBtn').addEventListener('click', wecken);
@@ -2558,11 +2770,12 @@ document.addEventListener('keydown', e => {
     else if (!$('stufenMenue').hidden) $('stufenMenue').hidden = true;
     return;
   }
-  // Französisch: die Tasten der offenen Aufgabe kennt franz.js. Hier endet der
-  // Weg, damit eine liegengebliebene Rechenaufgabe nie Tasten bekommt.
+  // In einem Kurs: die Tasten der offenen Aufgabe kennt der Kurs (franz.js). Hier endet
+  // der Weg, damit eine liegengebliebene Rechenaufgabe nie Tasten bekommt.
   if (bildschirm === 'franz') {
     if (e.metaKey || (e.ctrlKey && !e.altKey)) return;      // Cmd+R, Ctrl+L … bleiben beim Browser; AltGr (Ctrl+Alt) geht durch
-    if ($('fenster').hidden && franzDa() && Franz.taste(e)) e.preventDefault();
+    const a = aktiverKurs();
+    if ($('fenster').hidden && a && a.modul().taste(e)) e.preventDefault();
     return;
   }
   if (!$('fenster').hidden || bildschirm !== 'training' || !A) return;
@@ -2577,16 +2790,26 @@ document.addEventListener('keydown', e => {
     if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey && A.aktiv === 1)) { e.preventDefault(); feldWechseln(0); }
   }
 });
-// Jeder Tipp irgendwo zählt als «Nea ist noch da»
-document.addEventListener('pointerdown', () => { wachHalten(); if (franzDa()) Franz.wach(); }, { passive: true });
+// Jeder Tipp irgendwo zählt als «Nea ist noch da», auch für jeden Kurs (ein erstes Treffen hört auf)
+document.addEventListener('pointerdown', () => { wachHalten(); for (const k of kurseDa()) k.modul().wach(); }, { passive: true });
 window.addEventListener('resize', () => { if (!$('notiz').hidden) Notiz.groesse(); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { zeitAnwenden(); kopfZeigen(); } });
 
 /* =====================================================================
    LOS
    ===================================================================== */
-// Farbverläufe der Figuren und, wenn das Französisch da ist, seine Zeichen
-document.getElementById('sprite').insertAdjacentHTML('beforeend', PIEKS_DEFS + (franzDa() ? HOERNCHEN_DEFS + FRANZ_SYMBOLE : ''));
+// Scheitert ein Kurs beim Start (sein Bild, sein Einrichten), bleibt er für diesen Start ganz weg: rechnen
+// kann Nea immer, und die anderen Kurse bleiben. Der Fehler geht trotzdem nicht unter, er wird nach dem
+// Start neu geworfen.
+function kursWeg(k, e) {
+  k.aus = true;
+  for (const el of [$(FIGUREN[k.lehrer].held), $(k.karte)]) if (el) el.hidden = true;
+  heldZeigen();
+  setTimeout(() => { throw e; });
+}
+// Farbverläufe der Figuren, die Zeichen aller Kurse (grafik.js) und die jedes Kurses, der da ist
+const kursBilder = kurseDa().map(k => { try { return k.sprite(); } catch (e) { kursWeg(k, e); return ''; } });
+document.getElementById('sprite').insertAdjacentHTML('beforeend', PIEKS_DEFS + KURS_SYMBOLE + kursBilder.join(''));
 zeitAnwenden();
 landschaft();
 // Neu fallen lassen nur, wenn Tages- oder Jahreszeit wirklich wechselt: Die Reihenfolge der
@@ -2601,16 +2824,22 @@ dockSVG = pieksEinsetzen($('dockPieks'));
 heldSVG.addEventListener('pointerdown', () => kitzeln(heldSVG));
 dockSVG.addEventListener('pointerdown', () => kitzeln(dockSVG));
 tonZeigen();
-// Das Französisch richtet sich selbst ein: Stand lesen, Figuren einsetzen, Karte zeichnen.
-// Scheitert es dabei, bleibt es für diesen Start ganz weg: rechnen kann Nea immer.
-// Der Fehler geht trotzdem nicht unter, er wird nach dem Start neu geworfen.
-if (franzDa()) {
-  try { Franz.einrichten(); } catch (e) {
-    franzAus = true;
-    $('heldHoernchen').hidden = $('franzKarte').hidden = true;
-    document.querySelector('.held').classList.remove('zu-zweit');
-    setTimeout(() => { throw e; });
-  }
+// KURSE und FIGUREN wiederholen, was der Kurs selbst weiss (die App braucht es auch ohne seine Dateien).
+// Passt etwas nicht zusammen, zählte zum Beispiel die Statistik seine Wörter als Rechnen: Das meldet der Start.
+function kursAbgleichen(k) {
+  const K = k.modul().kurs, f = FIGUREN[k.lehrer] || {};
+  const paare = {
+    key: [k.key, K.key], stats: [k.stats, K.fach], erfolge: [k.erfolge, K.erfolge.prefix], tab: [k.tab, K.tab], name: [k.name, K.name],
+    icon: [k.icon, K.lehrer.icon], karte: [k.karte, K.ids.karte], lehrer: [k.lehrer, K.lehrer.wer],
+    'FIGUREN.kurs': [f.kurs, k.id], 'FIGUREN.held': [f.held, K.ids.held], 'FIGUREN.abzeichen': [f.abzeichen, K.lehrer.icon],
+  };
+  const falsch = Object.keys(paare).filter(x => paare[x][0] !== paare[x][1]);
+  if (falsch.length) throw new Error('KURSE.' + k.id + ' passt nicht zu seinem Kurs: ' + falsch.join(', '));
+}
+// Jeder Kurs richtet sich selbst ein: Stand lesen, Figuren einsetzen, Karte zeichnen (scheitert er, kursWeg)
+for (const k of kurseDa()) {
+  try { k.modul().einrichten(); } catch (e) { kursWeg(k, e); continue; }
+  try { kursAbgleichen(k); } catch (e) { setTimeout(() => { throw e; }); }
 }
 themenZeichnen();
 zeigeBildschirm('lichtung');

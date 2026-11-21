@@ -173,17 +173,18 @@
 .fr-art.da { display: inline-block; white-space: pre; animation: ue-kommt .4s cubic-bezier(.3, 1.5, .5, 1) backwards; }
 @keyframes ue-kommt { from { opacity: 0; transform: translateX(-.4em) scale(.7); } }
 
-/* Hör-Knöpfe: erdbeerrot der Lautsprecher, daneben die Schnecke für langsam */
+/* Hör-Knöpfe: erdbeerrot der Lautsprecher, daneben die Schnecke für langsam. Ein anderer Kurs färbt ihn
+   über #franz[data-kurs="…"] mit --fr-hoeren und --fr-hoeren-kante (das Pulsieren dann mit eigenen @keyframes) */
 .fr-ton { flex: none; display: flex; align-items: center; gap: 10px; }
 .fr-hoeren {
   flex: none; width: 64px; height: 64px; border-radius: 50%;
-  background: var(--beere); color: #fff;
+  background: var(--fr-hoeren, var(--beere)); color: #fff;
   display: grid; place-items: center;
-  box-shadow: 0 5px 0 #B8322A, 0 8px 14px -8px rgba(60, 40, 20, .5);
+  box-shadow: 0 5px 0 var(--fr-hoeren-kante, #B8322A), 0 8px 14px -8px rgba(60, 40, 20, .5);
   transition: transform .06s;
 }
 .fr-hoeren svg { width: 34px; height: 34px; }
-.fr-hoeren:active { transform: translateY(3px); box-shadow: 0 2px 0 #B8322A; }
+.fr-hoeren:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--fr-hoeren-kante, #B8322A); }
 /* Nur hören: Der Knopf ist die Vorgabe und pulsiert, bis geantwortet ist */
 .fr-hoeren.gross { width: 96px; height: 96px; margin: 4px 0 8px; }
 .fr-hoeren.gross svg { width: 52px; height: 52px; }
@@ -192,6 +193,14 @@
 @keyframes ue-puls {
   0%, 30% { box-shadow: 0 5px 0 #B8322A, 0 0 0 0 rgba(226, 72, 61, .5); }
   100% { box-shadow: 0 5px 0 #B8322A, 0 0 0 18px rgba(226, 72, 61, 0); }
+}
+/* Beim Otter ist der Lautsprecher wasserblau wie sein Abzeichen, auch beim Pulsieren */
+#franz[data-kurs="indo"] { --fr-hoeren: var(--indo); --fr-hoeren-kante: var(--indo-d); }
+#franz[data-kurs="indo"] .fr-hoeren.puls { animation-name: ue-puls-indo; }
+#franz[data-kurs="indo"] .fr-hoeren.puls:active { animation: none; }
+@keyframes ue-puls-indo {
+  0%, 30% { box-shadow: 0 5px 0 #0F6662, 0 0 0 0 rgba(26, 143, 138, .5); }
+  100% { box-shadow: 0 5px 0 #0F6662, 0 0 0 18px rgba(26, 143, 138, 0); }
 }
 .fr-langsam {
   flex: none; width: 48px; height: 48px; border-radius: 50%;

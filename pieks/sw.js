@@ -6,6 +6,13 @@
 
 // Liefert alleSaetze(), alleFranzClips(), kennung() und clipDatei(), um alle Aufnahmen zu kennen
 importScripts('texte.js', 'fakten.js', 'vokabeln.js', 'franz-texte.js');
+// Der Otter darf fehlen oder kaputt sein: Pieks und das Französisch laufen dann wie bisher.
+// Erst die Vokabeln, seine Texte bauen beim Laden darauf auf. Liefert INDO_TEXTE.
+try {
+  importScripts('indo-vokabeln.js', 'indo-texte.js');
+} catch (e) {
+  // ohne den Otter
+}
 
 // Bei neuen Texten genügt es, die «Stand»-Zeile zu ändern: dann holt der neue
 // Service Worker die fehlenden Aufnahmen nach, ohne alles neu zu laden.
@@ -13,8 +20,11 @@ importScripts('texte.js', 'fakten.js', 'vokabeln.js', 'franz-texte.js');
 // andere Stimme), stattdessen CACHE hochzählen: Aufnahmen kommen zuerst aus dem
 // Speicher, ohne neuen CACHE spielten Geräte für immer die alte Fassung. Das wirft
 // alle vorgeladenen Aufnahmen weg; der nächste Start holt sie neu.
-// Stand: Französisch dazu, 1776 Aufnahmen (Lucy Fennek und Lucie)
+// Stand: Indonesisch dazu, 2400 Aufnahmen (Lucy Fennek, Lucie und Kak Ceria)
 const CACHE = 'pieks-v1';
+// Die Seite und alles, was sie lädt, in der Reihenfolge von index.html, ohne den Otter (KURS_FILES). addAll
+// ist ganz oder gar nicht: Fehlt eine dieser Dateien auf dem Server, scheitert die Installation, darum steht
+// hier nur, was es gibt.
 const FILES = [
   './',
   'stil.css',
@@ -41,19 +51,35 @@ const FILES = [
   'icon-maskable-512.png',
   'audio/vorhanden.json',
 ];
+// Der Otter und sein Kurs, auch in der Reihenfolge von index.html. Sie dürfen fehlen wie oben beim
+// importScripts: Jede kommt einzeln in den Speicher, und fehlt eine (oder ist sie nicht mit hochgeladen),
+// installiert sich der Service Worker trotzdem. Die Seite lässt das Indonesisch dann weg
+// (KURSE.indo.geladen in app.js); Pieks und das Französisch laufen wie bisher, auch ohne Netz.
+const KURS_FILES = ['otter.css', 'indo-vokabeln.js', 'indo-texte.js', 'otter.js', 'indo.js'];
 // Vorab nur, was oft gebraucht wird, das Wichtigste zuerst: Pieks, die Besucher, das
-// Hörnchen, dann die Vokabeln (Einträge, Formen, langsame Fassungen). Fakten kommen
-// beim ersten Hören in den Speicher.
+// Hörnchen und der Otter, dann die Vokabeln, erst die französischen (Einträge, Formen,
+// langsame Fassungen), dann die indonesischen. Fakten kommen beim ersten Hören in den
+// Speicher. Die Gruppen wie REIHE in make-audio.mjs, ohne die Fakten.
 const AUDIO = (() => {
-  const reihe = ['pieks', 'besuch', 'hoernchen', 'wort', 'form', 'langsam'];
+  const reihe = ['pieks', 'besuch', 'hoernchen', 'otter', 'wort', 'form', 'langsam', 'iwort', 'iform', 'ilangsam'];
+  // Die Aufnahmen des Otters nur, wenn indo-texte.js ganz geladen ist: Erst dann gibt es
+  // INDO_TEXTE (eine function gäbe es auch nach einem Abbruch), sonst wirft schon das Lesen
+  let otter = [];
+  try {
+    otter = INDO_TEXTE.alleIndoClips().map(c => ({ gruppe: c.gruppe, datei: clipDatei(c) }));
+  } catch (e) {
+    otter = [];
+  }
   const clips = alleSaetze().filter(x => x.gruppe !== 'fakt').map(x => ({ gruppe: x.gruppe, datei: kennung(x.s) }))
-    .concat(alleFranzClips().map(c => ({ gruppe: c.gruppe, datei: clipDatei(c) })));
+    .concat(alleFranzClips().map(c => ({ gruppe: c.gruppe, datei: clipDatei(c) })), otter);
   clips.sort((a, b) => reihe.indexOf(a.gruppe) - reihe.indexOf(b.gruppe));
   return [...new Set(clips.map(x => 'audio/' + x.datei + '.mp3'))];
 })();
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE)
+    .then(c => c.addAll(FILES).then(() => Promise.all(KURS_FILES.map(f => c.add(f).catch(() => { /* fehlt: ohne den Otter */ })))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {

@@ -6,7 +6,7 @@
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Pieks &amp; Pirouette</title>
-<meta name="description" content="Rechnen und Französisch üben mit Pieks, dem Igel, und Pirouette, dem Eichhörnchen.">
+<meta name="description" content="Rechnen, Französisch und Indonesisch üben mit Pieks, dem Igel, Pirouette, dem Eichhörnchen, und Percik, dem Otter.">
 <meta name="theme-color" content="#F6C27A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -19,19 +19,20 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://y7.ai/pieks/">
 <meta property="og:title" content="Pieks &amp; Pirouette">
-<meta property="og:description" content="Rechnen und Französisch üben mit Pieks, dem Igel, und Pirouette, dem Eichhörnchen.">
+<meta property="og:description" content="Rechnen, Französisch und Indonesisch üben mit Pieks, dem Igel, Pirouette, dem Eichhörnchen, und Percik, dem Otter.">
 <meta property="og:image" content="https://y7.ai/pieks/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="stil.css">
 <link rel="stylesheet" href="hoernchen.css">
+<link rel="stylesheet" href="otter.css">
 <link rel="stylesheet" href="uebungen.css">
 <link rel="stylesheet" href="franz.css">
 </head>
 <body class="tag herbst">
 
-<!-- Bausteine, die mehrfach vorkommen (Pieks' Farbverläufe kommen aus grafik.js dazu, die des Hörnchens und die Französisch-Zeichen aus hoernchen.js) -->
+<!-- Bausteine, die mehrfach vorkommen (Pieks' Farbverläufe kommen aus grafik.js dazu, die des Hörnchens und die Französisch-Zeichen aus hoernchen.js, die des Otters und die Indonesisch-Zeichen aus otter.js) -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs id="sprite">
     <symbol id="apfel" viewBox="0 0 40 40">
@@ -277,8 +278,9 @@
   <!-- LICHTUNG: hier wählt Nea, was sie üben will -->
   <section class="lichtung" id="lichtung">
     <div class="held">
-      <!-- Das Hörnchen steht rechts neben Pieks, sobald es sich vorgestellt hat -->
+      <!-- Das Hörnchen steht rechts neben Pieks, der Otter links, sobald sie sich vorgestellt haben -->
       <div class="held-figuren">
+        <div class="held-otter" id="heldOtter" hidden></div>
         <div class="held-pieks" id="heldPieks"></div>
         <div class="held-hoernchen" id="heldHoernchen" hidden></div>
       </div>
@@ -286,18 +288,35 @@
     </div>
     <div class="wahl">
       <h2 class="wahl-titel">Was üben wir heute?</h2>
-      <!-- Französisch: eine breite Karte über den vier Mathe-Karten, franz.js füllt und zeigt sie -->
-      <div class="thema franz-karte" id="franzKarte" hidden>
-        <button type="button" class="thema-start" id="franzStart" aria-label="Französisch üben">
-          <svg viewBox="0 0 80 80" aria-hidden="true"><use href="#t-franz"/></svg>
-          <span class="t-name">Französisch</span>
-          <span class="t-info" id="franzInfo"></span>
-          <span class="los-pfeil" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#i-weiter"/></svg></span>
-        </button>
-        <span class="mini-balken franz-balken"><i id="franzBalken"></i></span>
-        <div class="franz-chips">
-          <button type="button" class="franz-chip" id="franzWoerterBtn">Wörter</button>
-          <button type="button" class="franz-chip" id="franzAuswahlBtn">Auswahl</button>
+      <!-- Die Sprachen: je Kurs eine breite Karte über den vier Mathe-Karten, franz.js und indo.js füllen und
+           zeigen sie. Zwei stehen nebeneinander, auf dem Handy untereinander; ohne Karte ist die Reihe weg
+           (heldZeigen in app.js) -->
+      <div class="sprachen" id="sprachen" hidden>
+        <div class="thema franz-karte" id="franzKarte" hidden>
+          <button type="button" class="thema-start" id="franzStart" aria-label="Französisch üben">
+            <svg viewBox="0 0 80 80" aria-hidden="true"><use href="#t-franz"/></svg>
+            <span class="t-name">Französisch</span>
+            <span class="t-info" id="franzInfo"></span>
+            <span class="los-pfeil" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#i-weiter"/></svg></span>
+          </button>
+          <span class="mini-balken franz-balken"><i id="franzBalken"></i></span>
+          <div class="franz-chips">
+            <button type="button" class="franz-chip" id="franzWoerterBtn">Wörter</button>
+            <button type="button" class="franz-chip" id="franzAuswahlBtn">Auswahl</button>
+          </div>
+        </div>
+        <div class="thema franz-karte indo-karte" id="indoKarte" hidden>
+          <button type="button" class="thema-start" id="indoStart" aria-label="Indonesisch üben">
+            <svg viewBox="0 0 80 80" aria-hidden="true"><use href="#t-indo"/></svg>
+            <span class="t-name">Indonesisch</span>
+            <span class="t-info" id="indoInfo"></span>
+            <span class="los-pfeil" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#i-weiter"/></svg></span>
+          </button>
+          <span class="mini-balken franz-balken"><i id="indoBalken"></i></span>
+          <div class="franz-chips">
+            <button type="button" class="franz-chip" id="indoWoerterBtn">Wörter</button>
+            <button type="button" class="franz-chip" id="indoAuswahlBtn">Auswahl</button>
+          </div>
         </div>
       </div>
       <div class="themen" id="themen"></div>
@@ -374,13 +393,15 @@
     </aside>
   </section>
 
-  <!-- FRANZÖSISCH: das Hörnchen unterrichtet, Pieks lernt mit. uebungen.js füllt
-       Vorgabe, Antwort und Feld der Aufgabe, franz.js alles andere -->
+  <!-- DIE SPRACHKURSE: das Hörnchen (Französisch) oder der Otter (Indonesisch) unterrichtet, Pieks lernt mit.
+       Wer unterrichtet, hat hier seinen Platz; zu sehen ist nur der des Kurses, der dran ist (franz.js Buehne).
+       uebungen.js füllt Vorgabe, Antwort und Feld der Aufgabe, franz.js alles andere -->
   <section class="franz" id="franz" hidden>
     <div class="fr-buehne">
       <div class="fr-figur">
         <div class="blase" id="blaseFranz" role="button" tabindex="0" aria-label="Nochmal vorlesen"><span class="blase-wer" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#t-franz"/></svg></span><span class="say" aria-live="polite"></span></div>
         <div class="fr-hoernchen" id="franzHoernchen"></div>
+        <div class="fr-hoernchen fr-otter" id="indoOtter" hidden></div>
         <div class="fr-gast" id="franzPieks"></div>
       </div>
       <article class="karte fr-karte" id="frKarte" aria-live="off">
@@ -443,17 +464,24 @@
   </div>
 </div>
 
-<!-- Französisch gibt es nur, wenn alle sechs Dateien dafür ganz geladen sind (franzDa in app.js) -->
+<!-- Einen Kurs gibt es nur, wenn alle seine Dateien ganz geladen sind (KURSE in app.js): Französisch mit
+     franz-texte.js und hoernchen.js, Indonesisch mit indo-vokabeln.js, indo-texte.js, otter.js und indo.js,
+     beide mit vokabeln.js, lernen.js, uebungen.js und franz.js (dort steht Kurs, der Bau jedes Kurses).
+     Fehlt eine Datei nur eines Kurses, laufen Pieks und der andere Kurs weiter. -->
 <script src="aufgaben.js"></script>
 <script src="texte.js"></script>
 <script src="fakten.js"></script>
 <script src="vokabeln.js"></script>
+<script src="indo-vokabeln.js"></script>
 <script src="franz-texte.js"></script>
+<script src="indo-texte.js"></script>
 <script src="lernen.js"></script>
 <script src="grafik.js"></script>
 <script src="hoernchen.js"></script>
+<script src="otter.js"></script>
 <script src="uebungen.js"></script>
 <script src="franz.js"></script>
+<script src="indo.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -379,6 +379,10 @@ const SPRICH_VON_HAND = {
 // kein Artikel-Tipp, keine Artikel-Übung
 const KEIN_ARTIKEL = new Set(['u4|un peu de persil']);
 
+// Ein Wort, das zweimal im Buch steht, ist eine Karte: Eintrag → Eintrag, dessen Karte er teilt.
+// «la fille» steht in Unité 2 und in Unité 3
+const GLEICHE_KARTE = { 'u3|la fille': 'u2|la fille' };
+
 // Karten, die gleich klingen: in Hör-Aufgaben nie Ablenker füreinander
 const KLANGGRUPPEN = [['u2|il s’appelle, elle s’appelle', 'u2|ils s’appellent, elles s’appellent']];
 // Karten, deren Formen das Ohr nicht unterscheidet: kein Diktat, Hör-Aufgaben nehmen die erste Form
@@ -394,7 +398,8 @@ const NIE_ZUSAMMEN = [
 const EIGENNAMEN = ['Lionel', 'Nathalie'];
 
 /* =====================================================================
-   Abgeleitet: füllt vokabelnAufbereiten() am Ende der Datei.
+   Abgeleitet: füllt kursAufbereiten(), für das Französisch über
+   vokabelnAufbereiten() am Ende der Datei.
 
    Jeder Eintrag bekommt dazu:
      nr           Platz in VOKABELN
@@ -411,6 +416,8 @@ const EIGENNAMEN = ['Lionel', 'Nathalie'];
      sprich       was die Stimme für den ganzen Eintrag spricht
      lernziele    alle Gruppen seiner Karte
      deAlle       alle deutschen Formen seiner Karte
+   Ein Lernziel heisst 'Lernziel ' + lz, wenn der Kurs in LERNZIEL_NAMEN
+   keinen eigenen Namen nennt.
    ===================================================================== */
 
 const LERNZIELE = {};        // g → { key, un, plus, lz, name, eintraege }
@@ -424,13 +431,31 @@ const ohneKlammern = s => s.replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').tr
 // Eine langsame Aufnahme lohnt sich nur, wo mehr als ein Wort zu hören ist
 const langsamGibt = s => /[ ’]/.test(s);
 
-function vokabelnAufbereiten() {
-  const ART_RE = /^(le |la |les |l’|un\/une |un |une )/;
-  // «(m)», «(f pl)»: steht im Buch, wo der Artikel das Geschlecht nicht verrät
-  const GENUS_RE = /\((m|f)( pl)?\)/;
-  const GENUS_VON = { le: 'm', un: 'm', la: 'f', une: 'f', 'un/une': 'mf' };
-  // «la fille» steht in Unité 2 und in Unité 3: ein Wort, also eine Karte
-  const GLEICHE_KARTE = { 'u3|la fille': 'u2|la fille' };
+/* ---------------------------------------------------------------------
+   Für jeden Kurs: Ableitung, Clips und Selbstkontrolle
+   Ein Kurs ist ein Objekt mit denselben Namen wie diese Datei: VOKABELN,
+   TEILE_VON_HAND, SPRICH_VON_HAND, KEIN_ARTIKEL (ein Set), GLEICHE_KARTE
+   und die Behälter LERNZIELE, LERNZIEL_REIHE, KARTE, KARTEN; dazu, wenn
+   er will, LERNZIEL_NAMEN ({ 'i1-1': 'Grüssen' }). Das Französisch sind
+   die Globalen hier oben.
+   --------------------------------------------------------------------- */
+
+// Leitet ab, was oben steht, und füllt die Behälter des Kurses an Ort und Stelle: Wer sie schon in
+// der Hand hält (lernen.js), sieht den neuen Stand. Ein fehlender Behälter wird angelegt. regeln sagt,
+// was in dieser Sprache ein Artikel ist, null heisst «gibt es nicht»:
+//   artikel   RegExp | null: der Artikel vorn an fr, Gruppe 1 ist er selbst («le », «l’»)
+//   genus     RegExp | null: die Marke, wo der Artikel das Geschlecht nicht verrät; Gruppe 1 ist
+//             'm' oder 'f', Gruppe 2 steht für die Mehrzahl («(m)», «(f pl)»)
+//   genusVon  { Artikel: 'm' | 'f' | 'mf' }: welches Geschlecht ein Artikel verrät
+// Ohne Artikel und Marke bleiben artikel und genus jedes Eintrags null. Gibt den Kurs zurück.
+function kursAufbereiten(kurs, regeln) {
+  for (const name of ['VOKABELN', 'TEILE_VON_HAND', 'SPRICH_VON_HAND', 'KEIN_ARTIKEL', 'GLEICHE_KARTE']) {
+    if (!kurs[name]) throw new Error('kursAufbereiten: Im Kurs fehlt «' + name + '».');
+  }
+  for (const [name, leer] of [['LERNZIELE', {}], ['LERNZIEL_REIHE', []], ['KARTE', {}], ['KARTEN', []]]) if (!kurs[name]) kurs[name] = leer;
+  const { VOKABELN, TEILE_VON_HAND, SPRICH_VON_HAND, KEIN_ARTIKEL, GLEICHE_KARTE, LERNZIELE, LERNZIEL_REIHE, KARTE, KARTEN } = kurs;
+  const { artikel: ART_RE = null, genus: GENUS_RE = null, genusVon: GENUS_VON = {} } = regeln || {};
+  const NAMEN = kurs.LERNZIEL_NAMEN || {};
   // «le foot, faire du foot» und «un/une élève» fassen nur zusammen, was daneben einzeln steht
   const einzeln = liste => liste.filter(f => !(liste.length > 1 && /, |\//.test(f)));
 
@@ -459,18 +484,18 @@ function vokabelnAufbereiten() {
     for (const t of e.teile) t.zeigeDe = e.teile.length > 1 ? t.de[0] : e.de;
 
     // Artikel und Geschlecht; Sätze haben keins von beiden
-    const vorn = e.fr.match(ART_RE);
-    const marke = e.fr.match(GENUS_RE);
+    const vorn = ART_RE && e.fr.match(ART_RE);
+    const marke = GENUS_RE && e.fr.match(GENUS_RE);
     e.artikel = e.art === 'satz' || KEIN_ARTIKEL.has(e.id) || !vorn ? null : vorn[1].trim();
     e.genus = e.art === 'satz' ? null : marke ? marke[1] : GENUS_VON[e.artikel] || null;
     e.plural = !!(marke && marke[2]) || e.artikel === 'les';
     e.artikelTeil = e.artikel === null ? -1 : e.teile.findIndex(t => ART_RE.test(t.fr[0]));
 
-    // Französisch geht nie durch sprechtext(): das würde es deutsch zurechtbiegen
+    // Die Fremdsprache geht nie durch sprechtext(): das würde sie deutsch zurechtbiegen
     e.sprich = e.tts || SPRICH_VON_HAND[e.id] || ohneKlammern(e.fr);
 
     if (!LERNZIELE[e.g]) {
-      LERNZIELE[e.g] = { key: e.g, un: e.un, plus: e.plus, lz: e.lz, name: 'Lernziel ' + e.lz, eintraege: [] };
+      LERNZIELE[e.g] = { key: e.g, un: e.un, plus: e.plus, lz: e.lz, name: NAMEN[e.g] || 'Lernziel ' + e.lz, eintraege: [] };
       LERNZIEL_REIHE.push(e.g);
     }
     LERNZIELE[e.g].eintraege.push(e);
@@ -490,32 +515,49 @@ function vokabelnAufbereiten() {
       if (!k.deAlle.includes(d)) k.deAlle.push(d);
     }
   });
+  return kurs;
+}
+
+// Das Französisch: die Globalen dieser Datei und die Artikel aus dem Buch
+function vokabelnAufbereiten() {
+  kursAufbereiten({ VOKABELN, TEILE_VON_HAND, SPRICH_VON_HAND, KEIN_ARTIKEL, GLEICHE_KARTE, LERNZIELE, LERNZIEL_REIHE, KARTE, KARTEN }, {
+    artikel: /^(le |la |les |l’|un\/une |un |une )/,
+    // «(m)», «(f pl)»: steht im Buch, wo der Artikel das Geschlecht nicht verrät
+    genus: /\((m|f)( pl)?\)/,
+    genusVon: { le: 'm', un: 'm', la: 'f', une: 'f', 'un/une': 'mf' },
+  });
 }
 
 // Aufnahme zu einem Eintrag. Ohne teil der ganze Eintrag (Kennenlernen, Nachsprechen,
 // Album), mit teil genau die Form, die eine Aufgabe zeigt: so stimmen Bild und Ton überein.
-// Stimme 'f' ist das normale Tempo, 'fl' das langsame. null, wo es nichts gibt:
-// langsam bei einem einzelnen Wort, oder Teil und Form existieren nicht.
-function vokabelClip(e, teil, form, langsam) {
+// stimmen = { normal, langsam } nennt die Stimme der beiden Tempi, langsamGibt(s) sagt, wo
+// es eine langsame Aufnahme gibt. null, wo es nichts gibt: langsam bei einem einzelnen
+// Wort, oder Teil und Form existieren nicht.
+function kursClip(e, teil, form, langsam, stimmen, langsamGibt) {
   if (!e) return null;
   let s = e.sprich;
   if (teil != null) s = e.teile[teil] && e.teile[teil].fr[form || 0];
   if (!s || (langsam && !langsamGibt(s))) return null;
-  return { s, v: langsam ? 'fl' : 'f' };
+  return { s, v: langsam ? stimmen.langsam : stimmen.normal };
 }
 
-// Selbstkontrolle: alle Zahlen, auf die sich Lernmodell, Aufnahmen und Album
-// verlassen. Gibt eine Liste von Fehlertexten zurück, leer heisst alles stimmt.
-function vokabelnPruefen() {
+// Im Französisch ist Stimme 'f' das normale Tempo, 'fl' das langsame
+function vokabelClip(e, teil, form, langsam) {
+  return kursClip(e, teil, form, langsam, { normal: 'f', langsam: 'fl' }, langsamGibt);
+}
+
+// Selbstkontrolle für jeden Kurs, in welcher Sprache auch immer: Schlüssel, Karten, Lernziele,
+// Teile, Clips und die Listen von Hand passen zusammen. Liest dazu UNITES, UNITE_REIHE, KLANGGRUPPEN,
+// GLEICHKLANG, NIE_ZUSAMMEN, vokabelClip und langsamGibt des Kurses. Die Zahlen, die ein Kurs
+// erwartet, und die Stimmen seiner Aufnahmen prüft er selbst dazu (das Französisch in vokabelnPruefen).
+// Gibt eine Liste von Fehlertexten zurück, leer heisst alles stimmt.
+function kursStrukturPruefen(kurs) {
+  const { UNITES, UNITE_REIHE, VOKABELN, LERNZIELE, LERNZIEL_REIHE, KARTEN, KARTE, TEILE_VON_HAND, SPRICH_VON_HAND,
+    KEIN_ARTIKEL, GLEICHE_KARTE, KLANGGRUPPEN, GLEICHKLANG, NIE_ZUSAMMEN, vokabelClip, langsamGibt } = kurs;
+  const NAMEN = kurs.LERNZIEL_NAMEN || {};
   const fehler = [];
   const soll = (was, ist, erwartet) => {
     if (ist !== erwartet) fehler.push(was + ': ' + ist + ' statt ' + erwartet);
-  };
-  // Zählt die Einträge je Wert und vergleicht mit der erwarteten Verteilung
-  const verteilung = (was, liste, wert, erwartet) => {
-    const ist = {};
-    for (const x of liste) ist[wert(x)] = (ist[wert(x)] || 0) + 1;
-    for (const w of new Set([...Object.keys(ist), ...Object.keys(erwartet)])) soll(was + ' «' + w + '»', ist[w] || 0, erwartet[w] || 0);
   };
   const nachId = new Map(VOKABELN.map(e => [e.id, e]));
 
@@ -527,11 +569,10 @@ function vokabelnPruefen() {
   }
 
   // Schlüssel, Karten und Gruppen
-  soll('Einträge', VOKABELN.length, 210);
-  soll('verschiedene id', nachId.size, 210);
-  soll('verschiedene kid', new Set(VOKABELN.map(e => e.kid)).size, 209);
-  soll('Karten', KARTEN.length, 209);
-  soll('Schlüssel in KARTE', Object.keys(KARTE).length, 209);
+  const kids = new Set(VOKABELN.map(e => e.kid));
+  soll('verschiedene id', nachId.size, VOKABELN.length);
+  soll('Karten', KARTEN.length, kids.size);
+  soll('Schlüssel in KARTE', Object.keys(KARTE).length, kids.size);
   VOKABELN.forEach((e, nr) => {
     if (e.nr !== nr || e.id !== e.un + '|' + e.fr) fehler.push('nr oder id stimmt nicht: Eintrag ' + nr);
     if (!UNITES[e.un]) fehler.push('unbekannte Unité: ' + e.id);
@@ -544,42 +585,24 @@ function vokabelnPruefen() {
       if (!k.lernziele.includes(e.g)) fehler.push('Lernziel fehlt auf der Karte: ' + e.id);
       for (const d of [e.de, ...e.teile.flatMap(t => t.de)]) if (!k.deAlle.includes(d)) fehler.push('deAlle unvollständig: ' + e.id + ' → ' + d);
     }
-    // Ein gerader Apostroph ergäbe einen anderen Schlüssel und eine andere Aufnahme
-    if (/['ʼ`´]/.test([e.fr, e.sprich, ...e.teile.flatMap(t => t.fr)].join(''))) fehler.push('gerader Apostroph: ' + e.id);
   });
   KARTEN.forEach((k, i) => {
     if (KARTE[k.kid] !== k || k.kid !== k.id || VOKABELN[k.nr] !== k) fehler.push('Karte ist nicht ihr erster Eintrag: ' + k.id);
     if (i && KARTEN[i - 1].nr >= k.nr) fehler.push('Karten nicht in der Reihenfolge des Buchs: ' + k.id);
   });
-  soll('Karte des zweiten «la fille»', (nachId.get('u3|la fille') || {}).kid, 'u2|la fille');
-  soll('Lernziele von «la fille»', (KARTE['u2|la fille'] || { lernziele: [] }).lernziele.join(' '), 'u2-2 u3-3');
-  verteilung('Unité', VOKABELN, e => e.un, { u1: 50, u2: 53, u3: 50, u4: 57 });
-  soll('Plus-Einträge', VOKABELN.filter(e => e.plus).length, 82);
-  soll('Lernziele', LERNZIEL_REIHE.length, 25);
   soll('Schlüssel in LERNZIELE', Object.keys(LERNZIELE).join(' '), LERNZIEL_REIHE.join(' '));
-  verteilung('Lernziel', VOKABELN, e => e.g, {
-    'u1-1': 2, 'u1-S': 11, 'u1-2': 13, 'u1-3': 6, 'u1P-S': 3, 'u1P-2': 7, 'u1P-3': 8,
-    'u2-1': 2, 'u2-2': 26, 'u2-3': 5, 'u2P-1': 4, 'u2P-2': 6, 'u2P-3': 10,
-    'u3-1': 26, 'u3-3': 4, 'u3P-1': 20,
-    'u4-1': 11, 'u4-2': 12, 'u4-3': 5, 'u4-S': 2, 'u4-4': 3, 'u4P-1': 9, 'u4P-2': 4, 'u4P-3': 8, 'u4P-4': 3,
-  });
   let vorher = -1;
   for (const g of LERNZIEL_REIHE) {
     const z = LERNZIELE[g];
-    if (z.key !== g || z.name !== 'Lernziel ' + z.lz || g !== z.un + (z.plus ? 'P' : '') + '-' + z.lz) fehler.push('Lernziel stimmt nicht: ' + g);
+    if (z.key !== g || z.name !== (NAMEN[g] || 'Lernziel ' + z.lz) || g !== z.un + (z.plus ? 'P' : '') + '-' + z.lz) fehler.push('Lernziel stimmt nicht: ' + g);
     if (z.eintraege.some(e => e.g !== g)) fehler.push('fremder Eintrag im Lernziel: ' + g);
     // Jedes Lernziel steht am Stück: nur so ist die Reihenfolge der Datei auch die der Lernziele
     if (z.eintraege[0].nr !== vorher + 1 || z.eintraege.some((e, i) => e.nr !== z.eintraege[0].nr + i)) fehler.push('Lernziel steht nicht am Stück: ' + g);
     vorher = z.eintraege[z.eintraege.length - 1].nr;
   }
-  verteilung('Art', VOKABELN, e => e.art, { wort: 189, satz: 21 });
-  // Die Wortgruppe lenkt Ablenker, Leiter (gram) und den Artikel «wie im Buch»: ein Tippfehler bliebe sonst still
-  verteilung('Wortgruppe', VOKABELN, e => e.cat, { ding: 33, fach: 16, tag: 8, verb: 13, fam: 27, essen: 26, gesicht: 9, hobby: 37, gram: 20, satz: 21 });
+  for (const g of Object.keys(NAMEN)) if (!LERNZIELE[g]) fehler.push('LERNZIEL_NAMEN nennt ein unbekanntes Lernziel: ' + g);
 
   // Teile und Formen
-  const bau = e => (TEILE_VON_HAND[e.id] ? 'von Hand' : e.teile.length > 1 ? 'Paar' : e.teile[0].fr.length > 1 ? 'Synonyme'
-    : e.teile[0].de.length > 1 ? 'deutsche Varianten' : 'einfach');
-  verteilung('Bau', VOKABELN, bau, { einfach: 165, Paar: 20, Synonyme: 11, 'deutsche Varianten': 8, 'von Hand': 6 });
   for (const e of VOKABELN) {
     for (const t of e.teile) {
       if (!t.fr.length || !t.de.length || [...t.fr, ...t.de].some(f => typeof f !== 'string' || !f)) fehler.push('leerer Teil: ' + e.id);
@@ -588,6 +611,90 @@ function vokabelnPruefen() {
       if (t.zeigeDe !== (e.teile.length > 1 ? t.de[0] : e.de)) fehler.push('zeigeDe stimmt nicht: ' + e.id);
     }
   }
+
+  // Gesprochener Text und Aufnahmen: der ganze Eintrag und jede Form, langsam genau dort, wo
+  // langsamGibt es sagt, und nichts für eine Form, die es nicht gibt. Welche Stimmen es sind, weiss
+  // der Kurs; hier nur: eine für das normale Tempo und eine andere für das langsame.
+  const stimmen = { normal: new Set(), langsam: new Set() };
+  for (const e of VOKABELN) {
+    if (!e.sprich || /[()]/.test(e.sprich)) fehler.push('sprich leer oder mit Klammer: ' + e.id);
+    const c = vokabelClip(e), l = vokabelClip(e, undefined, 0, true);
+    if (!c || c.s !== e.sprich) fehler.push('Eintrags-Clip stimmt nicht: ' + e.id);
+    else stimmen.normal.add(c.v);
+    if (!!l !== langsamGibt(e.sprich) || (l && l.s !== e.sprich)) fehler.push('langsamer Eintrags-Clip stimmt nicht: ' + e.id);
+    else if (l) stimmen.langsam.add(l.v);
+  }
+  for (const e of VOKABELN) {
+    e.teile.forEach((t, i) => t.fr.forEach((f, j) => {
+      const c = vokabelClip(e, i, j), l = vokabelClip(e, i, j, true);
+      if (!c || c.s !== f) fehler.push('Form-Clip stimmt nicht: ' + e.id + ' → ' + f);
+      else stimmen.normal.add(c.v);
+      if (!!l !== langsamGibt(f) || (l && l.s !== f)) fehler.push('langsamer Form-Clip stimmt nicht: ' + e.id + ' → ' + f);
+      else if (l) stimmen.langsam.add(l.v);
+    }));
+    if (vokabelClip(e, e.teile.length) !== null || vokabelClip(e, 0, e.teile[0].fr.length) !== null) fehler.push('Clip für eine Form, die es nicht gibt: ' + e.id);
+  }
+  if (stimmen.normal.size !== 1 || stimmen.langsam.size > 1 || [...stimmen.langsam].some(v => stimmen.normal.has(v))) {
+    fehler.push('Stimmen der Clips: ' + [...stimmen.normal].join(' ') + ', langsam ' + [...stimmen.langsam].join(' '));
+  }
+
+  // Die Listen von Hand nennen nur Einträge, die es gibt, und wirken
+  const LISTEN = {
+    TEILE_VON_HAND: Object.keys(TEILE_VON_HAND), SPRICH_VON_HAND: Object.keys(SPRICH_VON_HAND), KEIN_ARTIKEL: [...KEIN_ARTIKEL],
+    GLEICHE_KARTE: [...Object.keys(GLEICHE_KARTE), ...Object.values(GLEICHE_KARTE)],
+    KLANGGRUPPEN: KLANGGRUPPEN.flat(), GLEICHKLANG: [...GLEICHKLANG], NIE_ZUSAMMEN: NIE_ZUSAMMEN.flat(),
+  };
+  for (const [name, ids] of Object.entries(LISTEN)) {
+    for (const id of ids) if (!nachId.has(id)) fehler.push(name + ' nennt einen unbekannten Eintrag: ' + id);
+  }
+  for (const id of KEIN_ARTIKEL) if (nachId.has(id) && nachId.get(id).artikel !== null) fehler.push('KEIN_ARTIKEL wirkt nicht: ' + id);
+  for (const [id, kid] of Object.entries(GLEICHE_KARTE)) if (nachId.has(id) && nachId.get(id).kid !== kid) fehler.push('GLEICHE_KARTE wirkt nicht: ' + id);
+  for (const id of KLANGGRUPPEN.flat()) if (!GLEICHKLANG.has(id)) fehler.push('Klanggruppe fehlt in GLEICHKLANG: ' + id);
+
+  return fehler;
+}
+
+// Selbstkontrolle für das Französisch: kursStrukturPruefen und dazu alle Zahlen, auf die sich
+// Lernmodell, Aufnahmen und Album verlassen. Gibt eine Liste von Fehlertexten zurück, leer heisst
+// alles stimmt.
+function vokabelnPruefen() {
+  const fehler = kursStrukturPruefen({ UNITES, UNITE_REIHE, VOKABELN, LERNZIELE, LERNZIEL_REIHE, KARTEN, KARTE, TEILE_VON_HAND,
+    SPRICH_VON_HAND, KEIN_ARTIKEL, GLEICHE_KARTE, KLANGGRUPPEN, GLEICHKLANG, NIE_ZUSAMMEN, vokabelClip, langsamGibt });
+  const soll = (was, ist, erwartet) => {
+    if (ist !== erwartet) fehler.push(was + ': ' + ist + ' statt ' + erwartet);
+  };
+  // Zählt die Einträge je Wert und vergleicht mit der erwarteten Verteilung
+  const verteilung = (was, liste, wert, erwartet) => {
+    const ist = {};
+    for (const x of liste) ist[wert(x)] = (ist[wert(x)] || 0) + 1;
+    for (const w of new Set([...Object.keys(ist), ...Object.keys(erwartet)])) soll(was + ' «' + w + '»', ist[w] || 0, erwartet[w] || 0);
+  };
+  const nachId = new Map(VOKABELN.map(e => [e.id, e]));
+
+  // Schlüssel, Karten und Gruppen
+  soll('Einträge', VOKABELN.length, 210);
+  soll('verschiedene kid', new Set(VOKABELN.map(e => e.kid)).size, 209);
+  // Ein gerader Apostroph ergäbe einen anderen Schlüssel und eine andere Aufnahme
+  for (const e of VOKABELN) if (/['ʼ`´]/.test([e.fr, e.sprich, ...e.teile.flatMap(t => t.fr)].join(''))) fehler.push('gerader Apostroph: ' + e.id);
+  soll('Karte des zweiten «la fille»', (nachId.get('u3|la fille') || {}).kid, 'u2|la fille');
+  soll('Lernziele von «la fille»', (KARTE['u2|la fille'] || { lernziele: [] }).lernziele.join(' '), 'u2-2 u3-3');
+  verteilung('Unité', VOKABELN, e => e.un, { u1: 50, u2: 53, u3: 50, u4: 57 });
+  soll('Plus-Einträge', VOKABELN.filter(e => e.plus).length, 82);
+  soll('Lernziele', LERNZIEL_REIHE.length, 25);
+  verteilung('Lernziel', VOKABELN, e => e.g, {
+    'u1-1': 2, 'u1-S': 11, 'u1-2': 13, 'u1-3': 6, 'u1P-S': 3, 'u1P-2': 7, 'u1P-3': 8,
+    'u2-1': 2, 'u2-2': 26, 'u2-3': 5, 'u2P-1': 4, 'u2P-2': 6, 'u2P-3': 10,
+    'u3-1': 26, 'u3-3': 4, 'u3P-1': 20,
+    'u4-1': 11, 'u4-2': 12, 'u4-3': 5, 'u4-S': 2, 'u4-4': 3, 'u4P-1': 9, 'u4P-2': 4, 'u4P-3': 8, 'u4P-4': 3,
+  });
+  verteilung('Art', VOKABELN, e => e.art, { wort: 189, satz: 21 });
+  // Die Wortgruppe lenkt Ablenker, Leiter (gram) und den Artikel «wie im Buch»: ein Tippfehler bliebe sonst still
+  verteilung('Wortgruppe', VOKABELN, e => e.cat, { ding: 33, fach: 16, tag: 8, verb: 13, fam: 27, essen: 26, gesicht: 9, hobby: 37, gram: 20, satz: 21 });
+
+  // Teile und Formen
+  const bau = e => (TEILE_VON_HAND[e.id] ? 'von Hand' : e.teile.length > 1 ? 'Paar' : e.teile[0].fr.length > 1 ? 'Synonyme'
+    : e.teile[0].de.length > 1 ? 'deutsche Varianten' : 'einfach');
+  verteilung('Bau', VOKABELN, bau, { einfach: 165, Paar: 20, Synonyme: 11, 'deutsche Varianten': 8, 'von Hand': 6 });
 
   // Artikel und Geschlecht
   verteilung('Artikel', VOKABELN, e => e.artikel, { null: 73, le: 51, la: 51, 'l’': 8, les: 13, un: 9, une: 3, 'un/une': 2 });
@@ -607,27 +714,14 @@ function vokabelnPruefen() {
     if (!t || !t.fr[0].startsWith(e.artikel)) fehler.push('Form der Artikel-Übung ohne den Artikel des Eintrags: ' + e.id);
   }
 
-  // Gesprochener Text und Aufnahmen
-  const texte = { wort: new Set(), form: new Set(), wortLangsam: new Set(), formLangsam: new Set() };
-  for (const e of VOKABELN) {
-    if (!e.sprich || /[()]/.test(e.sprich)) fehler.push('sprich leer oder mit Klammer: ' + e.id);
-    const c = vokabelClip(e), l = vokabelClip(e, undefined, 0, true);
-    if (!c || c.s !== e.sprich || c.v !== 'f') fehler.push('Eintrags-Clip stimmt nicht: ' + e.id);
-    else texte.wort.add(c.s);
-    if (!!l !== langsamGibt(e.sprich) || (l && (l.s !== e.sprich || l.v !== 'fl'))) fehler.push('langsamer Eintrags-Clip stimmt nicht: ' + e.id);
-    else if (l) texte.wortLangsam.add(l.s);
-  }
-  for (const e of VOKABELN) {
-    e.teile.forEach((t, i) => t.fr.forEach((f, j) => {
-      const c = vokabelClip(e, i, j), l = vokabelClip(e, i, j, true);
-      if (!c || c.s !== f || c.v !== 'f') fehler.push('Form-Clip stimmt nicht: ' + e.id + ' → ' + f);
-      if (!!l !== langsamGibt(f) || (l && (l.s !== f || l.v !== 'fl'))) fehler.push('langsamer Form-Clip stimmt nicht: ' + e.id + ' → ' + f);
-      if (texte.wort.has(f)) return;
-      texte.form.add(f);
-      if (l) texte.formLangsam.add(f);
-    }));
-    if (vokabelClip(e, e.teile.length) !== null || vokabelClip(e, 0, e.teile[0].fr.length) !== null) fehler.push('Clip für eine Form, die es nicht gibt: ' + e.id);
-  }
+  // Gesprochener Text und Aufnahmen: die Stimmen (eine je Tempo, das prüft kursStrukturPruefen) und
+  // wie viele Aufnahmen es gibt. Eine Form, die schon als ganzer Eintrag klingt, ist keine eigene.
+  soll('Stimme der Clips', (vokabelClip(VOKABELN[0]) || {}).v, 'f');
+  soll('Stimme der langsamen Clips', (vokabelClip(VOKABELN.find(e => langsamGibt(e.sprich)), undefined, 0, true) || {}).v, 'fl');
+  const texte = { wort: new Set(VOKABELN.map(e => e.sprich)) };
+  texte.form = new Set(VOKABELN.flatMap(e => e.teile.flatMap(t => t.fr)).filter(f => !texte.wort.has(f)));
+  texte.wortLangsam = new Set([...texte.wort].filter(langsamGibt));
+  texte.formLangsam = new Set([...texte.form].filter(langsamGibt));
   soll('Eintrags-Clips', texte.wort.size, 209);
   soll('Form-Clips', texte.form.size, 78);
   soll('langsame Eintrags-Clips', texte.wortLangsam.size, 189);
@@ -687,16 +781,7 @@ function vokabelnPruefen() {
   }
   for (const id of ['u1|les maths, les mathématiques (f pl)', 'u4|les yeux (m pl), un œil']) soll('Mehrzahl von ' + id, (nachId.get(id) || {}).plural, true);
 
-  // Die Listen von Hand nennen nur Einträge, die es gibt
-  const LISTEN = {
-    TEILE_VON_HAND: Object.keys(TEILE_VON_HAND), SPRICH_VON_HAND: Object.keys(SPRICH_VON_HAND), KEIN_ARTIKEL: [...KEIN_ARTIKEL],
-    KLANGGRUPPEN: KLANGGRUPPEN.flat(), GLEICHKLANG: [...GLEICHKLANG], NIE_ZUSAMMEN: NIE_ZUSAMMEN.flat(),
-  };
-  for (const [name, ids] of Object.entries(LISTEN)) {
-    for (const id of ids) if (!nachId.has(id)) fehler.push(name + ' nennt einen unbekannten Eintrag: ' + id);
-  }
-  for (const id of KEIN_ARTIKEL) if (nachId.has(id) && nachId.get(id).artikel !== null) fehler.push('KEIN_ARTIKEL wirkt nicht: ' + id);
-  for (const id of KLANGGRUPPEN.flat()) if (!GLEICHKLANG.has(id)) fehler.push('Klanggruppe fehlt in GLEICHKLANG: ' + id);
+  // Jeder Name steht in einem Satz (die Listen von Hand prüft kursStrukturPruefen)
   for (const name of EIGENNAMEN) {
     if (!VOKABELN.some(e => e.art === 'satz' && e.fr.split(/[ .,!?]+/).includes(name))) fehler.push('Eigenname in keinem Satz: ' + name);
   }
@@ -708,6 +793,7 @@ vokabelnAufbereiten();
 
 if (typeof module !== 'undefined') {
   module.exports = { UNITES, UNITE_REIHE, VOKABELN, LERNZIELE, LERNZIEL_REIHE, KARTEN, KARTE,
-    TEILE_VON_HAND, SPRICH_VON_HAND, KEIN_ARTIKEL, KLANGGRUPPEN, GLEICHKLANG, NIE_ZUSAMMEN, EIGENNAMEN,
-    ohneKlammern, langsamGibt, vokabelClip, vokabelnAufbereiten, vokabelnPruefen };
+    TEILE_VON_HAND, SPRICH_VON_HAND, KEIN_ARTIKEL, GLEICHE_KARTE, KLANGGRUPPEN, GLEICHKLANG, NIE_ZUSAMMEN, EIGENNAMEN,
+    ohneKlammern, langsamGibt, vokabelClip, vokabelnAufbereiten, vokabelnPruefen,
+    kursAufbereiten, kursClip, kursStrukturPruefen };
 }

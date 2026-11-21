@@ -3,26 +3,44 @@
  * Selbstkontrolle für das Französisch: prüft die Vokabeln (vokabeln.js), das
  * Lernmodell (lernen.js) und, wo sie da sind, die Texte (franz-texte.js,
  * texte.js) gegen den Bauplan. Ohne Abhängigkeiten, ohne Netz, ändert nichts.
+ * Prüfungen 0 bis 9 sehen das Französisch, 10 bis 19 dasselbe für Perciks
+ * Indonesisch (indo-vokabeln.js, Lernen.kurs), 20 alle Kurse zusammen:
+ * Aufnahmen (auch indo-texte.js, wo es da ist), Stimmen, die Erfolge und die
+ * Namen, die sich die Skripte im Browser und im Service Worker teilen.
  *
  * Nutzung:
  *   node pieks/pruefe.mjs        Ende 0 = alles stimmt, sonst 1 und eine Liste
  *
  * Jede Prüfung ist ein pruefung(nr, name, melde => { … }): Sie ruft melde(text)
  * für alles, was nicht stimmt, und darf einen Hinweis zurückgeben, der neben
- * ihrem Namen erscheint. Vor jeder Prüfung bekommt Lernen.zufall einen festen
- * Anfang, darum prüft jeder Lauf genau dasselbe.
+ * ihrem Namen erscheint. Ein viertes Argument { lernen, v } nennt einen anderen
+ * Kurs als das Französisch. Vor jeder Prüfung setzt der Lauf ihren Kurs
+ * (kursSetzen) und gibt Lernen.zufall einen festen Anfang, darum prüft jeder
+ * Lauf genau dasselbe.
  */
 import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 
 const DIR = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
-const V = require('./vokabeln.js');
-const { Lernen } = require('./lernen.js');
-const { VOKABELN, KARTEN, KARTE } = V;
-const K = Lernen.K;
+
+// Der Kurs, den die Prüfungen gerade ansehen: sein Lernmodell (Lernen oder ein Lernen.kurs(…)) und sein
+// Wortschatz. Alle Werkzeuge unten lesen diese Namen erst beim Aufruf, darum bindet kursSetzen sie auf
+// einmal um; der Lauf setzt vor jeder Prüfung ihren Kurs. LANGSAM ist die Stimme seiner langsamen Clips.
+let V, Lernen, VOKABELN, KARTEN, KARTE, K, LANGSAM;
+function kursSetzen(lernen, v) {
+  Lernen = lernen;
+  V = v;
+  ({ VOKABELN, KARTEN, KARTE } = v);
+  K = lernen.K;
+  LANGSAM = (v.vokabelClip(VOKABELN.find(e => v.langsamGibt(e.sprich)), undefined, 0, true) || {}).v;
+}
+// Das Französisch: der Kurs jeder Prüfung, die keinen anderen nennt
+const FRANZ = { v: require('./vokabeln.js'), lernen: require('./lernen.js').Lernen };
+kursSetzen(FRANZ.lernen, FRANZ.v);
 
 /* ---------- Werkzeug ---------- */
 
@@ -39,7 +57,8 @@ function zufallAb(saat) {
 }
 
 const pruefungen = [];
-const pruefung = (nr, name, lauf) => pruefungen.push({ nr, name, lauf });
+// kurs = { lernen, v }: welchen Kurs die Prüfung ansieht, ohne Angabe das Französisch
+const pruefung = (nr, name, lauf, kurs = FRANZ) => pruefungen.push({ nr, name, lauf, kurs });
 
 const E = id => {
   const e = VOKABELN.find(x => x.id === id);
@@ -54,6 +73,12 @@ const schritt = (e, uebung, mehr) => ({ kid: e.kid, nr: e.nr, uebung, vorgabe: u
 const jedeForm = f => VOKABELN.forEach(e => e.teile.forEach((t, i) => t.fr.forEach((text, j) => f(e, i, j, text))));
 const jederTeil = f => VOKABELN.forEach(e => e.teile.forEach((t, i) => f(e, i, t)));
 const erste = s => (Array.isArray(s) ? s[0] : s);
+// soll(was, ist, erwartet) meldet, wo ist nicht erwartet ist
+const sollMit = melde => (was, ist, erwartet) => {
+  if (!gleich(ist, erwartet)) melde(was + ': ' + JSON.stringify(ist) + ' statt ' + JSON.stringify(erwartet));
+};
+// Ein Wort mit Bindestrich, ohne Leerzeichen (kupu-kupu; «tidak apa-apa» sind zwei): Das zählt doppel
+const doppelwort = f => f.includes('-') && !f.includes(' ');
 const sortiert = liste => liste.slice().sort().join(' ');
 const gleich = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const frei = a => a.plaetze.filter(p => p.art !== 'fest');
@@ -121,7 +146,7 @@ function baueUndLoese(e, uebung, mehr, k, melde) {
     if (/[/()]/.test(a.fr)) melde(wo + ': Form mit Schrägstrich oder Klammer');
   }
   if (!a.clipEintrag || a.clipEintrag.s !== e.sprich) melde(wo + ': clipEintrag stimmt nicht');
-  if (!!a.clipLangsam !== V.langsamGibt(a.clip.s) || (a.clipLangsam && (a.clipLangsam.s !== a.clip.s || a.clipLangsam.v !== 'fl'))) melde(wo + ': clipLangsam stimmt nicht');
+  if (!!a.clipLangsam !== V.langsamGibt(a.clip.s) || (a.clipLangsam && (a.clipLangsam.s !== a.clip.s || a.clipLangsam.v !== LANGSAM))) melde(wo + ': clipLangsam stimmt nicht');
   if (a.aepfel !== K.APFEL[uebung]) melde(wo + ': aepfel ' + a.aepfel);
 
   if (a.optionen) {
@@ -170,6 +195,9 @@ function baueUndLoese(e, uebung, mehr, k, melde) {
   } else if (uebung === 'schreiben') {
     if (a.ziel !== a.fr || !gleich(a.formen, t.fr) || a.ziel.length > 30) melde(wo + ': ziel oder formen');
     if (!Lernen.urteil(a.ziel, e, a.teil, { form: a.form, vorgabe: a.vorgabe }).richtig) melde(wo + ': fehlerfreie Antwort nicht richtig');
+    // Jedes Zeichen der Antwort liegt auf der Tastatur des Kurses; Satzzeichen zählen nicht (norm)
+    const fehlt = [...Lernen.norm(a.ziel)].filter(ch => !Lernen.SPRACHE.tastatur.tippbar.has(ch));
+    if (fehlt.length) melde(wo + ': nicht zu tippen: ' + fehlt.join(' '));
   } else if (uebung === 'luecke') {
     if (gelesen(a.plaetze, true) !== a.fr) melde(wo + ': Plätze ergeben «' + gelesen(a.plaetze, true) + '»');
     if (frei(a).length !== 1) melde(wo + ': nicht genau eine Lücke');
@@ -212,12 +240,44 @@ pruefung(0, 'Grundlagen: Datei, Datum, Kartenstand, Vergleichen', melde => {
   const anders = JSON.stringify(Lernen.aufgabe(schritt(E('u1|les sciences (f pl) de la nature'), 'bedeutung'), null).optionen);
   if (zweimal[0] !== zweimal[1] || zweimal[0].includes(anders)) melde('Lernen.zufall bestimmt nicht allen Zufall');
 
-  // Was die anderen Dateien von Lernen erwarten (9.5): genau diese Funktionen, dazu K und zufall
+  // Was die anderen Dateien von Lernen erwarten (9.5): genau diese Funktionen, dazu K, zufall und das Sprachprofil
   const API = ['neu', 'pruefen', 'zustand', 'tag', 'tagPlus', 'norm', 'falte', 'kern', 'abstand', 'zerlegen', 'kann', 'leitaufgabe', 'nebenaufgaben',
     'planen', 'wiederholung', 'ohneTon', 'aufgabe', 'ablenker', 'buchstaben', 'wortkacheln', 'akzentLuecken', 'kontrast', 'urteil', 'reihenUrteil', 'aepfel',
-    'verbuchen', 'rundeFertig', 'zahlen'];
+    'verbuchen', 'rundeFertig', 'zahlen', 'kurs'];
   for (const name of API) if (typeof Lernen[name] !== 'function') melde('Lernen.' + name + ' fehlt');
-  soll('Lernen bringt nichts anderes mit', sortiert(Object.keys(Lernen)), sortiert([...API, 'K', 'zufall']));
+  soll('Lernen bringt nichts anderes mit', sortiert(Object.keys(Lernen)), sortiert([...API, 'K', 'zufall', 'SPRACHE']));
+  // Lernen.kurs baut aus demselben Modell einen weiteren Kurs, hier ein zweites Französisch: dieselben Namen,
+  // ein eigenes K und ein eigener Zufall, der den von Lernen nicht anrührt
+  const zweiter = Lernen.kurs(V, Lernen.SPRACHE);
+  soll('Lernen.kurs: dieselben Namen', sortiert(Object.keys(zweiter)), sortiert(Object.keys(Lernen)));
+  soll('Lernen.kurs: eigenes K mit denselben Werten, dasselbe Profil', [zweiter.K === K, gleich(zweiter.K, K), zweiter.SPRACHE === Lernen.SPRACHE],
+    [false, true, true]);
+  const zufallVorher = Lernen.zufall;
+  const kacheln = l => JSON.stringify(l.aufgabe(schritt(E('u1|la règle'), 'legen'), null).kacheln);
+  let gewuerfelt = 0;
+  Lernen.zufall = () => ++gewuerfelt && 0.5;
+  zweiter.zufall = zufallAb(5);
+  const imZweiten = kacheln(zweiter);
+  const vonLernen = gewuerfelt;
+  Lernen.zufall = zufallAb(5);
+  if (kacheln(Lernen) !== imZweiten || vonLernen !== 0) melde('Lernen.kurs: Der zweite Kurs würfelt nicht nur mit seinem eigenen Zufall');
+  Lernen.zufall = zufallVorher;
+  // Ein Profil mit einer Lücke wird abgewiesen, und der Fehler nennt sie
+  for (const name of Object.keys(Lernen.SPRACHE)) {
+    const { [name]: weg, ...rest } = Lernen.SPRACHE;
+    let text = 'kein Fehler';
+    try {
+      Lernen.kurs(V, rest);
+    } catch (err) {
+      text = err.message;
+    }
+    if (!text.includes('«' + name + '»')) melde('Lernen.kurs ohne ' + name + ' im Sprachprofil: ' + text);
+  }
+  // Die Tastatur des Französisch, als Daten im Sprachprofil (uebungen.js zeigt sie)
+  const tastatur = Lernen.SPRACHE.tastatur;
+  soll('Tastatur des Französisch', [tastatur.reihen, tastatur.akzente, [...tastatur.tippbar].join('')],
+    [['é è ê à â ç û œ ’ -', 'q w e r t z u i o p', 'a s d f g h j k l back', 'y x c v b n m leer ok'], ['é', 'è', 'ê', 'à', 'â', 'ç', 'û', 'œ'],
+      'éèêàâçûœ’-qwertzuiopasdfghjklyxcvbnm ']);
   soll('K.INTERVALLE', K.INTERVALLE, [0, 1, 2, 4, 7, 21]);
   soll('K.REIF_INTERVALLE', K.REIF_INTERVALLE, [45, 90]);
   soll('K', [K.RUNDE, K.NEBEN_MAX, K.LAST, K.RUNDE_MIN, K.NEU_PRO_RUNDE, K.NEU_PRO_TAG, K.BREMSE_FAELLIG, K.BREMSE_JUNG, K.SATZ_AB,
@@ -289,9 +349,13 @@ pruefung(1, 'Vokabeln: vokabelnPruefen()', melde => {
 
 /* ---------- 2 · Leiter ---------- */
 
-pruefung(2, 'Leiter: jede Karte hat auf jeder Stufe eine Leitaufgabe, mit und ohne Ton', melde => {
+// Übungen, die ohne Ton nicht gehen
+const TON = ['hoeren', 'lauschen', 'echo'];
+
+// Jede Form auf jeder Stufe, mit und ohne Ton: die Leiter aus 3.2 und was neben ihr geübt wird.
+// Gibt zurück, wie viele Leitaufgaben geprüft wurden.
+function leiterPruefen(melde) {
   let zahl = 0;
-  const TON = ['hoeren', 'lauschen', 'echo'];
   jedeForm((e, teil, form) => {
     for (let st = 0; st <= 5; st++) {
       for (const mitTon of [true, false]) {
@@ -338,10 +402,35 @@ pruefung(2, 'Leiter: jede Karte hat auf jeder Stufe eine Leitaufgabe, mit und oh
       }
     }
   });
+  return zahl;
+}
+
+// Ohne Ton: Aus jedem Schritt, der Ton braucht, wird einer, der ohne geht, oder keiner
+function ohneTonPruefen(melde) {
+  jedeForm((e, teil, form) => {
+    const z = zMit(e, { st: 3, teil, form });
+    for (const [uebung, vorgabe] of [['hoeren', 'ton'], ['lauschen', 'ton'], ['schreiben', 'ton'], ['ordnen', 'ton'], ['echo', 'fr']]) {
+      if (!Lernen.kann(uebung, e, teil, form, true)) continue;
+      const wo = 'ohneTon ' + uebung + ' «' + e.id + '» Teil ' + teil + ' Form ' + form;
+      const s = Lernen.ohneTon(schritt(e, uebung, { vorgabe, teil, form, rolle: 'neben' }), z);
+      if (s === null) continue;
+      if (!s || TON.includes(s.uebung) || s.vorgabe === 'ton') melde(wo + ': braucht immer noch Ton');
+      else if (!Lernen.kann(s.uebung, e, s.teil, s.form, false)) melde(wo + ': ' + s.uebung + ' geht hier nicht');
+      else if (!Lernen.aufgabe(s, z)) melde(wo + ': keine Aufgabe');
+      if (uebung === 'echo') melde(wo + ': echo entfällt nicht');
+    }
+  });
+}
+
+// Die Nebenaufgaben einer Karte auf einer Stufe als Zeile: «finden 2, schreiben-ton 2, lauschen 1»
+const nebenZeile = (e, st, mitTon, mehr) => Lernen.nebenaufgaben(e, stand({ st, ...mehr }), mitTon !== false)
+  .map(n => n.uebung + (n.vorgabe === 'ton' && n.uebung !== 'hoeren' && n.uebung !== 'lauschen' ? '-ton' : '') + ' ' + n.gewicht).join(', ');
+
+pruefung(2, 'Leiter: jede Karte hat auf jeder Stufe eine Leitaufgabe, mit und ohne Ton', melde => {
+  const zahl = leiterPruefen(melde);
 
   // Stichproben aus der Tabelle in 3.2
-  const neben = (id, st, mitTon, mehr) => Lernen.nebenaufgaben(E(id), stand({ st, ...mehr }), mitTon !== false)
-    .map(n => n.uebung + (n.vorgabe === 'ton' && n.uebung !== 'hoeren' && n.uebung !== 'lauschen' ? '-ton' : '') + ' ' + n.gewicht).join(', ');
+  const neben = (id, st, mitTon, mehr) => nebenZeile(E(id), st, mitTon, mehr);
   const soll = (was, ist, erwartet) => {
     if (ist !== erwartet) melde(was + ': «' + ist + '» statt «' + erwartet + '»');
   };
@@ -364,35 +453,20 @@ pruefung(2, 'Leiter: jede Karte hat auf jeder Stufe eine Leitaufgabe, mit und oh
   soll('Nebenaufgaben Satz Stufe 4 ohne Ton', neben('u4|Pour le nez, je prends une carotte.', 4, false), 'legen 2, ordnen 1, luecke 1');
   soll('Nebenaufgaben kurzer Satz Stufe 4', neben('u4|C’est quoi?', 4), 'legen 2, luecke 1');
 
-  // Ohne Ton: Aus jedem Schritt, der Ton braucht, wird einer, der ohne geht, oder keiner
-  jedeForm((e, teil, form) => {
-    const z = zMit(e, { st: 3, teil, form });
-    for (const [uebung, vorgabe] of [['hoeren', 'ton'], ['lauschen', 'ton'], ['schreiben', 'ton'], ['ordnen', 'ton'], ['echo', 'fr']]) {
-      if (!Lernen.kann(uebung, e, teil, form, true)) continue;
-      const wo = 'ohneTon ' + uebung + ' «' + e.id + '» Teil ' + teil + ' Form ' + form;
-      const s = Lernen.ohneTon(schritt(e, uebung, { vorgabe, teil, form, rolle: 'neben' }), z);
-      if (s === null) continue;
-      if (!s || TON.includes(s.uebung) || s.vorgabe === 'ton') melde(wo + ': braucht immer noch Ton');
-      else if (!Lernen.kann(s.uebung, e, s.teil, s.form, false)) melde(wo + ': ' + s.uebung + ' geht hier nicht');
-      else if (!Lernen.aufgabe(s, z)) melde(wo + ': keine Aufgabe');
-      if (uebung === 'echo') melde(wo + ': echo entfällt nicht');
-    }
-  });
+  ohneTonPruefen(melde);
   return zahl + ' Leitaufgaben';
 });
 
 /* ---------- 3 · Aufgaben ---------- */
 
-pruefung(3, 'Aufgaben: jede Übung für jeden Eintrag, Teil und jede Form; fehlerfreie Antwort ist richtig', melde => {
+// Alles, was geht, wird gebaut und gelöst; drei Durchgänge mit anderem Kartenstand und anderem Zufall.
+// Gibt die Zahlen je Übung zurück und welche Wörter beim Legen langer Formen fehlten. nach(a, e, lauf)
+// sieht jede gebaute Aufgabe, für das, was nur ein Kurs prüft.
+function aufgabenBauen(melde, nach) {
   const zahl = {};
   const zaehle = (was, n) => {
     zahl[was] = (zahl[was] || 0) + (n == null ? 1 : n);
   };
-  const soll = (was, ist, erwartet) => {
-    if (!gleich(ist, erwartet)) melde(was + ': ' + JSON.stringify(ist) + ' statt ' + JSON.stringify(erwartet));
-  };
-
-  // Alles, was geht, wird gebaut und gelöst; drei Durchgänge mit anderem Kartenstand und anderem Zufall
   const lueckenwoerter = new Map();
   for (let lauf = 0; lauf < 3; lauf++) {
     jedeForm((e, teil, form, text) => {
@@ -402,6 +476,7 @@ pruefung(3, 'Aufgaben: jede Übung für jeden Eintrag, Teil und jede Form; fehle
           if (vorgabe === 'ton' && ((uebung === 'ordnen' && e.art !== 'satz') || (uebung === 'schreiben' && e.art !== 'wort'))) continue;
           const a = baueUndLoese(e, uebung, { vorgabe, teil, form }, { st: 3, teil, form, gesehen: lauf, richtig: lauf }, melde);
           if (!a) continue;
+          if (nach) nach(a, e, lauf);
           if (!lauf) zaehle(uebung + (vorgabe ? '/' + vorgabe : ''));
           if (a.vorgabe !== (vorgabe || a.vorgabe)) melde(uebung + ' «' + e.id + '»: vorgabe ' + a.vorgabe + ' statt ' + vorgabe);
           if (uebung === 'legen') {
@@ -423,23 +498,15 @@ pruefung(3, 'Aufgaben: jede Übung für jeden Eintrag, Teil und jede Form; fehle
       }
     });
   }
-  soll('akzent für 46 Einträge', zahl['akzent: Einträge'], 46);
-  soll('legen mit fehlendem Wort für jeden Satz-Teil', zahl['legen: Satz-Teile mit fehlendem Wort'], VOKABELN.filter(e => e.art === 'satz').reduce((n, e) => n + e.teile.length, 0));
-  soll('legen mit fehlendem Wort für die langen Wortformen', zahl['legen: lange Wortformen'], 30);
-  soll('ordnen für die langen Wortformen', zahl['ordnen: lange Wortformen'], 28);
-  soll('bauen für jeden Satz-Teil', zahl['bauen: Satz-Teile'], VOKABELN.filter(e => e.art === 'satz').reduce((n, e) => n + e.teile.length, 0));
-  // Knöpfe der Artikel-Übung nach 2.6
-  soll('Knöpfe le/la', [zahl['Knöpfe le/la bei le'] + zahl['Knöpfe le/la bei la'], zahl['Knöpfe un/une bei un'] + zahl['Knöpfe un/une bei une'],
-    zahl['Knöpfe männlich/weiblich bei l’'], zahl['Knöpfe männlich/weiblich bei les']], [102, 12, 8, 12]);
-  soll('keine anderen Knöpfe', Object.keys(zahl).filter(x => x.startsWith('Knöpfe')).length, 6);
-  for (const id of ['u2|un/une enfant', 'u3|un/une élève', 'u4|les parties du visage', 'u4|un peu de persil']) {
-    if (Lernen.kann('artikel', E(id), 0, 0, true)) melde('artikel für ' + id);
-  }
-  // Welches Wort fehlt, wechselt mit dem Kartenstand
+  return { zahl, lueckenwoerter };
+}
+
+// Welches Wort beim Legen einer langen Form fehlt, wechselt mit dem Kartenstand: erwartet sind die
+// längsten Wörter ab vier Buchstaben, im Satz lieber solche, die nur einmal dastehen
+function lueckenwoerterPruefen(lueckenwoerter, melde) {
   for (const [schluessel, menge] of lueckenwoerter) {
     const [un, fr, teil, form] = schluessel.split('|');
     const e = E(un + '|' + fr), text = e.teile[teil].fr[form];
-    // Erwartet: die längsten Wörter ab vier Buchstaben, im Satz lieber solche, die nur einmal dastehen
     const alle = text.split(' ').map(w => w.replace(/[.,!?]+$/, ''));
     const zahlVon = w => alle.filter(x => x.toLowerCase() === w.toLowerCase()).length;
     let moeglich = alle.filter((w, i) => (w.match(/\p{L}/gu) || []).length >= 4 && !V.EIGENNAMEN.includes(w)
@@ -448,8 +515,14 @@ pruefung(3, 'Aufgaben: jede Übung für jeden Eintrag, Teil und jede Form; fehle
     moeglich.sort((a, b) => (b.match(/\p{L}/gu) || []).length - (a.match(/\p{L}/gu) || []).length);
     if (sortiert([...menge]) !== sortiert(moeglich.slice(0, 3))) melde('legen «' + text + '»: es fehlt ' + [...menge].join(', ') + ' statt ' + moeglich.slice(0, 3).join(', '));
   }
+}
 
-  // Lücke im Satz: vier verschiedene Wörter für jedes Wort, das fehlen kann
+// Lücke im Satz: vier verschiedene Wörter für jedes Wort, das fehlen kann. Gibt zurück, wie viele
+// Lückenwörter es gab; nach(a, e, teil) sieht jede Aufgabe.
+function lueckeImSatz(melde, nach) {
+  const soll = (was, ist, erwartet) => {
+    if (!gleich(ist, erwartet)) melde(was + ': ' + JSON.stringify(ist) + ' statt ' + JSON.stringify(erwartet));
+  };
   let lueckenZahl = 0;
   jederTeil((e, teil, t) => {
     if (e.art !== 'satz') return;
@@ -458,6 +531,7 @@ pruefung(3, 'Aufgaben: jede Übung für jeden Eintrag, Teil und jede Form; fehle
       for (let mal = 0; mal < 4; mal++) {
         const a = baueUndLoese(e, 'luecke', { teil, form: 0 }, { st: 2, gesehen }, melde);
         if (!a) continue;
+        if (nach) nach(a, e, teil);
         const wort = a.plaetze.find(p => p.art === 'luecke').soll;
         gesehenWoerter.add(wort);
         const gross = wort[0] !== wort[0].toLowerCase();
@@ -474,6 +548,28 @@ pruefung(3, 'Aufgaben: jede Übung für jeden Eintrag, Teil und jede Form; fehle
     soll('Lückenwörter von «' + t.fr[0] + '»', sortiert([...gesehenWoerter]), sortiert(moeglich));
     lueckenZahl += gesehenWoerter.size;
   });
+  return lueckenZahl;
+}
+
+pruefung(3, 'Aufgaben: jede Übung für jeden Eintrag, Teil und jede Form; fehlerfreie Antwort ist richtig', melde => {
+  const soll = (was, ist, erwartet) => {
+    if (!gleich(ist, erwartet)) melde(was + ': ' + JSON.stringify(ist) + ' statt ' + JSON.stringify(erwartet));
+  };
+  const { zahl, lueckenwoerter } = aufgabenBauen(melde);
+  soll('akzent für 46 Einträge', zahl['akzent: Einträge'], 46);
+  soll('legen mit fehlendem Wort für jeden Satz-Teil', zahl['legen: Satz-Teile mit fehlendem Wort'], VOKABELN.filter(e => e.art === 'satz').reduce((n, e) => n + e.teile.length, 0));
+  soll('legen mit fehlendem Wort für die langen Wortformen', zahl['legen: lange Wortformen'], 30);
+  soll('ordnen für die langen Wortformen', zahl['ordnen: lange Wortformen'], 28);
+  soll('bauen für jeden Satz-Teil', zahl['bauen: Satz-Teile'], VOKABELN.filter(e => e.art === 'satz').reduce((n, e) => n + e.teile.length, 0));
+  // Knöpfe der Artikel-Übung nach 2.6
+  soll('Knöpfe le/la', [zahl['Knöpfe le/la bei le'] + zahl['Knöpfe le/la bei la'], zahl['Knöpfe un/une bei un'] + zahl['Knöpfe un/une bei une'],
+    zahl['Knöpfe männlich/weiblich bei l’'], zahl['Knöpfe männlich/weiblich bei les']], [102, 12, 8, 12]);
+  soll('keine anderen Knöpfe', Object.keys(zahl).filter(x => x.startsWith('Knöpfe')).length, 6);
+  for (const id of ['u2|un/une enfant', 'u3|un/une élève', 'u4|les parties du visage', 'u4|un peu de persil']) {
+    if (Lernen.kann('artikel', E(id), 0, 0, true)) melde('artikel für ' + id);
+  }
+  lueckenwoerterPruefen(lueckenwoerter, melde);
+  const lueckenZahl = lueckeImSatz(melde);
   soll('Lücke in «Vous coupez. Coupez.»', frei(Lernen.aufgabe(schritt(E('u4|Vous coupez. Coupez.'), 'luecke'), null))[0].soll, 'Vous');
 
   // Finale
@@ -678,9 +774,31 @@ pruefung(3, 'Aufgaben: jede Übung für jeden Eintrag, Teil und jede Form; fehle
 
 /* ---------- 4 · Ablenker ---------- */
 
-pruefung(4, 'Ablenker: verschieden, nie zwei richtige Antworten', melde => {
-  const inGruppe = (gruppen, a, b) => gruppen.some(g => g.includes(a) && g.includes(b));
-  const zeige = (seite, e, teil, form) => (seite === 'de' ? e.teile[teil].zeigeDe : e.teile[teil].fr[form || 0]);
+const inGruppe = (gruppen, a, b) => gruppen.some(g => g.includes(a) && g.includes(b));
+const zeige = (seite, e, teil, form) => (seite === 'de' ? e.teile[teil].zeigeDe : e.teile[teil].fr[form || 0]);
+
+// Wie viele andere Nomen auf Deutsch dieselbe Sorte Artikel tragen wie der Teil teil von e und als
+// Ablenker in Frage kommen (wie in lernen.js: nicht dieselbe Karte, kein gleiches Deutsch, nicht nie
+// zusammen, nicht gleich klingend; je Karte ein Teil, jeder Text einmal)
+function gleicheDeSorte(e, teil, art, deSorte) {
+  const deZiel = new Set(e.deAlle.map(Lernen.norm)), nomen = k => !['verb', 'gram'].includes(k.cat);
+  const texte = new Set([Lernen.norm(e.teile[teil].zeigeDe)]);
+  let zahl = 0;
+  for (const k of KARTEN) {
+    if (k.kid === e.kid || k.art !== e.art || nomen(k) !== nomen(e) || k.deAlle.some(d => deZiel.has(Lernen.norm(d)))
+      || inGruppe(V.NIE_ZUSAMMEN, k.kid, e.kid) || inGruppe(V.KLANGGRUPPEN, k.kid, e.kid)) continue;
+    const t = k.teile.map(x => x.zeigeDe).find(d => deSorte(d) === art && !texte.has(Lernen.norm(d)));
+    if (t === undefined) continue;
+    texte.add(Lernen.norm(t));
+    zahl++;
+  }
+  return zahl;
+}
+
+// Sechs Durchgänge über jede Form und jede Seite: drei (bei Sätzen auf Deutsch zwei) verschiedene
+// Ablenker, jeder eine echte andere Karte, nie zwei richtige Antworten, und kein Artikel verrät die
+// Lösung. nach(e, teil, form, seite, liste) sieht jede Auswahl. Gibt die Zahl der Auswahlen zurück.
+function ablenkerSechsmal(melde, nach) {
   let zahl = 0;
   for (let lauf = 0; lauf < 6; lauf++) {
     jedeForm((e, teil, form) => {
@@ -690,6 +808,7 @@ pruefung(4, 'Ablenker: verschieden, nie zwei richtige Antworten', melde => {
         const wo = seite + ' «' + e.teile[teil].fr[form] + '»';
         const liste = Lernen.ablenker(e, teil, seite, n, form);
         zahl++;
+        if (nach) nach(e, teil, form, seite, liste);
         if (liste.length !== n) melde(wo + ': ' + liste.length + ' statt ' + n);
         const ziel = zeige(seite, e, teil, form);
         const texte = [ziel, ...liste.map(x => zeige(seite, x.e, x.teil, 0))];
@@ -722,15 +841,24 @@ pruefung(4, 'Ablenker: verschieden, nie zwei richtige Antworten', melde => {
           for (const x of liste) if (sichtbar(x.e.teile[x.teil].fr[0]) !== null) melde(wo + ' → «' + x.e.teile[x.teil].fr[0] + '»: mit Artikel');
         }
         // bedeutung, hoeren: Auch der deutsche Artikel verrät nichts. Bei Nomen trägt jede Antwort dieselbe
-        // Sorte wie das Ziel: «ein, eine», «der, die, das» oder keinen
+        // Sorte wie das Ziel: «ein, eine», «der, die, das» oder keinen, soweit der Wortschatz Nomen dieser
+        // Sorte hat (das Indonesisch hat nur zwei mit «ein»: Dann steht wenigstens das andere dabei)
         const deSorte = d => (/^(ein|eine|einen) /.test(d) ? 'ein' : /^(der|die|das) /.test(d) ? 'der' : 'ohne');
         if (seite === 'de' && e.art === 'wort' && !['verb', 'gram'].includes(e.cat)) {
           const art = deSorte(e.teile[teil].zeigeDe);
-          for (const x of liste) if (deSorte(x.e.teile[x.teil].zeigeDe) !== art) melde(wo + ' → «' + x.e.teile[x.teil].zeigeDe + '»: anderer deutscher Artikel als «' + e.teile[teil].zeigeDe + '»');
+          const anders = liste.filter(x => deSorte(x.e.teile[x.teil].zeigeDe) !== art);
+          if (anders.length && liste.length - anders.length < Math.min(liste.length, gleicheDeSorte(e, teil, art, deSorte))) {
+            for (const x of anders) melde(wo + ' → «' + x.e.teile[x.teil].zeigeDe + '»: anderer deutscher Artikel als «' + e.teile[teil].zeigeDe + '»');
+          }
         }
       }
     });
   }
+  return zahl;
+}
+
+pruefung(4, 'Ablenker: verschieden, nie zwei richtige Antworten', melde => {
+  const zahl = ablenkerSechsmal(melde);
   // lauschen: die drei Karten, die am ähnlichsten klingen
   const klang = (id, teil) => sortiert(Lernen.ablenker(E(id), teil || 0, 'klang', 3).map(x => x.e.teile[0].fr[0]));
   const soll = (was, ist, erwartet) => {
@@ -777,6 +905,136 @@ pruefung(4, 'Ablenker: verschieden, nie zwei richtige Antworten', melde => {
   }
   return zahl + ' Auswahlen';
 });
+
+// Über alle Wortformen: Was nicht genau stimmt, ist nie richtig, und der Tipp passt. mehr(e, teil,
+// form, text, pruefe) gibt einem Kurs Platz für eigene Eingaben, geprüft wie die anderen. Gibt die
+// Zahl der Urteile zurück.
+function alleFormenUrteilen(melde, mehr) {
+  let zahl = 0;
+  jedeForm((e, teil, form, text) => {
+    if (e.art !== 'wort') return;
+    const opt = { form, vorgabe: 'de' };
+    const z = Lernen.zerlegen(text, e);
+    const pruefe = (eingabe, erlaubt) => {
+      const x = Lernen.urteil(eingabe, e, teil, opt);
+      zahl++;
+      const teile = (x.artikel === 'ok' || x.artikel === 'buch') && x.kern === 'ok';
+      if (x.richtig !== teile) melde('«' + eingabe + '» für «' + text + '»: richtig ' + x.richtig + ' bei ' + x.artikel + '/' + x.kern);
+      if (x.richtig && x.ganz !== 'auch' && Lernen.norm(eingabe) !== Lernen.norm(text) && x.artikel !== 'buch') melde('«' + eingabe + '» für «' + text + '»: als richtig durchgewinkt');
+      if (x.stellen.some(i => !(i >= 0 && i < eingabe.length))) melde('«' + eingabe + '» für «' + text + '»: Stelle ausserhalb der Eingabe');
+      if (!x.richtig && x.ganz !== 'gleiche_form' && eingabe && !x.stellen.length && x.artikel !== 'fehlt') melde('«' + eingabe + '» für «' + text + '»: Fehler ohne Stelle');
+      if (typeof x.zeichen !== 'boolean' || (x.zeichen && x.kern !== 'akzent')) melde('«' + eingabe + '» für «' + text + '»: zeichen ' + x.zeichen + ' bei kern ' + x.kern);
+      if (erlaubt && !x.ganz && !erlaubt(x)) melde('«' + eingabe + '» für «' + text + '»: ' + x.artikel + '/' + x.kern);
+      return x;
+    };
+    // genau die Form, auch gross geschrieben
+    if (!pruefe(text).richtig || !pruefe(text.toUpperCase().replace(/Œ/g, 'œ')).richtig) melde('«' + text + '» wird nicht angenommen');
+    // der andere Artikel
+    const anders = { le: 'la', la: 'le', un: 'une', une: 'un' }[z.artikel];
+    if (anders) pruefe(anders + ' ' + z.kern, x => x.artikel === 'genus' && x.kern === 'ok' && gleich(x.fehler, ['genus']));
+    // kein Artikel
+    if (z.artikel) pruefe(z.kern, x => x.artikel === 'fehlt' && x.kern === 'ok');
+    // ein anderes Wort davor ist ein anderer Artikel, kein fehlender: Wer «Vorne fehlt der Artikel»
+    // hört und ihn davorsetzt, hätte sonst zwei
+    if (z.artikel) for (const vorn of ['des ', 'du ', 'de la ', 'aux ']) pruefe(vorn + z.kern, x => x.artikel === 'anders' && x.kern === 'ok' && x.stellen[0] === 0);
+    // ohne Akzente
+    const blank = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').normalize('NFC');
+    if (blank !== text) pruefe(blank, x => x.artikel === 'ok' && x.kern === 'akzent' && gleich(x.fehler, ['akzent']) && !x.zeichen);
+    // ohne Akzente und dazu ohne Apostroph oder Bindestrich im Wort, oder ganz zusammengeschrieben:
+    // Der Hinweis muss beides nennen (zeichen)
+    const vorn = blank.slice(0, text.length - z.kern.length), hinten = blank.slice(text.length - z.kern.length);
+    for (const eingabe of [vorn + hinten.replace(/[’-]/g, ' '), vorn + hinten.replace(/[’ -]/g, '')]) {
+      if (blank !== text && eingabe !== blank) pruefe(eingabe, x => x.artikel === 'ok' && x.kern === 'akzent' && x.zeichen && gleich(x.fehler, ['akzent']));
+    }
+    if (text.includes('œ')) pruefe(text.replace(/œ/g, 'oe'), x => x.kern === 'ligatur');
+    // ohne Abstand, Apostroph, Bindestrich
+    if (/[ ’-]/.test(z.kern)) pruefe(text.replace(/[’-]/g, ' ').replace(/ +/g, ' '), x => text.replace(/[’-]/g, ' ') === text || x.kern === 'zeichen');
+    // ein Buchstabe verdoppelt, einer weggelassen
+    const mitte = text.length - 2;
+    pruefe(text.slice(0, mitte) + text[mitte] + text.slice(mitte), x => x.kern === 'tippfehler' || x.kern === 'anders');
+    if (Lernen.norm(text.slice(0, -1)) !== Lernen.norm(text)) pruefe(text.slice(0, -1), x => x.kern !== 'ok' || x.artikel !== 'ok');
+    // Elision und ganzer Artikel
+    if (z.artikel === 'l’') {
+      pruefe('le ' + z.kern, x => x.artikel === 'elision');
+      pruefe('la ' + z.kern, x => x.artikel === 'elision');
+    }
+    if (z.artikel === 'un' || z.artikel === 'une') {
+      pruefe('le ' + z.kern, x => x.artikel === 'elision');
+      if (!pruefe('l’' + z.kern).richtig) melde('«l’' + z.kern + '» für «' + text + '» wird nicht angenommen, obwohl der Tipp zur Elision dorthin führt');
+      // Im Diktat gilt «l’…» nicht: Dann darf auch kein Tipp zur Elision dorthin führen
+      for (const a of ['le ', 'la ']) {
+        const x = Lernen.urteil(a + z.kern, e, teil, { form, vorgabe: 'ton' });
+        zahl++;
+        if (x.artikel === 'elision') melde('Diktat «' + text + '», getippt «' + a + z.kern + '»: Tipp zur Elision führt zu «l’' + z.kern + '», das im Diktat nicht gilt');
+      }
+    }
+    if ((z.artikel === 'le' || z.artikel === 'la') && z.kern.startsWith('h')) pruefe('l’' + z.kern, x => x.artikel === 'artikel_ganz');
+    // der andere richtige Artikel: nur bei Dingen, Familie, Essen, Gesicht
+    const buch = { le: 'un', la: 'une' }[z.artikel];
+    if (buch) pruefe(buch + ' ' + z.kern, x => x.artikel === (['ding', 'fam', 'essen', 'gesicht'].includes(e.cat) ? 'buch' : 'anders'));
+    // Diktat: nur was zu hören war
+    for (const andere of e.teile[teil].fr) {
+      if (andere === text) continue;
+      const x = Lernen.urteil(andere, e, teil, { form, vorgabe: 'ton' });
+      if (x.richtig || x.ganz !== 'andere_form') melde('Diktat «' + text + '», getippt «' + andere + '»: ' + x.ganz);
+    }
+    if (buch) {
+      const x = Lernen.urteil(buch + ' ' + z.kern, e, teil, { form, vorgabe: 'ton' });
+      if (x.richtig) melde('Diktat «' + text + '»: «' + buch + ' ' + z.kern + '» angenommen');
+    }
+    if (mehr) mehr(e, teil, form, text, pruefe);
+  });
+  return zahl;
+}
+
+// Über Kreuz, gegen eine eigene Liste dessen, was gelten darf: Jede Form des Wortschatzes und jeder
+// Artikel vor jedem Kern wird für jedes Ziel getippt. Angenommen wird genau die Zielform, eine
+// andere Form des Teils (nur nach dem Deutschen, solange die erste gefragt ist) und der andere
+// richtige Artikel aus 2.9. So rutscht kein falsches Französisch durch und keine Form aus dem Buch fällt weg.
+// jedes(x, eingabe, e, teil, form, vorgabe) sieht jedes Urteil. Gibt die Zahl der Urteile zurück.
+function ueberKreuz(melde, jedes) {
+  const eigenNorm = s => s.normalize('NFC').toLowerCase().replace(/['`´ʼ]/g, '’').replace(/[.,!?]/g, ' ').replace(/\s+/g, ' ').trim();
+  const VIER = ['ding', 'fam', 'essen', 'gesicht'];
+  const darf = (e, teil, form, vorgabe) => {
+    const t = e.teile[teil], ziel = eigenNorm(t.fr[form]);
+    const aus = new Set([ziel]);
+    if (vorgabe !== 'de') return aus;
+    if (form === 0) for (const f of t.fr) aus.add(eigenNorm(f));
+    const m = e.artikel === null ? null : ziel.match(/^(le |la |l’|un |une )(.*)$/);
+    if (!m) return aus;
+    const artikel = m[1].trim(), genus = { le: 'm', un: 'm', la: 'f', une: 'f' }[artikel] || e.genus;
+    // «l’» für un und une gilt in jeder Wortgruppe: Dorthin führt der Tipp zur Elision, und es ist richtig
+    if (artikel === 'un' || artikel === 'une') aus.add('l’' + m[2]);
+    else if (VIER.includes(e.cat) && (genus === 'm' || genus === 'f')) aus.add((genus === 'm' ? 'un ' : 'une ') + m[2]);
+    return aus;
+  };
+  const alleFormen = [];
+  jedeForm((e, teil, form, text) => alleFormen.push(text));
+  let kreuz = 0;
+  jedeForm((e, teil, form, text) => {
+    if (e.art !== 'wort') return;
+    const kern = Lernen.zerlegen(text, e).kern;
+    const eingaben = [...alleFormen, ...['le ', 'la ', 'l’', 'un ', 'une ', 'les ', ''].map(a => a + kern)];
+    for (const vorgabe of ['de', 'ton']) {
+      const erlaubt = darf(e, teil, form, vorgabe);
+      for (const eingabe of eingaben) {
+        const x = Lernen.urteil(eingabe, e, teil, { form, vorgabe });
+        kreuz++;
+        if (jedes) jedes(x, eingabe, e, teil, form, vorgabe);
+        // «Probier den anderen» Artikel: Der Tipp zum Geschlecht muss zu einer Antwort führen, die gilt
+        if (x.artikel === 'genus' && x.kern === 'ok' && !x.ganz) {
+          const y = Lernen.zerlegen(Lernen.norm(eingabe)), getauscht = { le: 'la', la: 'le', un: 'une', une: 'un' }[y.artikel] + ' ' + y.kern;
+          if (!Lernen.urteil(getauscht, e, teil, { form, vorgabe }).richtig) melde((vorgabe === 'ton' ? 'Diktat ' : '') + '«' + eingabe + '» für «' + text + '»: der Tipp zum Geschlecht führt zu «' + getauscht + '», und das gilt nicht');
+        }
+        if (x.richtig !== erlaubt.has(eigenNorm(eingabe))) {
+          melde((vorgabe === 'ton' ? 'Diktat ' : '') + '«' + eingabe + '» für «' + text + '»: ' + (x.richtig ? 'angenommen, obwohl es nicht gelten darf' : 'abgelehnt, obwohl es gelten muss')
+            + ' (' + x.artikel + '/' + x.kern + (x.ganz ? '/' + x.ganz : '') + ')');
+        }
+      }
+    }
+  });
+  return kreuz;
+}
 
 /* ---------- 5 · Urteil ---------- */
 
@@ -987,124 +1245,8 @@ pruefung(5, 'Urteil über Getipptes: die Tabelle aus dem Bauplan', melde => {
   soll('stellen: Akzent und Apostroph', [stellen('u2|l’âge (m)', 'lage'), stellen('u3|l’équitation (f), faire de l’équitation', 'l equitation')], [[0, 1], [1, 2]]);
   soll('stellen: an der nächsten Form gemessen', [stellen('u1|les maths, les mathématiques (f pl)', 'les mathematiques'), stellen('u2|ils sont, elles sont', 'elle sont')], [[8], [3]]);
 
-  // Über alle Wortformen: Was nicht genau stimmt, ist nie richtig, und der Tipp passt
-  let zahl = TABELLE.length;
-  jedeForm((e, teil, form, text) => {
-    if (e.art !== 'wort') return;
-    const opt = { form, vorgabe: 'de' };
-    const z = Lernen.zerlegen(text, e);
-    const pruefe = (eingabe, erlaubt) => {
-      const x = Lernen.urteil(eingabe, e, teil, opt);
-      zahl++;
-      const teile = (x.artikel === 'ok' || x.artikel === 'buch') && x.kern === 'ok';
-      if (x.richtig !== teile) melde('«' + eingabe + '» für «' + text + '»: richtig ' + x.richtig + ' bei ' + x.artikel + '/' + x.kern);
-      if (x.richtig && x.ganz !== 'auch' && Lernen.norm(eingabe) !== Lernen.norm(text) && x.artikel !== 'buch') melde('«' + eingabe + '» für «' + text + '»: als richtig durchgewinkt');
-      if (x.stellen.some(i => !(i >= 0 && i < eingabe.length))) melde('«' + eingabe + '» für «' + text + '»: Stelle ausserhalb der Eingabe');
-      if (!x.richtig && x.ganz !== 'gleiche_form' && eingabe && !x.stellen.length && x.artikel !== 'fehlt') melde('«' + eingabe + '» für «' + text + '»: Fehler ohne Stelle');
-      if (typeof x.zeichen !== 'boolean' || (x.zeichen && x.kern !== 'akzent')) melde('«' + eingabe + '» für «' + text + '»: zeichen ' + x.zeichen + ' bei kern ' + x.kern);
-      if (erlaubt && !x.ganz && !erlaubt(x)) melde('«' + eingabe + '» für «' + text + '»: ' + x.artikel + '/' + x.kern);
-      return x;
-    };
-    // genau die Form, auch gross geschrieben
-    if (!pruefe(text).richtig || !pruefe(text.toUpperCase().replace(/Œ/g, 'œ')).richtig) melde('«' + text + '» wird nicht angenommen');
-    // der andere Artikel
-    const anders = { le: 'la', la: 'le', un: 'une', une: 'un' }[z.artikel];
-    if (anders) pruefe(anders + ' ' + z.kern, x => x.artikel === 'genus' && x.kern === 'ok' && gleich(x.fehler, ['genus']));
-    // kein Artikel
-    if (z.artikel) pruefe(z.kern, x => x.artikel === 'fehlt' && x.kern === 'ok');
-    // ein anderes Wort davor ist ein anderer Artikel, kein fehlender: Wer «Vorne fehlt der Artikel»
-    // hört und ihn davorsetzt, hätte sonst zwei
-    if (z.artikel) for (const vorn of ['des ', 'du ', 'de la ', 'aux ']) pruefe(vorn + z.kern, x => x.artikel === 'anders' && x.kern === 'ok' && x.stellen[0] === 0);
-    // ohne Akzente
-    const blank = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').normalize('NFC');
-    if (blank !== text) pruefe(blank, x => x.artikel === 'ok' && x.kern === 'akzent' && gleich(x.fehler, ['akzent']) && !x.zeichen);
-    // ohne Akzente und dazu ohne Apostroph oder Bindestrich im Wort, oder ganz zusammengeschrieben:
-    // Der Hinweis muss beides nennen (zeichen)
-    const vorn = blank.slice(0, text.length - z.kern.length), hinten = blank.slice(text.length - z.kern.length);
-    for (const eingabe of [vorn + hinten.replace(/[’-]/g, ' '), vorn + hinten.replace(/[’ -]/g, '')]) {
-      if (blank !== text && eingabe !== blank) pruefe(eingabe, x => x.artikel === 'ok' && x.kern === 'akzent' && x.zeichen && gleich(x.fehler, ['akzent']));
-    }
-    if (text.includes('œ')) pruefe(text.replace(/œ/g, 'oe'), x => x.kern === 'ligatur');
-    // ohne Abstand, Apostroph, Bindestrich
-    if (/[ ’-]/.test(z.kern)) pruefe(text.replace(/[’-]/g, ' ').replace(/ +/g, ' '), x => text.replace(/[’-]/g, ' ') === text || x.kern === 'zeichen');
-    // ein Buchstabe verdoppelt, einer weggelassen
-    const mitte = text.length - 2;
-    pruefe(text.slice(0, mitte) + text[mitte] + text.slice(mitte), x => x.kern === 'tippfehler' || x.kern === 'anders');
-    if (Lernen.norm(text.slice(0, -1)) !== Lernen.norm(text)) pruefe(text.slice(0, -1), x => x.kern !== 'ok' || x.artikel !== 'ok');
-    // Elision und ganzer Artikel
-    if (z.artikel === 'l’') {
-      pruefe('le ' + z.kern, x => x.artikel === 'elision');
-      pruefe('la ' + z.kern, x => x.artikel === 'elision');
-    }
-    if (z.artikel === 'un' || z.artikel === 'une') {
-      pruefe('le ' + z.kern, x => x.artikel === 'elision');
-      if (!pruefe('l’' + z.kern).richtig) melde('«l’' + z.kern + '» für «' + text + '» wird nicht angenommen, obwohl der Tipp zur Elision dorthin führt');
-      // Im Diktat gilt «l’…» nicht: Dann darf auch kein Tipp zur Elision dorthin führen
-      for (const a of ['le ', 'la ']) {
-        const x = Lernen.urteil(a + z.kern, e, teil, { form, vorgabe: 'ton' });
-        zahl++;
-        if (x.artikel === 'elision') melde('Diktat «' + text + '», getippt «' + a + z.kern + '»: Tipp zur Elision führt zu «l’' + z.kern + '», das im Diktat nicht gilt');
-      }
-    }
-    if ((z.artikel === 'le' || z.artikel === 'la') && z.kern.startsWith('h')) pruefe('l’' + z.kern, x => x.artikel === 'artikel_ganz');
-    // der andere richtige Artikel: nur bei Dingen, Familie, Essen, Gesicht
-    const buch = { le: 'un', la: 'une' }[z.artikel];
-    if (buch) pruefe(buch + ' ' + z.kern, x => x.artikel === (['ding', 'fam', 'essen', 'gesicht'].includes(e.cat) ? 'buch' : 'anders'));
-    // Diktat: nur was zu hören war
-    for (const andere of e.teile[teil].fr) {
-      if (andere === text) continue;
-      const x = Lernen.urteil(andere, e, teil, { form, vorgabe: 'ton' });
-      if (x.richtig || x.ganz !== 'andere_form') melde('Diktat «' + text + '», getippt «' + andere + '»: ' + x.ganz);
-    }
-    if (buch) {
-      const x = Lernen.urteil(buch + ' ' + z.kern, e, teil, { form, vorgabe: 'ton' });
-      if (x.richtig) melde('Diktat «' + text + '»: «' + buch + ' ' + z.kern + '» angenommen');
-    }
-  });
-
-  // Über Kreuz, gegen eine eigene Liste dessen, was gelten darf: Jede Form des Wortschatzes und jeder
-  // Artikel vor jedem Kern wird für jedes Ziel getippt. Angenommen wird genau die Zielform, eine
-  // andere Form des Teils (nur nach dem Deutschen, solange die erste gefragt ist) und der andere
-  // richtige Artikel aus 2.9. So rutscht kein falsches Französisch durch und keine Form aus dem Buch fällt weg.
-  const eigenNorm = s => s.normalize('NFC').toLowerCase().replace(/['`´ʼ]/g, '’').replace(/[.,!?]/g, ' ').replace(/\s+/g, ' ').trim();
-  const VIER = ['ding', 'fam', 'essen', 'gesicht'];
-  const darf = (e, teil, form, vorgabe) => {
-    const t = e.teile[teil], ziel = eigenNorm(t.fr[form]);
-    const aus = new Set([ziel]);
-    if (vorgabe !== 'de') return aus;
-    if (form === 0) for (const f of t.fr) aus.add(eigenNorm(f));
-    const m = e.artikel === null ? null : ziel.match(/^(le |la |l’|un |une )(.*)$/);
-    if (!m) return aus;
-    const artikel = m[1].trim(), genus = { le: 'm', un: 'm', la: 'f', une: 'f' }[artikel] || e.genus;
-    // «l’» für un und une gilt in jeder Wortgruppe: Dorthin führt der Tipp zur Elision, und es ist richtig
-    if (artikel === 'un' || artikel === 'une') aus.add('l’' + m[2]);
-    else if (VIER.includes(e.cat) && (genus === 'm' || genus === 'f')) aus.add((genus === 'm' ? 'un ' : 'une ') + m[2]);
-    return aus;
-  };
-  const alleFormen = [];
-  jedeForm((e, teil, form, text) => alleFormen.push(text));
-  let kreuz = 0;
-  jedeForm((e, teil, form, text) => {
-    if (e.art !== 'wort') return;
-    const kern = Lernen.zerlegen(text, e).kern;
-    const eingaben = [...alleFormen, ...['le ', 'la ', 'l’', 'un ', 'une ', 'les ', ''].map(a => a + kern)];
-    for (const vorgabe of ['de', 'ton']) {
-      const erlaubt = darf(e, teil, form, vorgabe);
-      for (const eingabe of eingaben) {
-        const x = Lernen.urteil(eingabe, e, teil, { form, vorgabe });
-        kreuz++;
-        // «Probier den anderen» Artikel: Der Tipp zum Geschlecht muss zu einer Antwort führen, die gilt
-        if (x.artikel === 'genus' && x.kern === 'ok' && !x.ganz) {
-          const y = Lernen.zerlegen(Lernen.norm(eingabe)), getauscht = { le: 'la', la: 'le', un: 'une', une: 'un' }[y.artikel] + ' ' + y.kern;
-          if (!Lernen.urteil(getauscht, e, teil, { form, vorgabe }).richtig) melde((vorgabe === 'ton' ? 'Diktat ' : '') + '«' + eingabe + '» für «' + text + '»: der Tipp zum Geschlecht führt zu «' + getauscht + '», und das gilt nicht');
-        }
-        if (x.richtig !== erlaubt.has(eigenNorm(eingabe))) {
-          melde((vorgabe === 'ton' ? 'Diktat ' : '') + '«' + eingabe + '» für «' + text + '»: ' + (x.richtig ? 'angenommen, obwohl es nicht gelten darf' : 'abgelehnt, obwohl es gelten muss')
-            + ' (' + x.artikel + '/' + x.kern + (x.ganz ? '/' + x.ganz : '') + ')');
-        }
-      }
-    }
-  });
+  let zahl = TABELLE.length + alleFormenUrteilen(melde);
+  const kreuz = ueberKreuz(melde);
   if (kreuz < 100000) melde('über Kreuz nur ' + kreuz + ' Urteile');
   zahl += kreuz;
   return zahl + ' Urteile';
@@ -1139,7 +1281,7 @@ const gleicheAufgabe = (a, b) => a.uebung === b.uebung && a.vorgabe === b.vorgab
 // Ein frischer Stand mit gewählten Lernzielen
 function zMitZielen(ziele, mehr) {
   const z = Lernen.neu();
-  z.unite = 'u1';
+  z.unite = V.UNITE_REIHE[0];
   for (const g of ziele) z.ziele[g] = true;
   return Object.assign(z, mehr);
 }
@@ -1229,15 +1371,15 @@ function nebenPlaetze(L0, basis, leitKids) {
 }
 
 // Ein Stand, wie er nie gespielt wurde, aber gespeichert sein könnte: beliebige Auswahl (oft nur ein
-// oder zwei kleine Lernziele), beliebige Stufen, Fälligkeiten, Schwächen
+// oder zwei kleine Lernziele aus kleine), beliebige Stufen, Fälligkeiten, Schwächen
 const KLEINE_ZIELE = ['u2-1', 'u4-S', 'u1-1', 'u1P-S', 'u4-4', 'u4P-4', 'u3-3', 'u2P-1', 'u4P-2', 'u4-3', 'u2-3'];
-function zufallsStand(rnd, heute) {
+function zufallsStand(rnd, heute, kleine = KLEINE_ZIELE) {
   const eins = liste => liste[Math.floor(rnd() * liste.length)];
   const z = Lernen.neu();
   z.unite = eins(V.UNITE_REIHE);
   z.neuProTag = eins(K.NEU_WAHL);
   const wie = rnd();
-  const ziele = wie < 0.3 ? [eins(KLEINE_ZIELE)] : wie < 0.45 ? [eins(KLEINE_ZIELE), eins(KLEINE_ZIELE)]
+  const ziele = wie < 0.3 ? [eins(kleine)] : wie < 0.45 ? [eins(kleine), eins(kleine)]
     : wie < 0.9 ? V.LERNZIEL_REIHE.filter(() => rnd() < 0.25) : V.LERNZIEL_REIHE;
   for (const g of ziele) z.ziele[g] = true;
   const bekannt = rnd(), faelligTeil = rnd();
@@ -1264,13 +1406,24 @@ function zufallsStand(rnd, heute) {
 
 // Ein erster Versuch, wie er oft danebengeht: der andere Artikel und kein einziger Akzent. Zurück kommt,
 // was das Urteil darüber sagt ('genus', 'akzent'), so wie uebungen.js es als Ergebnis.fehler meldet.
-// Der Zufall der Prüfung bleibt dabei unberührt.
+// In einer Sprache ohne Artikel und Akzente (akzentUrteil false): ein Akzent von einer echten Tastatur
+// auf dem ersten Vokal und der Bindestrich als Leerzeichen, gelegt die ersten zwei Buchstaben
+// vertauscht. Der Zufall der Prüfung bleibt dabei unberührt.
 function ersterVersuch(s, z) {
   if (s.uebung !== 'schreiben' && s.uebung !== 'legen') return [];
   const zufall = Lernen.zufall;
   Lernen.zufall = () => 0.5;
   const a = Lernen.aufgabe(s, z);
   Lernen.zufall = zufall;
+  if (!Lernen.SPRACHE.akzentUrteil) {
+    if (s.uebung === 'schreiben') {
+      const getippt = a.ziel.replace(/[aeiou]/, v => ({ a: 'á', e: 'é', i: 'í', o: 'ó', u: 'ú' })[v]).replace(/-/g, ' ');
+      return Lernen.urteil(getippt, a.e, a.teil, { form: a.form, vorgabe: a.vorgabe }).fehler;
+    }
+    const offen = frei(a), gelegt = offen.map(p => erste(p.soll));
+    [gelegt[0], gelegt[1]] = [gelegt[1], gelegt[0]];
+    return Lernen.reihenUrteil(gelegt, offen).fehler;
+  }
   const anders = { le: 'la', la: 'le', un: 'une', une: 'un' };
   const schlicht = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').normalize('NFC');
   if (s.uebung === 'schreiben') {
@@ -1589,6 +1742,401 @@ function planPruefen(z0, plan, opt, heute, melde, wo, tief) {
     schreibenDoppelt: kern.filter((x, p) => p && x.uebung === 'schreiben' && kern[p - 1].uebung === 'schreiben').length };
 }
 
+/* ---------- Werkzeug für die Planer-Prüfungen beider Kurse ---------- */
+
+// Eine Uhr, die einmal vorging: Die Karten jenes Tages fallen nicht aus der Wiederholung. Zwölf Tage mit
+// den Lernzielen ziele, dann zwei Runden an einem Tag drei Jahre voraus; mindestens so viele Karten
+// tragen danach ein Datum aus der Zukunft, sonst prüfte der Test zu wenig
+function uhrGingVor(ziele, mindestens, melde) {
+  const soll = sollMit(melde);
+  const z = zMitZielen(ziele);
+  let heute = HEUTE;
+  const spielen = tag => {
+    const plan = Lernen.planen(z, tag, {});
+    if (plan.art !== 'leer') spiele(z, plan, tag, () => 'richtig');
+  };
+  for (let t = 0; t < 12; t++, heute = Lernen.tagPlus(heute, 1)) spielen(heute);
+  // Ein Tag mit einer Uhr, die drei Jahre vorgeht, dann stimmt sie wieder
+  const zukunft = Lernen.tagPlus(heute, 3 * 365);
+  spielen(zukunft);
+  spielen(zukunft);
+  const weit = Object.entries(z.karten).filter(([, k]) => k.faellig > Lernen.tagPlus(heute, 90)).map(([kid]) => kid);
+  if (weit.length < mindestens) melde('Uhr ging vor: nur ' + weit.length + ' Karten mit einem Datum aus der Zukunft, der Test prüft so wenig');
+  const vorher = kopie(z), n = Lernen.zahlen(z, heute);
+  soll('zahlen schreibt auch bei Daten aus der Zukunft nichts', z, vorher);
+  const plan = Lernen.planen(z, heute, {});
+  planPruefen(geklemmt(vorher, heute), plan, {}, heute, melde, 'Uhr ging vor', true);
+  soll('zahlen zählt wie planen', [n.faellig, n.morgen, n.neuFrei], [lage(vorher, heute).faellig.length, lage(vorher, heute).morgen, plan.neu.length]);
+  const zuweit = weit.filter(kid => {
+    const k = z.karten[kid];
+    return k.faellig > Lernen.tagPlus(heute, k.st === 5 ? 90 : 7) || k.auf > heute || k.ab > heute;
+  });
+  soll('Uhr ging vor: jede Karte ist nach der Pause ihrer Stufe wieder fällig', zuweit, []);
+  // Danach kommt jede dieser Karten wieder dran, spätestens nach der längsten Pause, die sie haben
+  // kann: reif und einmal bestätigt 45 Tage (an jenem Tag wurde sie bestätigt)
+  const dran = new Set();
+  for (let t = 0; t < 46; t++, heute = Lernen.tagPlus(heute, 1)) {
+    const p = Lernen.planen(z, heute, {});
+    for (const s of p.schritte) if (s.rolle === 'leit') dran.add(s.kid);
+    if (p.art !== 'leer') spiele(z, p, heute, () => 'richtig');
+  }
+  soll('Uhr ging vor: nach der Pause ihrer Stufe wiederholt', weit.filter(kid => !dran.has(kid)), []);
+}
+
+// Die Leiter beim Verbuchen (3.3) an einem Wort, das die erste neue Karte der Lernziele ziele ist:
+// Auf- und Abstieg, Fälligkeit, nur Checks und Leitaufgaben bewegen die Stufe, die Einführung, zuletzt,
+// und was keine Karte anlegt
+function buchungPruefen(livre, ziele, melde) {
+  const soll = sollMit(melde);
+  const leit = schritt(livre, 'schreiben', { rolle: 'leit' });
+  // [Stufe vorher, Ergebnis] → [Stufe, Tage bis fällig, rueck, fest]
+  const nach = (st, art, mehr) => {
+    const z = mitKarten(zMitZielen(ziele), { [livre.kid]: { st, ...mehr } });
+    const b = Lernen.verbuchen(z, leit, { art, fehler: [] }, HEUTE), k = z.karten[livre.kid];
+    if (b.vorher !== st || b.stufe !== k.st || b.auf !== (k.st > st) || b.ab !== (k.st < st) || b.reif !== (k.st === 5 && st < 5)) melde('verbuchen meldet die Stufe falsch: ' + JSON.stringify(b));
+    return [k.st, [1, 2, 4, 7, 21, 45, 90].find(n => Lernen.tagPlus(HEUTE, n) === k.faellig), k.rueck, k.fest, k.auf === HEUTE, k.ab === HEUTE];
+  };
+  soll('Leitaufgabe richtig: eine Stufe hinauf, fällig nach 2, 4, 7, 21 Tagen', [1, 2, 3, 4].map(st => nach(st, 'richtig')),
+    [[2, 2, false, 0, true, false], [3, 4, false, 0, true, false], [4, 7, false, 0, true, false], [5, 21, false, 0, true, false]]);
+  soll('reife Karte bestätigt: 45, dann 90 Tage', [nach(5, 'richtig'), nach(5, 'richtig', { fest: 1 }), nach(5, 'richtig', { fest: 2 })],
+    [[5, 45, false, 1, true, false], [5, 90, false, 2, true, false], [5, 90, false, 3, true, false]]);
+  soll('Leitaufgabe fast: Stufe bleibt, morgen wieder', [1, 3, 5].map(st => nach(st, 'fast')), [[1, 1, false, 0, false, false], [3, 1, false, 0, false, false], [5, 1, false, 0, false, false]]);
+  soll('Leitaufgabe falsch: 1 bleibt, 2 bleibt, 3 wird 2, 4 wird 3, 5 wird 3', [1, 2, 3, 4, 5].map(st => nach(st, 'falsch', { fest: st === 5 ? 2 : 0 })),
+    [[1, 1, true, 0, false, true], [2, 1, true, 0, false, true], [2, 1, true, 0, false, true], [3, 1, true, 0, false, true], [3, 1, true, 0, false, true]]);
+  soll('nach einem Fehler ist der nächste Aufstieg schon nach einem Tag fällig, der übernächste wieder normal',
+    [nach(2, 'richtig', { rueck: true }), nach(4, 'richtig', { rueck: true }), nach(3, 'richtig', { rueck: false })],
+    [[3, 1, false, 0, true, false], [5, 1, false, 0, true, false], [4, 7, false, 0, true, false]]);
+  soll('höchstens ein Aufstieg am Tag', nach(2, 'richtig', { auf: HEUTE }), [2, 1, false, 0, true, false]);
+  soll('höchstens ein Abstieg am Tag', nach(3, 'falsch', { ab: HEUTE }), [3, 1, true, 0, false, true]);
+  soll('Leitaufgabe einer Karte, die nicht fällig ist, bewegt nichts', nach(3, 'richtig', { faellig: Lernen.tagPlus(HEUTE, 4) }).slice(0, 2), [3, 4]);
+  // Nebenaufgabe, Füllaufgabe, Wiederholung: nur Zähler
+  for (const rolle of ['neben', 'fuell', 'wdh']) {
+    for (const art of ['richtig', 'fast', 'falsch']) {
+      const z = mitKarten(zMitZielen(ziele), { [livre.kid]: { st: 3, zuletzt: 'rr' } });
+      const vorher = kopie(z.karten[livre.kid]);
+      const b = Lernen.verbuchen(z, { ...leit, rolle }, { art, fehler: [] }, HEUTE), k = z.karten[livre.kid];
+      soll(rolle + ' ' + art + ' bewegt keine Stufe', [b.auf, b.ab, { ...k, gesehen: 0, richtig: 0, falsch: 0 }], [false, false, { ...vorher, gesehen: 0, richtig: 0, falsch: 0 }]);
+      soll(rolle + ' ' + art + ' zählt', [k.gesehen - vorher.gesehen, k.richtig - vorher.richtig, k.falsch - vorher.falsch], [1, art === 'richtig' ? 1 : 0, art === 'falsch' ? 1 : 0]);
+    }
+  }
+  // Einführung: kennen legt die Karte an, die Checks heben sie
+  const checks = (a, b) => {
+    const z = zMitZielen(ziele);
+    const plan = Lernen.planen(z, HEUTE, {});
+    const eigene = plan.schritte.filter(s => s.kid === livre.kid);
+    Lernen.verbuchen(z, eigene[0], { art: 'ohne' }, HEUTE);
+    const nachKennen = kopie(z.karten[livre.kid]);
+    Lernen.verbuchen(z, eigene[1], { art: a }, HEUTE);
+    const nachA = z.karten[livre.kid].st;
+    // Nach einem verpassten ersten Check zeigt franz.js die Karte noch einmal: zählt nicht wieder
+    Lernen.verbuchen(z, eigene[0], { art: 'ohne' }, HEUTE);
+    Lernen.verbuchen(z, eigene[2], { art: b }, HEUTE);
+    if (b === 'falsch') Lernen.verbuchen(z, Lernen.wiederholung(eigene[2]), { art: 'richtig' }, HEUTE);
+    const k = z.karten[livre.kid];
+    return [nachKennen.gesehen, nachKennen.st, nachA, k.st, k.faellig === (k.st ? Lernen.tagPlus(HEUTE, 1) : ''), k.zuletzt, z.tag.neu, k.auf === (k.st ? HEUTE : '')];
+  };
+  soll('beide Checks richtig', checks('richtig', 'richtig'), [1, 0, 1, 1, true, 'rr', 1, true]);
+  soll('erster Check richtig, zweiter falsch: Stufe 1 bleibt', checks('richtig', 'falsch'), [1, 0, 1, 1, true, 'rf', 1, true]);
+  soll('erster Check falsch, zweiter richtig: Stufe 1', checks('falsch', 'richtig'), [1, 0, 0, 1, true, 'fr', 1, true]);
+  soll('beide Checks falsch: Stufe 0, die Einführung bleibt offen', checks('falsch', 'falsch'), [1, 0, 0, 0, true, 'ff', 1, true]);
+  // Wer am selben Tag durch einen Check gestiegen ist, steigt nicht gleich noch einmal
+  const z = mitKarten(zMitZielen(ziele), { [livre.kid]: { st: 1, auf: HEUTE, faellig: HEUTE } });
+  Lernen.verbuchen(z, schritt(livre, 'hoeren', { rolle: 'leit' }), { art: 'richtig' }, HEUTE);
+  soll('kein zweiter Aufstieg am Tag des Checks', z.karten[livre.kid].st, 1);
+  // zuletzt: höchstens fünf Zeichen, nur Checks und Leitaufgaben
+  const y = mitKarten(zMitZielen(ziele), { [livre.kid]: { st: 2, zuletzt: 'rrafr' } });
+  Lernen.verbuchen(y, { ...leit, rolle: 'neben' }, { art: 'falsch' }, HEUTE);
+  Lernen.verbuchen(y, leit, { art: 'fast' }, HEUTE);
+  soll('zuletzt', y.karten[livre.kid].zuletzt, 'rafra');
+  // Nichts ausser kennen legt eine Karte an, die es noch nicht gibt … ausser sie wird wirklich geübt
+  const x = zMitZielen(ziele);
+  Lernen.verbuchen(x, schritt(livre, 'echo', { rolle: 'echo' }), { art: 'ohne' }, HEUTE);
+  Lernen.verbuchen(x, { uebung: 'paare', rolle: 'paare', kids: [livre.kid] }, { art: 'ohne', fehlpaare: 1 }, HEUTE);
+  Lernen.verbuchen(x, schritt(livre, 'kennen', { rolle: 'kennen', kid: 'gibt es nicht' }), { art: 'ohne' }, HEUTE);
+  Lernen.zahlen(x, HEUTE);
+  Lernen.aufgabe(schritt(livre, 'legen'), x);
+  soll('echo, Finale, zahlen und aufgabe legen keine Karte an', Object.keys(x.karten), []);
+  soll('verbuchen ohne Zustand oder Schritt wirft nicht', [Lernen.verbuchen(null, leit, { art: 'richtig' }, HEUTE).stufe, Lernen.verbuchen(x, null, null, HEUTE).stufe,
+    Lernen.verbuchen(x, leit, null, HEUTE).stufe, Lernen.verbuchen({}, schritt(livre, 'kennen', { rolle: 'kennen' }), undefined, HEUTE).stufe], [0, 0, 0, 0]);
+}
+
+// Teil und Form drehen nach jeder gelungenen Leitaufgabe weiter: Was die Leiter einer Karte der Reihe
+// nach fragt, mal Aufstiege lang
+function drehen(id, mal) {
+  const e = E(id), w = mitKarten(zMitZielen(V.LERNZIEL_REIHE), { [e.kid]: { st: 1 } }), aus = [];
+  let tag = HEUTE;
+  for (let i = 0; i < mal; i++) {
+    const k = w.karten[e.kid], l = Lernen.leitaufgabe(e, k, true);
+    aus.push(l.uebung + ' ' + e.teile[l.teil].fr[l.form]);
+    Lernen.verbuchen(w, schritt(e, l.uebung, { ...l, rolle: 'leit' }), { art: 'richtig' }, tag);
+    tag = w.karten[e.kid].faellig;
+  }
+  return aus;
+}
+
+// Eine Schwäche entsteht nur, wo ihre Übung sie wieder abbauen kann: Jede Karte bekommt beim Legen und
+// Schreiben die Fehler genus und akzent, und genau dort, wo es Artikel- und Akzent-Übung gibt, zählen sie
+function schwaecheNurMitUebung(ziele, melde) {
+  for (const e of KARTEN) {
+    const w = mitKarten(zMitZielen(ziele), { [e.kid]: { st: 3 } });
+    for (const uebung of ['legen', 'schreiben']) Lernen.verbuchen(w, schritt(e, uebung, { rolle: 'neben' }), { art: 'fast', fehler: ['genus', 'akzent'] }, HEUTE);
+    const sw = w.karten[e.kid].schwach;
+    if ((sw.genus > 0) !== Lernen.kann('artikel', e, 0, 0, true)) melde(e.id + ': Schwäche beim Geschlecht ' + sw.genus + ', Artikel-Übung ' + Lernen.kann('artikel', e, 0, 0, true));
+    if ((sw.akzent > 0) !== Lernen.kann('akzent', e, 0, 0, true)) melde(e.id + ': Schwäche bei den Akzenten ' + sw.akzent + ', Akzent-Übung ' + Lernen.kann('akzent', e, 0, 0, true));
+  }
+}
+
+// Wie oft eine weiche Regel fehlt, in Plänen ab vier Karten, getrennt nach Runde und freiem Üben.
+// Dass sie nur fehlt, wo es nicht anders geht, hat planPruefen schon für jeden Plan nachgewiesen.
+// zaehle(r, frei) nimmt, was planPruefen über einen Plan sagt.
+function weichNeu() {
+  const weich = { runde: { plaene: 0, abstand: 0, spaet: 0, wahl: 0, schreiben: 0, zwei: 0, vermeidbar: 0, formen: new Set(), eng: new Set() },
+    frei: { plaene: 0, abstand: 0, spaet: 0, wahl: 0, schreiben: 0, zwei: 0, vermeidbar: 0, formen: new Set(), eng: new Set() } };
+  const zaehle = (r, frei) => {
+    if (!r || r.karten < 4) return;
+    const w = weich[frei ? 'frei' : 'runde'];
+    w.plaene++;
+    if (r.abstand < K.ABSTAND) {
+      w.abstand++;
+      w.formen.add(r.n + ' Schritte mit ' + r.neu + ' neuen');
+      // Rückt der erste Check nicht an sein Kennenlernen heran, fehlt der Abstand aus einem anderen Grund
+      if (!r.eng.has('kennen → Check A')) w.eng.add(r.n + ' Schritte, eng bei ' + [...r.eng].join(', '));
+    }
+    if (!r.spaet) w.spaet++;
+    if (!r.wahl) w.wahl++;
+    if (!r.ohneSchreiben) w.schreiben++;
+    if (r.zwei) w.zwei++;
+    if (r.vermeidbar === true) w.vermeidbar++;
+  };
+  return { weich, zaehle };
+}
+
+// 60 Tage mit Antworten, wie sie kommen (der schnellste Weg steht in Prüfung 7). Je Lauf [saat, ziele,
+// koennen, mitTon]: meist eine Runde am Tag, manchmal keine oder bis zu drei, dazu freies Üben; jeder
+// Plan geht durch planPruefen, jede Antwort durch die Regeln des Verbuchens. nachLauf(saat, z) sieht den
+// Stand nach den 60 Tagen. Gibt die Zahlen für den Hinweis zurück.
+function sechzigTage(laeufe, zaehle, melde, nachLauf) {
+  let groessteRunde = 0, meisteRunden = 0, tageGespielt = 0, rundenGespielt = 0, schwachGewachsen = 0;
+  for (const [saat, ziele, koennen, mitTon] of laeufe) {
+    const rnd = zufallAb(saat * 97);
+    Lernen.zufall = zufallAb(saat * 131);
+    const z = zMitZielen(ziele, { unite: ziele[0].slice(0, 2) });
+    let heute = HEUTE;
+    const hoechste = new Map();
+    for (let t = 0; t < 60; t++) {
+      // Meist eine Runde am Tag, manchmal zwei oder drei, manchmal keine
+      const runden = rnd() < 0.08 ? 0 : rnd() < 0.7 ? 1 : rnd() < 0.7 ? 2 : 3;
+      const jeTag = new Map();
+      for (let r = 0; r < runden; r++) {
+        const vorher = kopie(z);
+        const frei = rnd() < 0.12, opt = { modus: frei ? 'frei' : 'runde', mitTon, gruppe: frei && rnd() < 0.5 ? ziele[Math.floor(rnd() * ziele.length)] : undefined };
+        const plan = Lernen.planen(z, heute, opt);
+        vorher.tag = kopie(z.tag);
+        zaehle(planPruefen(vorher, plan, opt, heute, melde, 'Tag ' + t + ' (Saat ' + saat + ')', true), frei);
+        if (plan.art === 'leer') break;
+        rundenGespielt++;
+        groessteRunde = Math.max(groessteRunde, plan.schritte.filter(beurteilt).length);
+        spiele(z, plan, heute, () => (rnd() < koennen ? 'richtig' : rnd() < 0.4 ? 'fast' : 'falsch'), (s, art, b, k0) => {
+          if (!s.kid) return;
+          const k = Lernen.zustand(z, s.kid), wo = 'Tag ' + t + ' (Saat ' + saat + ') ' + kurz(s) + ' ' + art;
+          // Höchstens ein Aufstieg und ein Abstieg je Karte und Tag
+          const heuteSchon = jeTag.get(s.kid) || { auf: 0, ab: 0 };
+          jeTag.set(s.kid, { auf: heuteSchon.auf + (b.auf ? 1 : 0), ab: heuteSchon.ab + (b.ab ? 1 : 0) });
+          if (jeTag.get(s.kid).auf > 1 || jeTag.get(s.kid).ab > 1) melde(wo + ': zweiter Auf- oder Abstieg am selben Tag');
+          if (Math.abs(k.st - k0.st) > (k0.st === 5 ? 2 : 1)) melde(wo + ': Stufe springt von ' + k0.st + ' auf ' + k.st);
+          if (k.st !== k0.st && !(s.rolle === 'check' || s.rolle === 'leit')) melde(wo + ': bewegt die Stufe');
+          if (opt.modus === 'frei' && k.st !== k0.st && !(s.rolle === 'check' && k0.st === 0 && k.st === 1)) melde(wo + ': freies Üben bewegt die Stufe');
+          // Wer einmal gelegt hat, fällt nie mehr auf das blosse Zuhören zurück
+          if (hoechste.get(s.kid) >= 2 && (k.st < 2 || (s.rolle === 'leit' && s.uebung === 'hoeren'))) melde(wo + ': fällt unter Stufe 2 zurück');
+          hoechste.set(s.kid, Math.max(hoechste.get(s.kid) || 0, k.st));
+          if (k.st >= 1 && !(k.faellig > heute) && k.st !== k0.st) melde(wo + ': nach dem Verbuchen noch heute fällig');
+          // Eine Schwäche, die keine Übung abbauen kann, bliebe für immer stehen («wackelig» im Album)
+          const e = KARTE[s.kid];
+          if (k.schwach.genus > 0 && !Lernen.kann('artikel', e, 0, 0, true)) melde(wo + ': Schwäche beim Geschlecht ohne Artikel-Übung');
+          if (k.schwach.akzent > 0 && !Lernen.kann('akzent', e, 0, 0, true)) melde(wo + ': Schwäche bei den Akzenten ohne Akzent-Übung');
+          if (k.schwach.genus > k0.schwach.genus || k.schwach.akzent > k0.schwach.akzent) schwachGewachsen++;
+        });
+        if (opt.modus === 'frei' && z.tag.neu !== vorher.tag.neu) melde('Tag ' + t + ': freies Üben verbraucht das Kontingent');
+        if (z.tag.neu > z.neuProTag) melde('Tag ' + t + ': ' + z.tag.neu + ' neue Karten an einem Tag');
+        // Was gespeichert würde, liest pruefen unverändert wieder ein
+        if (!gleich(Lernen.pruefen(kopie(z)), z)) melde('Tag ' + t + ' (Saat ' + saat + '): pruefen verändert einen gespielten Stand');
+      }
+      // Runde um Runde am selben Tag, alles richtig: Nach höchstens zehn Runden ist Schluss
+      if (t % 6 === 5) {
+        const y = kopie(z);
+        let n = 0;
+        for (; n <= 12; n++) {
+          const plan = Lernen.planen(y, heute, { mitTon });
+          if (plan.art === 'leer') break;
+          spiele(y, plan, heute, () => 'richtig');
+        }
+        meisteRunden = Math.max(meisteRunden, n);
+        if (n > 10) melde('Tag ' + t + ' (Saat ' + saat + '): nach zehn Runden mit lauter richtigen Antworten immer noch nicht leer');
+      }
+      if (runden) tageGespielt++;
+      heute = Lernen.tagPlus(heute, 1);
+    }
+    if (nachLauf) nachLauf(saat, z);
+  }
+  return { groessteRunde, meisteRunden, tageGespielt, rundenGespielt, schwachGewachsen };
+}
+
+// Jedes Lernziel allein: Tägliche Runden lernen jede Karte kennen, auch wo es nur Sätze gibt, und das
+// in höchstens n/2 + 12 Tagen
+function jedesLernzielAllein(zaehle, melde) {
+  for (const g of V.LERNZIEL_REIHE) {
+    Lernen.zufall = zufallAb(600 + V.LERNZIEL_REIHE.indexOf(g));
+    const z = zMitZielen([g], { unite: g.slice(0, 2) });
+    const kids = [...new Set(V.LERNZIELE[g].eintraege.map(e => e.kid))];
+    let heute = HEUTE, tage = 0;
+    for (; tage < 60 && kids.some(kid => !(Lernen.zustand(z, kid).st >= 1)); tage++) {
+      const vorher = kopie(z), plan = Lernen.planen(z, heute, {});
+      vorher.tag = kopie(z.tag);
+      zaehle(planPruefen(vorher, plan, {}, heute, melde, 'Lernziel ' + g + ' allein, Tag ' + tage, tage < 3), false);
+      const nurSaetze = V.LERNZIELE[g].eintraege.every(e => e.art === 'satz');
+      if (!tage && nurSaetze && plan.schritte.filter(s => s.neu).length !== Math.min(2, kids.length)) melde('Lernziel ' + g + ': nur Sätze, aber nicht zwei in der ersten Runde');
+      if (plan.art !== 'leer') spiele(z, plan, heute, () => 'richtig');
+      heute = Lernen.tagPlus(heute, 1);
+    }
+    if (kids.some(kid => !(Lernen.zustand(z, kid).st >= 1))) melde('Lernziel ' + g + ' allein: nach 60 Tagen nicht jede Karte kennengelernt');
+    if (tage > Math.ceil(kids.length / 2) + 12) melde('Lernziel ' + g + ' allein: ' + tage + ' Tage für ' + kids.length + ' Karten');
+  }
+}
+
+// Wann der erste Satz kommt, eine Runde am Tag mit den Lernzielen ziele und lauter richtigen Antworten:
+// [kid, ob da schon SATZ_AB Karten bekannt waren, wie viele Sätze jene Runde einführt], null ohne Satz
+function ersterSatz(ziele) {
+  Lernen.zufall = zufallAb(66);
+  const z = zMitZielen(ziele);
+  let heute = HEUTE, erster = null;
+  for (let t = 0; t < 8 && !erster; t++) {
+    const gekannt = Object.values(z.karten).filter(k => k.st >= 1).length;
+    const plan = Lernen.planen(z, heute, {});
+    const satz = plan.schritte.find(s => s.neu && KARTE[s.kid].art === 'satz');
+    if (satz) erster = [satz.kid, gekannt >= K.SATZ_AB, plan.schritte.filter(s => s.neu && KARTE[s.kid].art === 'satz').length];
+    spiele(z, plan, heute, () => 'richtig');
+    heute = Lernen.tagPlus(heute, 1);
+  }
+  return erster;
+}
+
+// zahl beliebige Stände: planen kehrt immer zurück und ändert nur den Tag, und jeder Plan hält die
+// Regeln (die ersten tief Stände mit jeder Aufgabe gebaut). kleine: die kleinen Lernziele, aus denen die
+// Auswahl oft besteht (zufallsStand). Gibt zurück, wie oft welche Art Plan kam und wie oft er klein war.
+function beliebigeStaende(zahl, tief, kleine, zaehle, melde) {
+  const rnd = zufallAb(4711);
+  Lernen.zufall = zufallAb(4712);
+  const arten = { runde: 0, frei: 0, leer: 0 };
+  let klein = 0;
+  for (let lauf = 0; lauf < zahl; lauf++) {
+    const z = zufallsStand(rnd, HEUTE, kleine);
+    const frei = lauf % 4 === 3;
+    const opt = { modus: frei ? 'frei' : 'runde', mitTon: rnd() < 0.8, gruppe: frei && rnd() < 0.6 ? V.LERNZIEL_REIHE[Math.floor(rnd() * V.LERNZIEL_REIHE.length)] : undefined };
+    // planen stellt nur den Tag um und holt Daten aus der Zukunft zurück: Alles andere steht danach da wie zuvor
+    const tag = z.tag.datum === HEUTE ? kopie(z.tag) : { datum: HEUTE, neu: 0, runden: 0, frei: [] };
+    const vorher = lauf < tief ? JSON.stringify({ ...geklemmt(z, HEUTE), tag }) : null;
+    let plan;
+    try {
+      plan = Lernen.planen(z, HEUTE, opt);
+    } catch (err) {
+      melde('Stand ' + lauf + ': planen wirft: ' + err.message);
+      continue;
+    }
+    if (!plan || !['runde', 'frei', 'leer'].includes(plan.art)) {
+      melde('Stand ' + lauf + ': kein Plan');
+      continue;
+    }
+    arten[plan.art]++;
+    if (!gleich(z.tag, tag) || (vorher && JSON.stringify(z) !== vorher)) melde('Stand ' + lauf + ': planen verändert den Zustand');
+    const r = planPruefen(z, plan, opt, HEUTE, melde, 'Stand ' + lauf + (frei ? ' frei' + (opt.gruppe ? ' ' + opt.gruppe : '') : ''), lauf < tief);
+    zaehle(r, frei);
+    if (r && r.karten <= 2) klein++;
+  }
+  return { arten, klein };
+}
+
+// Wie oft eine weiche Regel fehlen darf. grenzen: je [art, vorher, grenze], der Anteil der Pläne ab vier
+// Karten mit zweimal schreiben hintereinander höchstens grenze (vorher: gemessen vor der Nachbesserung in
+// reihen(), null wo es kein Vorher gibt). In einer Runde rückt nur der erste Check an sein Kennenlernen
+// heran, und nur, weil eine Auswahl eröffnen muss (dass es ohne das nicht ging, hat planPruefen für jeden
+// Plan gezeigt). Im freien Üben fehlt der volle Abstand nur in den Formen aus erlaubt.
+function weichGrenzen(weich, grenzen, erlaubt, melde) {
+  for (const [art, vorher, grenze] of grenzen) {
+    const w = weich[art], anteil = w.zwei / Math.max(1, w.plaene);
+    if (anteil > grenze) melde((art === 'runde' ? 'Runden' : 'freies Üben') + ': zweimal schreiben hintereinander in ' + (100 * anteil).toFixed(1)
+      + ' % der Pläne ab vier Karten' + (vorher === null ? '' : ', vorher ' + (100 * vorher).toFixed(1) + ' %') + ', erlaubt höchstens ' + (100 * grenze).toFixed(0) + ' %');
+  }
+  if (weich.runde.eng.size) melde('Runden: voller Abstand fehlt auch in ' + [...weich.runde.eng].join('; '));
+  if ([...weich.frei.formen].some(f => !erlaubt.includes(f))) melde('freies Üben: voller Abstand fehlt auch in ' + [...weich.frei.formen].join(', '));
+}
+
+// Was der Hinweis über die weichen Regeln sagt, je für Runden und freies Üben
+function weichHinweis(weich) {
+  const hinweis = [];
+  for (const art of ['runde', 'frei']) {
+    const w = weich[art];
+    hinweis.push((art === 'runde' ? 'Runden' : 'freies Üben') + ' ab vier Karten: ' + w.plaene + ', davon ohne vollen Abstand ' + w.abstand + ', zweiter Check zu früh ' + w.spaet
+      + ', Auftakt ohne Auswahl ' + w.wahl + ' (davon mit Legen oder Schreiben ' + w.schreiben + ')' + ', zweimal schreiben hintereinander ' + w.zwei + ' (' + (100 * w.zwei / Math.max(1, w.plaene)).toFixed(1) + ' %, vermeidbar ' + w.vermeidbar + ')');
+  }
+  hinweis.push('ohne vollen Abstand nur Runden, deren erster Check näher am Kennenlernen steht, und im freien Üben ' + ([...weich.frei.formen].sort().join(', ') || 'nie'));
+  return hinweis;
+}
+
+// «Für den Test üben» (3.4) mit dem Lernziel g aus lauter Wörtern, jedes schon kennengelernt: Runde um
+// Runde durch das ganze Lernziel, keine Karte zweimal, bevor jede dran war, jedes Wort geschrieben (davor
+// höchstens gelegt), und nichts bewegt sich. nachDrei: so viele verschiedene Karten mindestens nach drei
+// Runden. Gibt zurück, wie viele Karten je Runde dran waren.
+function fuerDenTest(g, nachDrei, melde) {
+  const soll = sollMit(melde);
+  Lernen.zufall = zufallAb(88);
+  const rnd = zufallAb(89);
+  const lz = V.LERNZIELE[g], kids = lz.eintraege.map(e => e.kid);
+  const z = zMitZielen([g], { unite: g.slice(0, 2) });
+  for (const kid of kids) z.karten[kid] = stand({ st: 1 + Math.floor(rnd() * 5), gesehen: 4, richtig: 3, faellig: Lernen.tagPlus(HEUTE, Math.floor(rnd() * 9) - 2) });
+  const vorher = kopie(z), dran = new Set(), jeRunde = [];
+  for (let runde = 0; runde < 5; runde++) {
+    const stand0 = kopie(z);
+    const plan = Lernen.planen(z, HEUTE, { modus: 'frei', gruppe: g });
+    stand0.tag = kopie(z.tag);
+    planPruefen(stand0, plan, { modus: 'frei', gruppe: g }, HEUTE, melde, '«Für den Test üben», Runde ' + runde, true);
+    const karten = [...new Set(plan.schritte.map(s => s.kid))];
+    const neu = karten.filter(kid => !dran.has(kid));
+    // Keine Karte kommt ein zweites Mal, bevor jede einmal dran war
+    if (neu.length < karten.length && neu.length < kids.length - dran.size) melde('«Für den Test üben», Runde ' + runde + ': wiederholt Karten, obwohl noch welche warten');
+    for (const s of plan.schritte) {
+      const e = KARTE[s.kid], k = Lernen.zustand(z, s.kid);
+      // Der Test verlangt freies Schreiben: Jedes Wort wird geschrieben, davor höchstens gelegt
+      if (s.rolle !== 'fuell' || s.vorgabe !== 'de' || !(s.uebung === 'schreiben' || (s.uebung === 'legen' && k.st < 3))) melde('«Für den Test üben»: ' + kurz(s));
+      const geschrieben = plan.schritte.some(x => x.kid === s.kid && x.uebung === 'schreiben' && x.teil === s.teil && x.form === s.form);
+      if (s.uebung === 'legen' && !geschrieben) melde('«Für den Test üben»: legen ohne schreiben bei ' + e.kid);
+    }
+    for (const kid of karten) if (!plan.schritte.some(s => s.kid === kid && s.uebung === 'schreiben')) melde('«Für den Test üben»: «' + kid + '» wird nicht geschrieben');
+    jeRunde.push(karten.length);
+    for (const kid of karten) dran.add(kid);
+    spiele(z, plan, HEUTE, () => (rnd() < 0.6 ? 'richtig' : rnd() < 0.5 ? 'fast' : 'falsch'));
+    if (runde === 2 && dran.size < nachDrei) melde('«Für den Test üben»: nach drei Runden erst ' + dran.size + ' verschiedene Karten');
+  }
+  soll('«Für den Test üben» erreicht alle ' + kids.length + ' Karten', dran.size, kids.length);
+  const fest = karten => kids.map(kid => [karten[kid].st, karten[kid].faellig, karten[kid].auf, karten[kid].ab, karten[kid].zuletzt, karten[kid].teil, karten[kid].form, karten[kid].rueck]);
+  soll('freies Üben bewegt keine Stufe, keine Fälligkeit und kein Kontingent', [fest(z.karten), z.tag.neu, z.zaehler.runden, z.zaehler.perfekt, z.tag.runden], [fest(geklemmt(vorher, HEUTE).karten), 0, 0, 0, 0]);
+  soll('heute frei geübt', z.tag.frei.length, kids.length);
+  // Am nächsten Tag beginnt die Runde durch das Lernziel von vorn
+  Lernen.planen(z, Lernen.tagPlus(HEUTE, 1), { modus: 'frei', gruppe: g });
+  soll('am nächsten Tag ist die Liste leer', z.tag.frei, []);
+  return jeRunde;
+}
+
+// Welche Formen einer Karte das freie Üben über 40 Runden fragt (frei: «Frei üben», sonst «Für den Test
+// üben» mit dem Lernziel ziel). Im freien Üben dreht keine Karte weiter, trotzdem kommt jede dran.
+function gefragteFormen(ziel, id, frei) {
+  const e = E(id), u = mitKarten(zMitZielen([ziel]), { [e.kid]: { st: 4, falsch: 9 } }), formen = new Set();
+  for (let mal = 0; mal < 40; mal++) {
+    const s = Lernen.planen(u, HEUTE, { modus: 'frei', gruppe: frei ? undefined : ziel }).schritte.find(x => x.kid === e.kid && !x.begleiter);
+    formen.add(e.teile[s.teil].fr[s.form]);
+  }
+  return [...formen].sort();
+}
+
 /* ---------- 6 · Planer ---------- */
 
 pruefung(6, 'Planer: 60 Tage gespielt und 10 000 beliebige Stände; Budget, leere Runden, Reihenfolge, Sätze, Leiter, freies Üben', melde => {
@@ -1728,40 +2276,7 @@ pruefung(6, 'Planer: 60 Tage gespielt und 10 000 beliebige Stände; Budget, leer
   }
 
   /* Eine Uhr, die einmal vorging: Die Karten jenes Tages fallen nicht aus der Wiederholung */
-  {
-    const z = zMitZielen(['u1-S', 'u1-2']);
-    let heute = HEUTE;
-    const spielen = tag => {
-      const plan = Lernen.planen(z, tag, {});
-      if (plan.art !== 'leer') spiele(z, plan, tag, () => 'richtig');
-    };
-    for (let t = 0; t < 12; t++, heute = Lernen.tagPlus(heute, 1)) spielen(heute);
-    // Ein Tag mit einer Uhr, die drei Jahre vorgeht, dann stimmt sie wieder
-    const zukunft = Lernen.tagPlus(heute, 3 * 365);
-    spielen(zukunft);
-    spielen(zukunft);
-    const weit = Object.entries(z.karten).filter(([, k]) => k.faellig > Lernen.tagPlus(heute, 90)).map(([kid]) => kid);
-    if (weit.length < 10) melde('Uhr ging vor: nur ' + weit.length + ' Karten mit einem Datum aus der Zukunft, der Test prüft so wenig');
-    const vorher = kopie(z), n = Lernen.zahlen(z, heute);
-    soll('zahlen schreibt auch bei Daten aus der Zukunft nichts', z, vorher);
-    const plan = Lernen.planen(z, heute, {});
-    planPruefen(geklemmt(vorher, heute), plan, {}, heute, melde, 'Uhr ging vor', true);
-    soll('zahlen zählt wie planen', [n.faellig, n.morgen, n.neuFrei], [lage(vorher, heute).faellig.length, lage(vorher, heute).morgen, plan.neu.length]);
-    const zuweit = weit.filter(kid => {
-      const k = z.karten[kid];
-      return k.faellig > Lernen.tagPlus(heute, k.st === 5 ? 90 : 7) || k.auf > heute || k.ab > heute;
-    });
-    soll('Uhr ging vor: jede Karte ist nach der Pause ihrer Stufe wieder fällig', zuweit, []);
-    // Danach kommt jede dieser Karten wieder dran, spätestens nach der längsten Pause, die sie haben
-    // kann: reif und einmal bestätigt 45 Tage (an jenem Tag wurde sie bestätigt)
-    const dran = new Set();
-    for (let t = 0; t < 46; t++, heute = Lernen.tagPlus(heute, 1)) {
-      const p = Lernen.planen(z, heute, {});
-      for (const s of p.schritte) if (s.rolle === 'leit') dran.add(s.kid);
-      if (p.art !== 'leer') spiele(z, p, heute, () => 'richtig');
-    }
-    soll('Uhr ging vor: nach der Pause ihrer Stufe wiederholt', weit.filter(kid => !dran.has(kid)), []);
-  }
+  uhrGingVor(['u1-S', 'u1-2'], 10, melde);
 
   /* Leere Runden und das nächste Lernziel (3.4, Schritt 9; 3.9) */
   {
@@ -1795,89 +2310,10 @@ pruefung(6, 'Planer: 60 Tage gespielt und 10 000 beliebige Stände; Budget, leer
   /* Die Leiter beim Verbuchen (3.3) */
   {
     const livre = E('u1|le livre');
-    const leit = schritt(livre, 'schreiben', { rolle: 'leit' });
-    // [Stufe vorher, Ergebnis] → [Stufe, Tage bis fällig, rueck, fest]
-    const nach = (st, art, mehr) => {
-      const z = mitKarten(zMitZielen(U1), { [livre.kid]: { st, ...mehr } });
-      const b = Lernen.verbuchen(z, leit, { art, fehler: [] }, HEUTE), k = z.karten[livre.kid];
-      if (b.vorher !== st || b.stufe !== k.st || b.auf !== (k.st > st) || b.ab !== (k.st < st) || b.reif !== (k.st === 5 && st < 5)) melde('verbuchen meldet die Stufe falsch: ' + JSON.stringify(b));
-      return [k.st, [1, 2, 4, 7, 21, 45, 90].find(n => Lernen.tagPlus(HEUTE, n) === k.faellig), k.rueck, k.fest, k.auf === HEUTE, k.ab === HEUTE];
-    };
-    soll('Leitaufgabe richtig: eine Stufe hinauf, fällig nach 2, 4, 7, 21 Tagen', [1, 2, 3, 4].map(st => nach(st, 'richtig')),
-      [[2, 2, false, 0, true, false], [3, 4, false, 0, true, false], [4, 7, false, 0, true, false], [5, 21, false, 0, true, false]]);
-    soll('reife Karte bestätigt: 45, dann 90 Tage', [nach(5, 'richtig'), nach(5, 'richtig', { fest: 1 }), nach(5, 'richtig', { fest: 2 })],
-      [[5, 45, false, 1, true, false], [5, 90, false, 2, true, false], [5, 90, false, 3, true, false]]);
-    soll('Leitaufgabe fast: Stufe bleibt, morgen wieder', [1, 3, 5].map(st => nach(st, 'fast')), [[1, 1, false, 0, false, false], [3, 1, false, 0, false, false], [5, 1, false, 0, false, false]]);
-    soll('Leitaufgabe falsch: 1 bleibt, 2 bleibt, 3 wird 2, 4 wird 3, 5 wird 3', [1, 2, 3, 4, 5].map(st => nach(st, 'falsch', { fest: st === 5 ? 2 : 0 })),
-      [[1, 1, true, 0, false, true], [2, 1, true, 0, false, true], [2, 1, true, 0, false, true], [3, 1, true, 0, false, true], [3, 1, true, 0, false, true]]);
-    soll('nach einem Fehler ist der nächste Aufstieg schon nach einem Tag fällig, der übernächste wieder normal',
-      [nach(2, 'richtig', { rueck: true }), nach(4, 'richtig', { rueck: true }), nach(3, 'richtig', { rueck: false })],
-      [[3, 1, false, 0, true, false], [5, 1, false, 0, true, false], [4, 7, false, 0, true, false]]);
-    soll('höchstens ein Aufstieg am Tag', nach(2, 'richtig', { auf: HEUTE }), [2, 1, false, 0, true, false]);
-    soll('höchstens ein Abstieg am Tag', nach(3, 'falsch', { ab: HEUTE }), [3, 1, true, 0, false, true]);
-    soll('Leitaufgabe einer Karte, die nicht fällig ist, bewegt nichts', nach(3, 'richtig', { faellig: Lernen.tagPlus(HEUTE, 4) }).slice(0, 2), [3, 4]);
-    // Nebenaufgabe, Füllaufgabe, Wiederholung: nur Zähler
-    for (const rolle of ['neben', 'fuell', 'wdh']) {
-      for (const art of ['richtig', 'fast', 'falsch']) {
-        const z = mitKarten(zMitZielen(U1), { [livre.kid]: { st: 3, zuletzt: 'rr' } });
-        const vorher = kopie(z.karten[livre.kid]);
-        const b = Lernen.verbuchen(z, { ...leit, rolle }, { art, fehler: [] }, HEUTE), k = z.karten[livre.kid];
-        soll(rolle + ' ' + art + ' bewegt keine Stufe', [b.auf, b.ab, { ...k, gesehen: 0, richtig: 0, falsch: 0 }], [false, false, { ...vorher, gesehen: 0, richtig: 0, falsch: 0 }]);
-        soll(rolle + ' ' + art + ' zählt', [k.gesehen - vorher.gesehen, k.richtig - vorher.richtig, k.falsch - vorher.falsch], [1, art === 'richtig' ? 1 : 0, art === 'falsch' ? 1 : 0]);
-      }
-    }
-    // Einführung: kennen legt die Karte an, die Checks heben sie
-    const checks = (a, b) => {
-      const z = zMitZielen(U1);
-      const plan = Lernen.planen(z, HEUTE, {});
-      const eigene = plan.schritte.filter(s => s.kid === livre.kid);
-      Lernen.verbuchen(z, eigene[0], { art: 'ohne' }, HEUTE);
-      const nachKennen = kopie(z.karten[livre.kid]);
-      Lernen.verbuchen(z, eigene[1], { art: a }, HEUTE);
-      const nachA = z.karten[livre.kid].st;
-      // Nach einem verpassten ersten Check zeigt franz.js die Karte noch einmal: zählt nicht wieder
-      Lernen.verbuchen(z, eigene[0], { art: 'ohne' }, HEUTE);
-      Lernen.verbuchen(z, eigene[2], { art: b }, HEUTE);
-      if (b === 'falsch') Lernen.verbuchen(z, Lernen.wiederholung(eigene[2]), { art: 'richtig' }, HEUTE);
-      const k = z.karten[livre.kid];
-      return [nachKennen.gesehen, nachKennen.st, nachA, k.st, k.faellig === (k.st ? Lernen.tagPlus(HEUTE, 1) : ''), k.zuletzt, z.tag.neu, k.auf === (k.st ? HEUTE : '')];
-    };
-    soll('beide Checks richtig', checks('richtig', 'richtig'), [1, 0, 1, 1, true, 'rr', 1, true]);
-    soll('erster Check richtig, zweiter falsch: Stufe 1 bleibt', checks('richtig', 'falsch'), [1, 0, 1, 1, true, 'rf', 1, true]);
-    soll('erster Check falsch, zweiter richtig: Stufe 1', checks('falsch', 'richtig'), [1, 0, 0, 1, true, 'fr', 1, true]);
-    soll('beide Checks falsch: Stufe 0, die Einführung bleibt offen', checks('falsch', 'falsch'), [1, 0, 0, 0, true, 'ff', 1, true]);
-    // Wer am selben Tag durch einen Check gestiegen ist, steigt nicht gleich noch einmal
-    const z = mitKarten(zMitZielen(U1), { [livre.kid]: { st: 1, auf: HEUTE, faellig: HEUTE } });
-    Lernen.verbuchen(z, schritt(livre, 'hoeren', { rolle: 'leit' }), { art: 'richtig' }, HEUTE);
-    soll('kein zweiter Aufstieg am Tag des Checks', z.karten[livre.kid].st, 1);
-    // zuletzt: höchstens fünf Zeichen, nur Checks und Leitaufgaben
-    const y = mitKarten(zMitZielen(U1), { [livre.kid]: { st: 2, zuletzt: 'rrafr' } });
-    Lernen.verbuchen(y, { ...leit, rolle: 'neben' }, { art: 'falsch' }, HEUTE);
-    Lernen.verbuchen(y, leit, { art: 'fast' }, HEUTE);
-    soll('zuletzt', y.karten[livre.kid].zuletzt, 'rafra');
-    // Nichts ausser kennen legt eine Karte an, die es noch nicht gibt … ausser sie wird wirklich geübt
-    const x = zMitZielen(U1);
-    Lernen.verbuchen(x, schritt(livre, 'echo', { rolle: 'echo' }), { art: 'ohne' }, HEUTE);
-    Lernen.verbuchen(x, { uebung: 'paare', rolle: 'paare', kids: [livre.kid] }, { art: 'ohne', fehlpaare: 1 }, HEUTE);
-    Lernen.verbuchen(x, schritt(livre, 'kennen', { rolle: 'kennen', kid: 'gibt es nicht' }), { art: 'ohne' }, HEUTE);
-    Lernen.zahlen(x, HEUTE);
-    Lernen.aufgabe(schritt(livre, 'legen'), x);
-    soll('echo, Finale, zahlen und aufgabe legen keine Karte an', Object.keys(x.karten), []);
-    soll('verbuchen ohne Zustand oder Schritt wirft nicht', [Lernen.verbuchen(null, leit, { art: 'richtig' }, HEUTE).stufe, Lernen.verbuchen(x, null, null, HEUTE).stufe,
-      Lernen.verbuchen(x, leit, null, HEUTE).stufe, Lernen.verbuchen({}, schritt(livre, 'kennen', { rolle: 'kennen' }), undefined, HEUTE).stufe], [0, 0, 0, 0]);
+    buchungPruefen(livre, U1, melde);
 
     // Teil und Form drehen nach jeder gelungenen Leitaufgabe weiter
-    const dreh = (id, mal) => {
-      const e = E(id), w = mitKarten(zMitZielen(V.LERNZIEL_REIHE), { [e.kid]: { st: 1 } }), aus = [];
-      let tag = HEUTE;
-      for (let i = 0; i < mal; i++) {
-        const k = w.karten[e.kid], l = Lernen.leitaufgabe(e, k, true);
-        aus.push(l.uebung + ' ' + e.teile[l.teil].fr[l.form]);
-        Lernen.verbuchen(w, schritt(e, l.uebung, { ...l, rolle: 'leit' }), { art: 'richtig' }, tag);
-        tag = w.karten[e.kid].faellig;
-      }
-      return aus;
-    };
+    const dreh = drehen;
     soll('Paar: beide Hälften werden geschrieben, bevor die Karte reif ist', dreh('u4|les yeux (m pl), un œil', 4),
       ['hoeren les yeux', 'legen un œil', 'schreiben les yeux', 'schreiben un œil']);
     soll('Synonyme: die Form wechselt', dreh('u1|les maths, les mathématiques (f pl)', 5),
@@ -1918,13 +2354,7 @@ pruefung(6, 'Planer: 60 Tage gespielt und 10 000 beliebige Stände; Budget, leer
       schwach('schreiben', 'fast', { fehler: ['genus'] }, 'u1|mardi'), schwach('legen', 'falsch', { fehler: ['genus'] }, 'u4|les parties du visage')], ['111', '111', '111']);
     soll('wo es die Übung gibt, zählt der Fehler', [schwach('legen', 'fast', { fehler: ['genus', 'akzent'] }, 'u4|les yeux (m pl), un œil'),
       schwach('schreiben', 'falsch', { fehler: ['genus'] }, 'u1|l’allemand (m)'), schwach('schreiben', 'fast', { fehler: ['akzent'] }, 'u2|voici, voilà')], ['221', '211', '121']);
-    for (const e of KARTEN) {
-      const w = mitKarten(zMitZielen(U1), { [e.kid]: { st: 3 } });
-      for (const uebung of ['legen', 'schreiben']) Lernen.verbuchen(w, schritt(e, uebung, { rolle: 'neben' }), { art: 'fast', fehler: ['genus', 'akzent'] }, HEUTE);
-      const sw = w.karten[e.kid].schwach;
-      if ((sw.genus > 0) !== Lernen.kann('artikel', e, 0, 0, true)) melde(e.id + ': Schwäche beim Geschlecht ' + sw.genus + ', Artikel-Übung ' + Lernen.kann('artikel', e, 0, 0, true));
-      if ((sw.akzent > 0) !== Lernen.kann('akzent', e, 0, 0, true)) melde(e.id + ': Schwäche bei den Akzenten ' + sw.akzent + ', Akzent-Übung ' + Lernen.kann('akzent', e, 0, 0, true));
-    }
+    schwaecheNurMitUebung(U1, melde);
     soll('kennen und echo rühren die Schwächen nicht an', [schwach('kennen', 'ohne', { rolle: 'kennen' }), schwach('echo', 'ohne', { rolle: 'echo' })], ['111', '111']);
   }
 
@@ -2041,231 +2471,44 @@ pruefung(6, 'Planer: 60 Tage gespielt und 10 000 beliebige Stände; Budget, leer
   }
 
   /* Der schnellste Weg steht in Prüfung 7. Hier: 60 Tage mit Antworten, wie sie kommen. */
-  let groessteRunde = 0, meisteRunden = 0, tageGespielt = 0, rundenGespielt = 0, schwachGewachsen = 0;
-  // Wie oft eine weiche Regel fehlt, in Plänen ab vier Karten, getrennt nach Runde und freiem Üben.
-  // Dass sie nur fehlt, wo es nicht anders geht, hat planPruefen schon für jeden Plan nachgewiesen.
-  const weich = { runde: { plaene: 0, abstand: 0, spaet: 0, wahl: 0, schreiben: 0, zwei: 0, vermeidbar: 0, formen: new Set(), eng: new Set() },
-    frei: { plaene: 0, abstand: 0, spaet: 0, wahl: 0, schreiben: 0, zwei: 0, vermeidbar: 0, formen: new Set(), eng: new Set() } };
-  const zaehle = (r, frei) => {
-    if (!r || r.karten < 4) return;
-    const w = weich[frei ? 'frei' : 'runde'];
-    w.plaene++;
-    if (r.abstand < K.ABSTAND) {
-      w.abstand++;
-      w.formen.add(r.n + ' Schritte mit ' + r.neu + ' neuen');
-      // Rückt der erste Check nicht an sein Kennenlernen heran, fehlt der Abstand aus einem anderen Grund
-      if (!r.eng.has('kennen → Check A')) w.eng.add(r.n + ' Schritte, eng bei ' + [...r.eng].join(', '));
-    }
-    if (!r.spaet) w.spaet++;
-    if (!r.wahl) w.wahl++;
-    if (!r.ohneSchreiben) w.schreiben++;
-    if (r.zwei) w.zwei++;
-    if (r.vermeidbar === true) w.vermeidbar++;
-  };
-  for (const [saat, ziele, koennen, mitTon] of [[1, U1, 0.8, true], [2, V.LERNZIEL_REIHE, 0.65, true], [3, ['u4-1', 'u4-2', 'u4-3', 'u4-S', 'u4-4'], 0.9, false], [4, ['u2-1', 'u2-2', 'u2-3'], 0.5, true]]) {
-    const rnd = zufallAb(saat * 97);
-    Lernen.zufall = zufallAb(saat * 131);
-    const z = zMitZielen(ziele, { unite: ziele[0].slice(0, 2) });
-    let heute = HEUTE;
-    const hoechste = new Map();
-    for (let t = 0; t < 60; t++) {
-      // Meist eine Runde am Tag, manchmal zwei oder drei, manchmal keine
-      const runden = rnd() < 0.08 ? 0 : rnd() < 0.7 ? 1 : rnd() < 0.7 ? 2 : 3;
-      const jeTag = new Map();
-      for (let r = 0; r < runden; r++) {
-        const vorher = kopie(z);
-        const frei = rnd() < 0.12, opt = { modus: frei ? 'frei' : 'runde', mitTon, gruppe: frei && rnd() < 0.5 ? ziele[Math.floor(rnd() * ziele.length)] : undefined };
-        const plan = Lernen.planen(z, heute, opt);
-        vorher.tag = kopie(z.tag);
-        zaehle(planPruefen(vorher, plan, opt, heute, melde, 'Tag ' + t + ' (Saat ' + saat + ')', true), frei);
-        if (plan.art === 'leer') break;
-        rundenGespielt++;
-        groessteRunde = Math.max(groessteRunde, plan.schritte.filter(beurteilt).length);
-        spiele(z, plan, heute, () => (rnd() < koennen ? 'richtig' : rnd() < 0.4 ? 'fast' : 'falsch'), (s, art, b, k0) => {
-          if (!s.kid) return;
-          const k = Lernen.zustand(z, s.kid), wo = 'Tag ' + t + ' (Saat ' + saat + ') ' + kurz(s) + ' ' + art;
-          // Höchstens ein Aufstieg und ein Abstieg je Karte und Tag
-          const heuteSchon = jeTag.get(s.kid) || { auf: 0, ab: 0 };
-          jeTag.set(s.kid, { auf: heuteSchon.auf + (b.auf ? 1 : 0), ab: heuteSchon.ab + (b.ab ? 1 : 0) });
-          if (jeTag.get(s.kid).auf > 1 || jeTag.get(s.kid).ab > 1) melde(wo + ': zweiter Auf- oder Abstieg am selben Tag');
-          if (Math.abs(k.st - k0.st) > (k0.st === 5 ? 2 : 1)) melde(wo + ': Stufe springt von ' + k0.st + ' auf ' + k.st);
-          if (k.st !== k0.st && !(s.rolle === 'check' || s.rolle === 'leit')) melde(wo + ': bewegt die Stufe');
-          if (opt.modus === 'frei' && k.st !== k0.st && !(s.rolle === 'check' && k0.st === 0 && k.st === 1)) melde(wo + ': freies Üben bewegt die Stufe');
-          // Wer einmal gelegt hat, fällt nie mehr auf das blosse Zuhören zurück
-          if (hoechste.get(s.kid) >= 2 && (k.st < 2 || (s.rolle === 'leit' && s.uebung === 'hoeren'))) melde(wo + ': fällt unter Stufe 2 zurück');
-          hoechste.set(s.kid, Math.max(hoechste.get(s.kid) || 0, k.st));
-          if (k.st >= 1 && !(k.faellig > heute) && k.st !== k0.st) melde(wo + ': nach dem Verbuchen noch heute fällig');
-          // Eine Schwäche, die keine Übung abbauen kann, bliebe für immer stehen («wackelig» im Album)
-          const e = KARTE[s.kid];
-          if (k.schwach.genus > 0 && !Lernen.kann('artikel', e, 0, 0, true)) melde(wo + ': Schwäche beim Geschlecht ohne Artikel-Übung');
-          if (k.schwach.akzent > 0 && !Lernen.kann('akzent', e, 0, 0, true)) melde(wo + ': Schwäche bei den Akzenten ohne Akzent-Übung');
-          if (k.schwach.genus > k0.schwach.genus || k.schwach.akzent > k0.schwach.akzent) schwachGewachsen++;
-        });
-        if (opt.modus === 'frei' && z.tag.neu !== vorher.tag.neu) melde('Tag ' + t + ': freies Üben verbraucht das Kontingent');
-        if (z.tag.neu > z.neuProTag) melde('Tag ' + t + ': ' + z.tag.neu + ' neue Karten an einem Tag');
-        // Was gespeichert würde, liest pruefen unverändert wieder ein
-        if (!gleich(Lernen.pruefen(kopie(z)), z)) melde('Tag ' + t + ' (Saat ' + saat + '): pruefen verändert einen gespielten Stand');
-      }
-      // Runde um Runde am selben Tag, alles richtig: Nach höchstens zehn Runden ist Schluss
-      if (t % 6 === 5) {
-        const y = kopie(z);
-        let n = 0;
-        for (; n <= 12; n++) {
-          const plan = Lernen.planen(y, heute, { mitTon });
-          if (plan.art === 'leer') break;
-          spiele(y, plan, heute, () => 'richtig');
-        }
-        meisteRunden = Math.max(meisteRunden, n);
-        if (n > 10) melde('Tag ' + t + ' (Saat ' + saat + '): nach zehn Runden mit lauter richtigen Antworten immer noch nicht leer');
-      }
-      if (runden) tageGespielt++;
-      heute = Lernen.tagPlus(heute, 1);
-    }
-    if (saat === 1 && Object.values(z.karten).filter(k => k.st >= 3).length < 10) melde('nach 60 Tagen kaum eine Karte mit Erdbeere');
-  }
+  const { weich, zaehle } = weichNeu();
+  const tage = sechzigTage([[1, U1, 0.8, true], [2, V.LERNZIEL_REIHE, 0.65, true], [3, ['u4-1', 'u4-2', 'u4-3', 'u4-S', 'u4-4'], 0.9, false], [4, ['u2-1', 'u2-2', 'u2-3'], 0.5, true]],
+    zaehle, melde, (saat, z) => {
+      if (saat === 1 && Object.values(z.karten).filter(k => k.st >= 3).length < 10) melde('nach 60 Tagen kaum eine Karte mit Erdbeere');
+    });
   // Die Läufe müssen Schreib- und Legefehler wirklich hervorbringen, sonst prüft die Zeile oben nichts
-  if (schwachGewachsen < 20) melde('60 Tage: nur ' + schwachGewachsen + ' Schwächen aus Schreib- und Legefehlern, die Läufe üben das nicht');
-  hinweis.push(tageGespielt + ' Tage und ' + rundenGespielt + ' Runden gespielt, grösste Runde ' + groessteRunde + ' Aufgaben, höchstens ' + meisteRunden + ' Runden bis leer');
+  if (tage.schwachGewachsen < 20) melde('60 Tage: nur ' + tage.schwachGewachsen + ' Schwächen aus Schreib- und Legefehlern, die Läufe üben das nicht');
+  hinweis.push(tage.tageGespielt + ' Tage und ' + tage.rundenGespielt + ' Runden gespielt, grösste Runde ' + tage.groessteRunde + ' Aufgaben, höchstens ' + tage.meisteRunden + ' Runden bis leer');
 
   /* Jedes der 25 Lernziele allein: Tägliche Runden lernen jede Karte kennen, auch wo es nur Sätze gibt */
-  for (const g of V.LERNZIEL_REIHE) {
-    Lernen.zufall = zufallAb(600 + V.LERNZIEL_REIHE.indexOf(g));
-    const z = zMitZielen([g], { unite: g.slice(0, 2) });
-    const kids = [...new Set(V.LERNZIELE[g].eintraege.map(e => e.kid))];
-    let heute = HEUTE, tage = 0;
-    for (; tage < 60 && kids.some(kid => !(Lernen.zustand(z, kid).st >= 1)); tage++) {
-      const vorher = kopie(z), plan = Lernen.planen(z, heute, {});
-      vorher.tag = kopie(z.tag);
-      zaehle(planPruefen(vorher, plan, {}, heute, melde, 'Lernziel ' + g + ' allein, Tag ' + tage, tage < 3), false);
-      const nurSaetze = V.LERNZIELE[g].eintraege.every(e => e.art === 'satz');
-      if (!tage && nurSaetze && plan.schritte.filter(s => s.neu).length !== Math.min(2, kids.length)) melde('Lernziel ' + g + ': nur Sätze, aber nicht zwei in der ersten Runde');
-      if (plan.art !== 'leer') spiele(z, plan, heute, () => 'richtig');
-      heute = Lernen.tagPlus(heute, 1);
-    }
-    if (kids.some(kid => !(Lernen.zustand(z, kid).st >= 1))) melde('Lernziel ' + g + ' allein: nach 60 Tagen nicht jede Karte kennengelernt');
-    if (tage > Math.ceil(kids.length / 2) + 12) melde('Lernziel ' + g + ' allein: ' + tage + ' Tage für ' + kids.length + ' Karten');
-  }
+  jedesLernzielAllein(zaehle, melde);
   // Kein Satz vor SATZ_AB bekannten Karten, solange ein neues Wort wartet
-  {
-    Lernen.zufall = zufallAb(66);
-    const z = zMitZielen(U1);
-    let heute = HEUTE, ersterSatz = null;
-    for (let t = 0; t < 8 && !ersterSatz; t++) {
-      const gekannt = Object.values(z.karten).filter(k => k.st >= 1).length;
-      const plan = Lernen.planen(z, heute, {});
-      const satz = plan.schritte.find(s => s.neu && KARTE[s.kid].art === 'satz');
-      if (satz) ersterSatz = [satz.kid, gekannt >= K.SATZ_AB, plan.schritte.filter(s => s.neu && KARTE[s.kid].art === 'satz').length];
-      spiele(z, plan, heute, () => 'richtig');
-      heute = Lernen.tagPlus(heute, 1);
-    }
-    soll('der erste Satz kommt, sobald acht Karten bekannt sind, und nur einer je Runde', ersterSatz, ['u1|Chouette, c’est la rentrée!', true, 1]);
-  }
+  soll('der erste Satz kommt, sobald acht Karten bekannt sind, und nur einer je Runde', ersterSatz(U1), ['u1|Chouette, c’est la rentrée!', true, 1]);
 
   /* 10 000 beliebige Stände: planen kehrt immer zurück, und jeder Plan hält die Regeln */
   {
-    const rnd = zufallAb(4711);
-    Lernen.zufall = zufallAb(4712);
-    const arten = { runde: 0, frei: 0, leer: 0 };
-    let klein = 0;
-    for (let lauf = 0; lauf < 10000; lauf++) {
-      const z = zufallsStand(rnd, HEUTE);
-      const frei = lauf % 4 === 3;
-      const opt = { modus: frei ? 'frei' : 'runde', mitTon: rnd() < 0.8, gruppe: frei && rnd() < 0.6 ? V.LERNZIEL_REIHE[Math.floor(rnd() * V.LERNZIEL_REIHE.length)] : undefined };
-      // planen stellt nur den Tag um und holt Daten aus der Zukunft zurück: Alles andere steht danach da wie zuvor
-      const tag = z.tag.datum === HEUTE ? kopie(z.tag) : { datum: HEUTE, neu: 0, runden: 0, frei: [] };
-      const vorher = lauf < 1500 ? JSON.stringify({ ...geklemmt(z, HEUTE), tag }) : null;
-      let plan;
-      try {
-        plan = Lernen.planen(z, HEUTE, opt);
-      } catch (err) {
-        melde('Stand ' + lauf + ': planen wirft: ' + err.message);
-        continue;
-      }
-      if (!plan || !['runde', 'frei', 'leer'].includes(plan.art)) {
-        melde('Stand ' + lauf + ': kein Plan');
-        continue;
-      }
-      arten[plan.art]++;
-      if (!gleich(z.tag, tag) || (vorher && JSON.stringify(z) !== vorher)) melde('Stand ' + lauf + ': planen verändert den Zustand');
-      const r = planPruefen(z, plan, opt, HEUTE, melde, 'Stand ' + lauf + (frei ? ' frei' + (opt.gruppe ? ' ' + opt.gruppe : '') : ''), lauf < 1500);
-      zaehle(r, frei);
-      if (r && r.karten <= 2) klein++;
-    }
+    const { arten, klein } = beliebigeStaende(10000, 1500, KLEINE_ZIELE, zaehle, melde);
     hinweis.push('10 000 Stände: ' + arten.runde + ' Runden, ' + arten.frei + ' freie, ' + arten.leer + ' leere, ' + klein + ' Pläne mit ein oder zwei Karten');
-    for (const art of ['runde', 'frei']) {
-      const w = weich[art];
-      hinweis.push((art === 'runde' ? 'Runden' : 'freies Üben') + ' ab vier Karten: ' + w.plaene + ', davon ohne vollen Abstand ' + w.abstand + ', zweiter Check zu früh ' + w.spaet
-        + ', Auftakt ohne Auswahl ' + w.wahl + ' (davon mit Legen oder Schreiben ' + w.schreiben + ')' + ', zweimal schreiben hintereinander ' + w.zwei + ' (' + (100 * w.zwei / Math.max(1, w.plaene)).toFixed(1) + ' %, vermeidbar ' + w.vermeidbar + ')');
-    }
-    hinweis.push('ohne vollen Abstand nur Runden, deren erster Check näher am Kennenlernen steht, und im freien Üben ' + [...weich.frei.formen].sort().join(', '));
+    hinweis.push(...weichHinweis(weich));
     // Regel (ii), nie zweimal schreiben hintereinander: reihen() hält sie, wo es geht, und bessert danach
     // mit Tauschen und Versetzen nach. Gemessen an denselben 10 000 Ständen mit der Reihenfolge davor
     // (nur ein Wunsch beim Reihen): Runden ab vier Karten 607 von 5728 = 10,6 % (391 nach der Suche
     // vermeidbar), freies Üben 824 von 1763 = 46,7 % (478). Die Suche kennt Regel (iv) und den Auftakt
     // mit einer leichten Aufgabe nicht; «vermeidbar» heisst darum nicht immer, dass es nach 3.4 ginge.
-    for (const [art, vorher, grenze] of [['runde', 0.106, 0.07], ['frei', 0.467, 0.42]]) {
-      const w = weich[art], anteil = w.zwei / Math.max(1, w.plaene);
-      if (anteil > grenze) melde((art === 'runde' ? 'Runden' : 'freies Üben') + ': zweimal schreiben hintereinander in ' + (100 * anteil).toFixed(1)
-        + ' % der Pläne ab vier Karten, vorher ' + (100 * vorher).toFixed(1) + ' %, erlaubt höchstens ' + (100 * grenze).toFixed(0) + ' %');
-    }
-    // In einer Runde rückt nur der erste Check an sein Kennenlernen heran, und nur, weil eine Auswahl
-    // eröffnen muss (dass es ohne das nicht ging, hat planPruefen für jeden Plan gezeigt). Im freien
-    // Üben, gemessen und nachgerechnet: Es fehlt nur einer neuen Karte der Platz, wenn alles sechs Schritte hat.
-    if (weich.runde.eng.size) melde('Runden: voller Abstand fehlt auch in ' + [...weich.runde.eng].join('; '));
-    if ([...weich.frei.formen].some(f => f !== '6 Schritte mit 1 neuen')) melde('freies Üben: voller Abstand fehlt auch in ' + [...weich.frei.formen].join(', '));
+    // Im freien Üben, gemessen und nachgerechnet: Es fehlt nur einer neuen Karte der Platz, wenn alles
+    // sechs Schritte hat.
+    weichGrenzen(weich, [['runde', 0.106, 0.07], ['frei', 0.467, 0.42]], ['6 Schritte mit 1 neuen'], melde);
   }
 
   /* Freies Üben (3.4) */
   {
-    Lernen.zufall = zufallAb(88);
-    const rnd = zufallAb(89);
-    const lz = V.LERNZIELE['u3-1'], kids = lz.eintraege.map(e => e.kid);
-    soll('u3-1 hat 26 Karten', new Set(kids).size, 26);
+    soll('u3-1 hat 26 Karten', new Set(V.LERNZIELE['u3-1'].eintraege.map(e => e.kid)).size, 26);
     // Alle 26 kennengelernt: «Für den Test üben» geht Runde um Runde durch das ganze Lernziel
-    const z = zMitZielen(['u3-1'], { unite: 'u3' });
-    for (const kid of kids) z.karten[kid] = stand({ st: 1 + Math.floor(rnd() * 5), gesehen: 4, richtig: 3, faellig: Lernen.tagPlus(HEUTE, Math.floor(rnd() * 9) - 2) });
-    const vorher = kopie(z), dran = new Set(), jeRunde = [];
-    for (let runde = 0; runde < 5; runde++) {
-      const stand0 = kopie(z);
-      const plan = Lernen.planen(z, HEUTE, { modus: 'frei', gruppe: 'u3-1' });
-      stand0.tag = kopie(z.tag);
-      planPruefen(stand0, plan, { modus: 'frei', gruppe: 'u3-1' }, HEUTE, melde, '«Für den Test üben», Runde ' + runde, true);
-      const karten = [...new Set(plan.schritte.map(s => s.kid))];
-      const neu = karten.filter(kid => !dran.has(kid));
-      // Keine Karte kommt ein zweites Mal, bevor jede einmal dran war
-      if (neu.length < karten.length && neu.length < kids.length - dran.size) melde('«Für den Test üben», Runde ' + runde + ': wiederholt Karten, obwohl noch welche warten');
-      for (const s of plan.schritte) {
-        const e = KARTE[s.kid], k = Lernen.zustand(z, s.kid);
-        // Der Test verlangt freies Schreiben: Jedes Wort wird geschrieben, davor höchstens gelegt
-        if (s.rolle !== 'fuell' || s.vorgabe !== 'de' || !(s.uebung === 'schreiben' || (s.uebung === 'legen' && k.st < 3))) melde('«Für den Test üben»: ' + kurz(s));
-        const geschrieben = plan.schritte.some(x => x.kid === s.kid && x.uebung === 'schreiben' && x.teil === s.teil && x.form === s.form);
-        if (s.uebung === 'legen' && !geschrieben) melde('«Für den Test üben»: legen ohne schreiben bei ' + e.kid);
-      }
-      for (const kid of karten) if (!plan.schritte.some(s => s.kid === kid && s.uebung === 'schreiben')) melde('«Für den Test üben»: «' + kid + '» wird nicht geschrieben');
-      jeRunde.push(karten.length);
-      for (const kid of karten) dran.add(kid);
-      spiele(z, plan, HEUTE, () => (rnd() < 0.6 ? 'richtig' : rnd() < 0.5 ? 'fast' : 'falsch'));
-      if (runde === 2 && dran.size < 18) melde('«Für den Test üben»: nach drei Runden erst ' + dran.size + ' verschiedene Karten');
-    }
-    soll('«Für den Test üben» erreicht alle 26 Karten', dran.size, 26);
-    const fest = karten => kids.map(kid => [karten[kid].st, karten[kid].faellig, karten[kid].auf, karten[kid].ab, karten[kid].zuletzt, karten[kid].teil, karten[kid].form, karten[kid].rueck]);
-    soll('freies Üben bewegt keine Stufe, keine Fälligkeit und kein Kontingent', [fest(z.karten), z.tag.neu, z.zaehler.runden, z.zaehler.perfekt, z.tag.runden], [fest(geklemmt(vorher, HEUTE).karten), 0, 0, 0, 0]);
-    soll('heute frei geübt', z.tag.frei.length, 26);
-    hinweis.push('«Für den Test üben» mit 26 Karten: ' + jeRunde.join(', ') + ' Karten je Runde');
-    // Am nächsten Tag beginnt die Runde durch das Lernziel von vorn
-    Lernen.planen(z, Lernen.tagPlus(HEUTE, 1), { modus: 'frei', gruppe: 'u3-1' });
-    soll('am nächsten Tag ist die Liste leer', z.tag.frei, []);
+    hinweis.push('«Für den Test üben» mit 26 Karten: ' + fuerDenTest('u3-1', 18, melde).join(', ') + ' Karten je Runde');
 
     // Im freien Üben dreht keine Karte weiter: Über mehrere Runden kommen trotzdem beide Hälften eines
     // Paars, jede Schreibweise und jede Variante eines Satzes an die Reihe
-    const gefragt = (ziel, id, frei) => {
-      const e = E(id), u = mitKarten(zMitZielen([ziel]), { [e.kid]: { st: 4, falsch: 9 } }), formen = new Set();
-      for (let mal = 0; mal < 40; mal++) {
-        const s = Lernen.planen(u, HEUTE, { modus: 'frei', gruppe: frei ? undefined : ziel }).schritte.find(x => x.kid === e.kid && !x.begleiter);
-        formen.add(e.teile[s.teil].fr[s.form]);
-      }
-      return [...formen].sort();
-    };
+    const gefragt = gefragteFormen;
     soll('«Für den Test üben» fragt beide Hälften, jede Schreibweise, jede Variante', [gefragt('u3-1', 'u3|le foot, faire du foot'), gefragt('u2-2', 'u2|la mère, la maman'),
       gefragt('u4P-3', 'u4|Prends la pâte bleue/verte/rouge.'), gefragt('u1P-2', 'u1|ACM (activités créatrices manuelles)'), gefragt('u1-S', 'u1|la chaise')],
     [['faire du foot', 'le foot'], ['la maman', 'la mère'], ['Prends la pâte bleue.', 'Prends la pâte rouge.', 'Prends la pâte verte.'], ['ACM'], ['la chaise']]);
@@ -2336,37 +2579,29 @@ pruefung(6, 'Planer: 60 Tage gespielt und 10 000 beliebige Stände; Budget, leer
   return hinweis.join('; ');
 });
 
-/* ---------- 7 · Der schnellste Weg ---------- */
+/* ---------- Werkzeug für den schnellsten Weg ---------- */
 
-pruefung(7, 'Schnellster Weg: Tag 0, 1, 3, 7, 14, dann reif; die letzten drei Abrufe geschrieben', melde => {
-  const soll = (was, ist, erwartet) => {
-    if (!gleich(ist, erwartet)) melde(was + ': ' + JSON.stringify(ist) + ' statt ' + JSON.stringify(erwartet));
-  };
-  // Tägliche Runden, alles richtig: An welchen Tagen steigt die Karte, und womit?
-  const weg = (ziel, kid, tage, mitTon) => {
-    const z = zMitZielen([ziel], { unite: ziel.slice(0, 2) }), aus = [];
-    let heute = HEUTE;
-    for (let t = 0; t <= tage; t++) {
-      const plan = Lernen.planen(z, heute, { mitTon });
-      if (plan.art !== 'leer') {
-        spiele(z, plan, heute, () => 'richtig', (s, art, b) => {
-          if (s.kid === kid && (b.auf || (s.rolle === 'leit' && b.vorher === 5))) aus.push(t + ':' + b.stufe + ' ' + s.uebung + (s.vorgabe === 'ton' && s.uebung !== 'hoeren' ? '-ton' : ''));
-        });
-      }
-      heute = Lernen.tagPlus(heute, 1);
+// Tägliche Runden mit dem Lernziel ziel, alles richtig: An welchen Tagen steigt die Karte kid, und womit?
+// aus: «Tag:Stufe Übung» für jeden Aufstieg und jede Bestätigung der reifen Karte
+function schnellsterWeg(ziel, kid, tage, mitTon) {
+  const z = zMitZielen([ziel], { unite: ziel.slice(0, 2) }), aus = [];
+  let heute = HEUTE;
+  for (let t = 0; t <= tage; t++) {
+    const plan = Lernen.planen(z, heute, { mitTon });
+    if (plan.art !== 'leer') {
+      spiele(z, plan, heute, () => 'richtig', (s, art, b) => {
+        if (s.kid === kid && (b.auf || (s.rolle === 'leit' && b.vorher === 5))) aus.push(t + ':' + b.stufe + ' ' + s.uebung + (s.vorgabe === 'ton' && s.uebung !== 'hoeren' ? '-ton' : ''));
+      });
     }
-    return { aus, k: z.karten[kid], z };
-  };
-  const wort = weg('u2-1', 'u2|la famille', 14, true);
-  soll('Wort: Stufe 5 am Tag 14', wort.aus, ['0:1 bedeutung', '1:2 hoeren', '3:3 legen', '7:4 schreiben', '14:5 schreiben']);
-  soll('reif: fällig in 21 Tagen', [wort.k.st, wort.k.faellig, wort.k.fest, wort.k.zuletzt], [5, Lernen.tagPlus(HEUTE, 35), 0, 'rrrrr']);
-  soll('reife Karte: bestätigt nach 21, 45, 90, 90 Tagen', weg('u2-1', 'u2|la famille', 290, true).aus.slice(5), ['35:5 schreiben', '80:5 schreiben', '170:5 schreiben', '260:5 schreiben']);
-  soll('Wort ohne Ton', weg('u2-1', 'u2|la famille', 14, false).aus, ['0:1 bedeutung', '1:2 bedeutung', '3:3 legen', '7:4 schreiben', '14:5 schreiben']);
-  soll('Satz: erst nach dem Ohr ordnen, dann nach dem Deutschen, dann bauen', weg('u4-3', 'u4|Pique un raisin.', 14, true).aus,
-    ['0:1 bedeutung', '1:2 hoeren', '3:3 ordnen-ton', '7:4 ordnen', '14:5 bauen']);
-  soll('lange Form: ordnen, dann schreiben', weg('u4-1', 'u4|la rondelle de concombre', 20, true).aus.map(x => x.split(' ')[1]), ['bedeutung', 'hoeren', 'ordnen', 'schreiben', 'schreiben']);
-  // Kein Tag früher: Wer täglich spielt, kann die Leiter nicht abkürzen
-  for (const g of ['u1-S', 'u3-3']) {
+    heute = Lernen.tagPlus(heute, 1);
+  }
+  return { aus, k: z.karten[kid], z };
+}
+
+// Kein Tag früher: Wer täglich bis zu drei Runden spielt, mit zwölf neuen Wörtern am Tag, kann die
+// Leiter in keinem der Lernziele abkürzen
+function keineAbkuerzung(ziele, melde) {
+  for (const g of ziele) {
     const z = zMitZielen([g], { unite: g.slice(0, 2), neuProTag: 12 });
     let heute = HEUTE;
     const erster = new Map();
@@ -2385,23 +2620,40 @@ pruefung(7, 'Schnellster Weg: Tag 0, 1, 3, 7, 14, dann reif; die letzten drei Ab
       heute = Lernen.tagPlus(heute, 1);
     }
   }
-  return wort.aus.join(', ');
-});
+}
 
-/* ---------- 8 · Gespeicherter Stand ---------- */
+/* ---------- 7 · Der schnellste Weg ---------- */
 
-pruefung(8, 'Gespeicherter Stand: pruefen() übersteht alles und lässt nur Gültiges durch', melde => {
+pruefung(7, 'Schnellster Weg: Tag 0, 1, 3, 7, 14, dann reif; die letzten drei Abrufe geschrieben', melde => {
   const soll = (was, ist, erwartet) => {
     if (!gleich(ist, erwartet)) melde(was + ': ' + JSON.stringify(ist) + ' statt ' + JSON.stringify(erwartet));
   };
-  const frisch = { v: 1, vorgestellt: false, gehoert: false, unite: null, ziele: {}, neuProTag: 6, erklaert: {}, tag: { datum: '', neu: 0, runden: 0, frei: [] }, karten: {},
-    zaehler: { runden: 0, perfekt: 0, ohr: 0, lelaLauf: 0, lelaBest: 0, akzent: 0, saetze: 0, geschrieben: 0 } };
-  soll('neu()', Lernen.neu(), frisch);
-  if (Lernen.neu() === Lernen.neu() || Lernen.neu().karten === Lernen.neu().karten) melde('neu() gibt dasselbe Objekt zweimal');
-  // Ist das ein Stand, wie ihn 9.9 beschreibt?
+  const weg = schnellsterWeg;
+  const wort = weg('u2-1', 'u2|la famille', 14, true);
+  soll('Wort: Stufe 5 am Tag 14', wort.aus, ['0:1 bedeutung', '1:2 hoeren', '3:3 legen', '7:4 schreiben', '14:5 schreiben']);
+  soll('reif: fällig in 21 Tagen', [wort.k.st, wort.k.faellig, wort.k.fest, wort.k.zuletzt], [5, Lernen.tagPlus(HEUTE, 35), 0, 'rrrrr']);
+  soll('reife Karte: bestätigt nach 21, 45, 90, 90 Tagen', weg('u2-1', 'u2|la famille', 290, true).aus.slice(5), ['35:5 schreiben', '80:5 schreiben', '170:5 schreiben', '260:5 schreiben']);
+  soll('Wort ohne Ton', weg('u2-1', 'u2|la famille', 14, false).aus, ['0:1 bedeutung', '1:2 bedeutung', '3:3 legen', '7:4 schreiben', '14:5 schreiben']);
+  soll('Satz: erst nach dem Ohr ordnen, dann nach dem Deutschen, dann bauen', weg('u4-3', 'u4|Pique un raisin.', 14, true).aus,
+    ['0:1 bedeutung', '1:2 hoeren', '3:3 ordnen-ton', '7:4 ordnen', '14:5 bauen']);
+  soll('lange Form: ordnen, dann schreiben', weg('u4-1', 'u4|la rondelle de concombre', 20, true).aus.map(x => x.split(' ')[1]), ['bedeutung', 'hoeren', 'ordnen', 'schreiben', 'schreiben']);
+  // Kein Tag früher: Wer täglich spielt, kann die Leiter nicht abkürzen
+  keineAbkuerzung(['u1-S', 'u3-3'], melde);
+  return wort.aus.join(', ');
+});
+
+/* ---------- Werkzeug für den gespeicherten Stand ---------- */
+
+// Ist das ein Stand, wie ihn 9.9 beschreibt? frisch ist der Stand, den neu() gibt: Seine Felder und
+// Zähler hat jeder gültige Stand, nicht mehr und nicht weniger. Ein Kurs, der doppel zählt, hat dazu
+// doppelwoerter: Karten mit einem Wort mit Bindestrich, jede einmal, so viele, wie doppel sagt.
+function gueltigFuer(frisch) {
   const DATUM = /^\d{4}-\d{2}-\d{2}$/;
   const zahl = x => Number.isInteger(x) && x >= 0;
-  const gueltig = z => gleich(Object.keys(z), Object.keys(frisch)) && z.v === 1 && typeof z.vorgestellt === 'boolean' && typeof z.gehoert === 'boolean'
+  const doppelt = z => !('doppelwoerter' in frisch) || (Array.isArray(z.doppelwoerter) && new Set(z.doppelwoerter).size === z.doppelwoerter.length
+    && z.doppelwoerter.every(kid => KARTE[kid] && KARTE[kid].art === 'wort' && KARTE[kid].teile.some(t => t.fr.some(doppelwort)))
+    && z.zaehler.doppel === z.doppelwoerter.length);
+  return z => gleich(Object.keys(z), Object.keys(frisch)) && z.v === 1 && typeof z.vorgestellt === 'boolean' && typeof z.gehoert === 'boolean'
     && (z.unite === null || V.UNITE_REIHE.includes(z.unite)) && Object.entries(z.ziele).every(([g, an]) => V.LERNZIELE[g] && an === true)
     && K.NEU_WAHL.includes(z.neuProTag) && Object.entries(z.erklaert).every(([u, an]) => K.UEBUNGEN.includes(u) && an === true)
     && gleich(Object.keys(z.tag), ['datum', 'neu', 'runden', 'frei']) && (z.tag.datum === '' || DATUM.test(z.tag.datum)) && zahl(z.tag.neu) && zahl(z.tag.runden)
@@ -2410,12 +2662,15 @@ pruefung(8, 'Gespeicherter Stand: pruefen() übersteht alles und lässt nur Gül
     && Object.entries(z.karten).every(([kid, k]) => KARTE[kid] && gleich(Object.keys(k), Object.keys(stand())) && Number.isInteger(k.st) && k.st >= 0 && k.st <= 5
       && [k.faellig, k.auf, k.ab].every(d => d === '' || DATUM.test(d)) && typeof k.rueck === 'boolean' && KARTE[kid].teile[k.teil] && KARTE[kid].teile[k.teil].fr[k.form]
       && [k.fest, k.gesehen, k.richtig, k.falsch].every(zahl) && k.gesehen > 0 && gleich(Object.keys(k.schwach), ['genus', 'akzent', 'hoeren'])
-      && Object.values(k.schwach).every(n => Number.isInteger(n) && n >= 0 && n <= 3) && /^[raf]{0,5}$/.test(k.zuletzt));
+      && Object.values(k.schwach).every(n => Number.isInteger(n) && n >= 0 && n <= 3) && /^[raf]{0,5}$/.test(k.zuletzt))
+    && doppelt(z);
+}
 
-  // Unlesbares und fremde Versionen: ein frischer Stand
+// Unlesbares und fremde Versionen geben einen frischen Stand, und pruefen wirft nie. gut ist ein
+// lesbarer Stand bis auf v; die erste seiner Karten wirft einmal beim Lesen.
+function unlesbarPruefen(frisch, gut, melde) {
   const wirft = { get v() { throw new Error('kaputt'); } };
-  const kaputteKarte = { v: 1, karten: { 'u1|le livre': { get st() { throw new Error('kaputt'); } } } };
-  const gut = { vorgestellt: true, gehoert: true, unite: 'u1', ziele: { 'u1-S': true }, neuProTag: 9, karten: { 'u1|le livre': { st: 3, gesehen: 4 } } };
+  const kaputteKarte = { v: 1, karten: { [Object.keys(gut.karten)[0]]: { get st() { throw new Error('kaputt'); } } } };
   for (const roh of [null, undefined, 0, 42, NaN, '', 'x', '{"v":1}', true, [], [1, 2], [{ v: 1 }], {}, { v: 2 }, { v: '1' }, { v: null }, () => 1, Symbol('x'), new Date(0), wirft, kaputteKarte,
     gut, { ...gut, v: 2 }, { ...gut, v: 0 }, { ...gut, v: '1' }, [{ ...gut, v: 1 }], JSON.stringify({ ...gut, v: 1 })]) {
     let z = null;
@@ -2427,6 +2682,65 @@ pruefung(8, 'Gespeicherter Stand: pruefen() übersteht alles und lässt nur Gül
     }
     if (!gleich(z, frisch)) melde('pruefen gibt keinen frischen Stand für ' + (typeof roh === 'symbol' ? 'Symbol' : typeof roh === 'object' ? 'Objekt ' + Object.keys(roh || {}) : String(roh)));
   }
+}
+
+// 3000-mal Müll in jeder Tiefe: nie ein Wurf, immer ein gültiger Stand, mit dem sich planen und zählen
+// lässt. eigene: Werte aus dem Kurs, die beinahe stimmen (Unités, Karten, Lernziele); fremdeKids:
+// Schlüssel, die keine Karte sind oder es nur beinahe sind; fremdesZiel: ein Lernziel, das es nicht
+// gibt. Gibt zurück, wie oft Karten oder Lernziele lesbar blieben.
+function muellPruefen(frisch, eigene, fremdeKids, fremdesZiel, gueltig, melde) {
+  const rnd = zufallAb(808);
+  const eins = liste => liste[Math.floor(rnd() * liste.length)];
+  const WERTE = [null, undefined, true, false, 0, 1, 2, 3, 5, 6, 9, 12, -1, 2.5, 1e9, NaN, Infinity, '', 'x', eigene[0], eigene[1], '2026-11-13', '2026-11-20', '2026-13-45', 'rrf', 'rrrrrrrr',
+    eigene[2], eigene[3], [], {}, eigene[4], { genus: 2, akzent: 9, hoeren: 'x' }, { a: { b: { c: 1 } } }];
+  const mitFeldern = (felder, voll) => {
+    const o = {};
+    for (const f of felder) if (rnd() < voll) o[f] = eins(WERTE);
+    return o;
+  };
+  const muell = () => {
+    const kids = [...Array.from({ length: Math.floor(rnd() * 6) }, () => eins(KARTEN).kid), ...(rnd() < 0.3 ? fremdeKids : [])];
+    const x = mitFeldern(Object.keys(frisch), 0.5);
+    if (rnd() < 0.7) x.ziele = Object.fromEntries([...V.LERNZIEL_REIHE.filter(() => rnd() < 0.2), fremdesZiel].map(g => [g, rnd() < 0.8 ? true : eins(WERTE)]));
+    if (rnd() < 0.7) x.karten = Object.fromEntries(kids.map(kid => [kid, rnd() < 0.85 ? { gesehen: eins([1, 3, 7, 0]), st: eins([0, 1, 2, 3, 4, 5, 6]), ...mitFeldern(Object.keys(stand()), 0.6) } : eins(WERTE)]));
+    if (rnd() < 0.5) x.tag = mitFeldern(Object.keys(frisch.tag), 0.8);
+    if (rnd() < 0.5) x.zaehler = mitFeldern(Object.keys(frisch.zaehler), 0.8);
+    if (rnd() < 0.3) x.erklaert = mitFeldern([...K.UEBUNGEN, 'x'], 0.4);
+    x.v = rnd() < 0.95 ? 1 : eins(WERTE);
+    return rnd() < 0.03 ? eins(WERTE) : x;
+  };
+  let lesbar = 0;
+  for (let lauf = 0; lauf < 3000; lauf++) {
+    const x = muell();
+    try {
+      const y = Lernen.pruefen(x);
+      if (!gueltig(y)) melde('Müll ' + lauf + ': ungültiger Stand ' + JSON.stringify(y).slice(0, 300));
+      if (Object.keys(y.karten).length || Object.keys(y.ziele).length) lesbar++;
+      const plan = Lernen.planen(y, HEUTE, { modus: lauf % 3 ? 'runde' : 'frei' });
+      Lernen.zahlen(y, HEUTE);
+      for (const s of plan.schritte) Lernen.verbuchen(y, s, { art: eins(['richtig', 'fast', 'falsch', 'ohne']) }, HEUTE);
+      if (!gueltig(y)) melde('Müll ' + lauf + ': nach einer Runde ungültig');
+    } catch (err) {
+      melde('Müll ' + lauf + ' wirft: ' + err.message + ' bei ' + JSON.stringify(x).slice(0, 200));
+    }
+  }
+  return lesbar;
+}
+
+/* ---------- 8 · Gespeicherter Stand ---------- */
+
+pruefung(8, 'Gespeicherter Stand: pruefen() übersteht alles und lässt nur Gültiges durch', melde => {
+  const soll = (was, ist, erwartet) => {
+    if (!gleich(ist, erwartet)) melde(was + ': ' + JSON.stringify(ist) + ' statt ' + JSON.stringify(erwartet));
+  };
+  const frisch = { v: 1, vorgestellt: false, gehoert: false, unite: null, ziele: {}, neuProTag: 6, erklaert: {}, tag: { datum: '', neu: 0, runden: 0, frei: [] }, karten: {},
+    zaehler: { runden: 0, perfekt: 0, ohr: 0, lelaLauf: 0, lelaBest: 0, akzent: 0, saetze: 0, geschrieben: 0 } };
+  soll('neu()', Lernen.neu(), frisch);
+  if (Lernen.neu() === Lernen.neu() || Lernen.neu().karten === Lernen.neu().karten) melde('neu() gibt dasselbe Objekt zweimal');
+  const gueltig = gueltigFuer(frisch);
+  // Unlesbares und fremde Versionen: ein frischer Stand
+  const gut = { vorgestellt: true, gehoert: true, unite: 'u1', ziele: { 'u1-S': true }, neuProTag: 9, karten: { 'u1|le livre': { st: 3, gesehen: 4 } } };
+  unlesbarPruefen(frisch, gut, melde);
 
   soll('dieselben Felder mit v: 1 werden gelesen', [Lernen.pruefen({ ...gut, v: 1 }).unite, Lernen.pruefen({ ...gut, v: 1 }).karten['u1|le livre'].st], ['u1', 3]);
 
@@ -2485,41 +2799,7 @@ pruefung(8, 'Gespeicherter Stand: pruefen() übersteht alles und lässt nur Gül
     { runden: 12, perfekt: 3, ohr: 30, lelaLauf: 4, lelaBest: 21, akzent: 20, saetze: 10, geschrieben: 25 }]);
 
   // Müll in jeder Tiefe: nie ein Wurf, immer ein gültiger Stand, mit dem sich planen und zählen lässt
-  const rnd = zufallAb(808);
-  const eins = liste => liste[Math.floor(rnd() * liste.length)];
-  const WERTE = [null, undefined, true, false, 0, 1, 2, 3, 5, 6, 9, 12, -1, 2.5, 1e9, NaN, Infinity, '', 'x', 'u1', 'u3', '2026-11-13', '2026-11-20', '2026-13-45', 'rrf', 'rrrrrrrr',
-    'u1|le livre', 'u1-S', [], {}, ['u1|le livre', 'x', 3], { genus: 2, akzent: 9, hoeren: 'x' }, { a: { b: { c: 1 } } }];
-  const mitFeldern = (felder, voll) => {
-    const o = {};
-    for (const f of felder) if (rnd() < voll) o[f] = eins(WERTE);
-    return o;
-  };
-  const muell = () => {
-    const kids = [...Array.from({ length: Math.floor(rnd() * 6) }, () => eins(KARTEN).kid), ...(rnd() < 0.3 ? ['x', 'constructor', 'u3|la fille'] : [])];
-    const x = mitFeldern(Object.keys(frisch), 0.5);
-    if (rnd() < 0.7) x.ziele = Object.fromEntries([...V.LERNZIEL_REIHE.filter(() => rnd() < 0.2), 'u9-1'].map(g => [g, rnd() < 0.8 ? true : eins(WERTE)]));
-    if (rnd() < 0.7) x.karten = Object.fromEntries(kids.map(kid => [kid, rnd() < 0.85 ? { gesehen: eins([1, 3, 7, 0]), st: eins([0, 1, 2, 3, 4, 5, 6]), ...mitFeldern(Object.keys(stand()), 0.6) } : eins(WERTE)]));
-    if (rnd() < 0.5) x.tag = mitFeldern(Object.keys(frisch.tag), 0.8);
-    if (rnd() < 0.5) x.zaehler = mitFeldern(Object.keys(frisch.zaehler), 0.8);
-    if (rnd() < 0.3) x.erklaert = mitFeldern([...K.UEBUNGEN, 'x'], 0.4);
-    x.v = rnd() < 0.95 ? 1 : eins(WERTE);
-    return rnd() < 0.03 ? eins(WERTE) : x;
-  };
-  let lesbar = 0;
-  for (let lauf = 0; lauf < 3000; lauf++) {
-    const x = muell();
-    try {
-      const y = Lernen.pruefen(x);
-      if (!gueltig(y)) melde('Müll ' + lauf + ': ungültiger Stand ' + JSON.stringify(y).slice(0, 300));
-      if (Object.keys(y.karten).length || Object.keys(y.ziele).length) lesbar++;
-      const plan = Lernen.planen(y, HEUTE, { modus: lauf % 3 ? 'runde' : 'frei' });
-      Lernen.zahlen(y, HEUTE);
-      for (const s of plan.schritte) Lernen.verbuchen(y, s, { art: eins(['richtig', 'fast', 'falsch', 'ohne']) }, HEUTE);
-      if (!gueltig(y)) melde('Müll ' + lauf + ': nach einer Runde ungültig');
-    } catch (err) {
-      melde('Müll ' + lauf + ' wirft: ' + err.message + ' bei ' + JSON.stringify(x).slice(0, 200));
-    }
-  }
+  const lesbar = muellPruefen(frisch, ['u1', 'u3', 'u1|le livre', 'u1-S', ['u1|le livre', 'x', 3]], ['x', 'constructor', 'u3|la fille'], 'u9-1', gueltig, melde);
   if (lesbar < 1000) melde('der Müll enthält zu selten etwas Lesbares (' + lesbar + ')');
   return '3000-mal Müll, davon ' + lesbar + '-mal mit lesbaren Karten oder Lernzielen';
 });
@@ -2599,9 +2879,22 @@ pruefung(9, 'Texte und Zähler: Aufnahmen ohne doppelte Datei, Listen wie im Bau
     if (err.code !== 'MODULE_NOT_FOUND') throw err;
     return 'Zähler geprüft; texte.js oder franz-texte.js fehlt, Texte nicht geprüft';
   }
-  // Keine zwei Aufnahmen mit derselben Datei
+  // Keine zwei Aufnahmen mit derselben Datei. Gezählt wird, was Pieks und das Französisch sprechen: Die
+  // Namen von Perciks Erfolgen (indo_…) stehen zwar mit in ERFOLGE, wo alleSaetze() sie für Pieks aufnimmt,
+  // sie gehören aber zum Indonesisch und zählen in Prüfung 20 mit allen Kursen. Sagt Pieks einen solchen
+  // Namen auch sonst, bleibt er hier: Weggelassen wird je Erfolg nur ein Mal.
+  const nurIndo = new Map();
+  for (const [id, e] of Object.entries(T.ERFOLGE)) {
+    const s = T.sprechtext(e.name + '!');
+    if (id.startsWith('indo_')) nurIndo.set(s, (nurIndo.get(s) || 0) + 1);
+  }
+  const saetze = T.alleSaetze().filter(x => {
+    const n = nurIndo.get(x.s) || 0;
+    if (n) nurIndo.set(x.s, n - 1);
+    return !n;
+  });
   const dateien = new Map();
-  const clips = [...T.alleSaetze().map(x => ({ s: x.s, v: 'p' })), ...F.alleFranzClips()];
+  const clips = [...saetze.map(x => ({ s: x.s, v: 'p' })), ...F.alleFranzClips()];
   for (const c of clips) {
     const datei = T.clipDatei(c), wie = c.v + ' ' + c.s.normalize('NFC');
     if (dateien.has(datei) && dateien.get(datei) !== wie) melde('zwei Aufnahmen, eine Datei ' + datei + ': «' + dateien.get(datei) + '» und «' + wie + '»');
@@ -2650,10 +2943,1026 @@ pruefung(9, 'Texte und Zähler: Aufnahmen ohne doppelte Datei, Listen wie im Bau
   return hinweis.join('; ');
 });
 
+/* =====================================================================
+   DAS INDONESISCH (Prüfungen 10 bis 19): Perciks Kurs, Lernen.kurs(VOK_INDO)
+   Dieselben Werkzeuge wie oben, nur mit seinem Wortschatz (kursSetzen).
+   Wo das Französisch Artikel und Akzente prüft, prüft das Indonesisch,
+   dass es keine gibt, auch nicht durch eine Hintertür; dazu, was nur es
+   hat: Wörter mit Bindestrich, grosse Namen und Tage, ein Schriftbild,
+   das nichts verraten darf, und die Zähler doppel und echo.
+   ===================================================================== */
+
+// Fehlt indo-vokabeln.js oder bricht es ab, laufen die französischen Prüfungen trotzdem, und jede
+// indonesische meldet, warum sie nichts prüfen kann
+let INDO = null, INDO_FEHLER = null;
+try {
+  const v = require('./indo-vokabeln.js');
+  INDO = { v, lernen: FRANZ.lernen.kurs(v) };
+} catch (err) {
+  INDO_FEHLER = err;
+}
+const indoPruefung = (nr, name, lauf) => pruefung(nr, name, INDO ? lauf : () => {
+  throw INDO_FEHLER;
+}, INDO || FRANZ);
+
+// Ein frischer indonesischer Stand: wie der französische, dazu die zwei Zähler für Perciks Erfolge und
+// die Liste der Wörter mit Bindestrich, die doppel schon gezählt hat
+const FRISCH_INDO = { v: 1, vorgestellt: false, gehoert: false, unite: null, ziele: {}, neuProTag: 6, erklaert: {}, tag: { datum: '', neu: 0, runden: 0, frei: [] },
+  karten: {}, zaehler: { runden: 0, perfekt: 0, ohr: 0, lelaLauf: 0, lelaBest: 0, akzent: 0, saetze: 0, geschrieben: 0, doppel: 0, echo: 0 }, doppelwoerter: [] };
+// Die Lernziele der ersten Pelajaran: Mit ihnen beginnt der Kurs, eine Frage nach der Klasse gibt es nicht
+const ersteZiele = () => V.LERNZIEL_REIHE.filter(g => V.LERNZIELE[g].un === V.UNITE_REIHE[0]);
+// Was man einer Antwort ansieht, ohne sie zu lesen: ein Grossbuchstabe darin, das Satzzeichen am Schluss
+// (wie schriftbild in lernen.js, hier ein zweites Mal abgeleitet)
+const schriftbild = f => (/\p{Lu}/u.test(f) ? 'A' : 'a') + f.match(/[.!?]*$/)[0];
+// Ein französischer Eintrag, für die Prüfungen, die beide Kurse nebeneinander sehen
+const EF = id => FRANZ.v.VOKABELN.find(e => e.id === id);
+
+/* ---------- 10 · Grundlagen (Indonesisch) ---------- */
+
+indoPruefung(10, 'Grundlagen (Indonesisch): Lernen.kurs(VOK_INDO) mit eigenem Sprachprofil, Zufall, K und Zwischenspeicher', melde => {
+  const soll = sollMit(melde);
+  const F = FRANZ.lernen, S = Lernen.SPRACHE;
+  // Dieselben Namen wie Lernen, das Profil des Wortschatzes, ein eigenes K mit denselben Werten
+  soll('dieselben Namen wie Lernen', sortiert(Object.keys(Lernen)), sortiert(Object.keys(F)));
+  soll('Sprachprofil des Wortschatzes, eigenes K mit denselben Werten', [S === V.SPRACHE, K === F.K, gleich(K, F.K)], [true, false, true]);
+  // Ohne Artikel und Akzente, mit kleinen Kacheln, und auch das Schriftbild verrät nichts
+  soll('Sprachprofil', [S.artikel, S.akzente, S.schlicht, S.akzentUrteil, S.grosseKacheln, S.schriftbild, S.zaehler],
+    [null, {}, '', false, false, true, Object.keys(FRISCH_INDO.zaehler)]);
+  for (const [ch, v] of Object.entries(S.verwechsler)) if (!/^[a-z]$/.test(ch) || !/^[a-z]$/.test(v) || ch === v) melde('Störbuchstabe nicht aus a bis z: ' + ch + ' → ' + v);
+  for (const art of ['wort', 'satz']) {
+    S.neben[art].forEach((stufe, st) => {
+      if (stufe.some(([u]) => u === 'artikel' || u === 'akzent')) melde('Artikel oder Akzent als Nebenaufgabe: ' + art + ' Stufe ' + st);
+    });
+  }
+  // Nachgesprochen wird genau dort, wo es eine langsame Aufnahme gibt
+  for (const e of VOKABELN) {
+    for (const s of [e.fr, e.sprich, ...e.teile.flatMap(t => t.fr)]) if (S.mehrWort.test(s) !== V.langsamGibt(s)) melde('mehrWort und langsamGibt uneins: ' + s);
+  }
+  soll('Tastatur des Indonesisch', [S.tastatur.reihen, S.tastatur.akzente, [...S.tastatur.tippbar].sort().join('')],
+    [['q w e r t z u i o p', 'a s d f g h j k l back', 'y x c v b n m - leer ok'], [], ' -abcdefghijklmnopqrstuvwxyz']);
+  // Ein Profil mit einer Lücke wird abgewiesen, und der Fehler nennt sie (K ist freiwillig)
+  for (const name of Object.keys(S).filter(n => n !== 'K')) {
+    const { [name]: weg, ...rest } = S;
+    let text = 'kein Fehler';
+    try {
+      Lernen.kurs(V, rest);
+    } catch (err) {
+      text = err.message;
+    }
+    if (!text.includes('«' + name + '»')) melde('Lernen.kurs ohne ' + name + ' im Sprachprofil: ' + text);
+  }
+
+  // Jeder Kurs würfelt nur mit seinem eigenen Zufall: gleicher Anfang, gleiche Kacheln, und der andere
+  // wird dabei kein einziges Mal gefragt
+  const fZufall = F.zufall;
+  const eigenerZufall = (l, andere, e) => {
+    let gewuerfelt = 0;
+    const vorher = andere.zufall;
+    andere.zufall = () => ++gewuerfelt && 0.5;
+    const kacheln = () => {
+      l.zufall = zufallAb(5);
+      return JSON.stringify(l.aufgabe(schritt(e, 'legen'), null).kacheln);
+    };
+    const gleicheKacheln = kacheln() === kacheln();
+    andere.zufall = vorher;
+    return [gleicheKacheln, gewuerfelt];
+  };
+  soll('eigener Zufall', [eigenerZufall(Lernen, F, E('i6|kupu-kupu')), eigenerZufall(F, Lernen, EF('u1|la règle'))], [[true, 0], [true, 0]]);
+  F.zufall = fZufall;
+  Lernen.zufall = zufallAb(10008);
+  // Ein eigenes K: Was der eine Kurs ändert, bleibt beim anderen, wie es war
+  const neuProTag = K.NEU_PRO_TAG;
+  K.NEU_PRO_TAG = 9;
+  soll('eigenes K', [F.K.NEU_PRO_TAG, Lernen.neu().neuProTag, F.neu().neuProTag], [neuProTag, 9, neuProTag]);
+  K.NEU_PRO_TAG = neuProTag;
+  // Eigene Zwischenspeicher: Eine Form des anderen Kurses ist hier ein anderes Wort, keine Verwechslung,
+  // und die fremden Wörter beim Satzbau kommen aus dem eigenen Kurs
+  soll('eigene Formen', [Lernen.urteil('la chaise', E('i1|halo'), 0).ganz, F.urteil('kupu-kupu', EF('u1|la chaise'), 0).ganz,
+    Lernen.urteil('selamat siang', E('i1|selamat pagi'), 0).ganz, F.urteil('la table', EF('u1|la chaise'), 0).ganz], [null, null, 'verwechselt', 'verwechselt']);
+  const woerterVon = v => new Set(v.VOKABELN.flatMap(e => e.teile.flatMap(t => t.fr)).flatMap(f => f.toLowerCase().split(/[ .,!?]+/)));
+  const indoWoerter = woerterVon(V), franzWoerter = woerterVon(FRANZ.v);
+  F.zufall = zufallAb(10009);
+  for (let mal = 0; mal < 20; mal++) {
+    const a = Lernen.aufgabe(schritt(E('i3|Kucing itu tidur di kursi.'), 'bauen'), null), b = F.aufgabe(schritt(EF('u4|Pique un raisin.'), 'bauen'), null);
+    if (fremde(a).some(w => !indoWoerter.has(w.toLowerCase())) || fremde(b).some(w => !franzWoerter.has(w.toLowerCase()))) melde('Satzbau mit Wörtern des anderen Kurses: ' + fremde(a) + ' / ' + fremde(b));
+  }
+  F.zufall = fZufall;
+
+  // Vergleichen: gross und klein, Satzzeichen und Abstände zählen nicht, der Bindestrich schon
+  soll('norm, falte, kern', [Lernen.norm('Anak-Anak!'), Lernen.norm('  Apa  kabar? '), Lernen.falte('Senin'), Lernen.kern('kupu-kupu'), Lernen.kern('tidak apa-apa')],
+    ['anak-anak', 'apa kabar', 'senin', 'kupukupu', 'tidakapaapa']);
+  // Ohne Artikel wird nichts zerlegt, auch was französisch aussieht nicht: «les» ist hier ein Wort
+  soll('zerlegen', [Lernen.zerlegen('les piano'), Lernen.zerlegen('la chaise'), Lernen.zerlegen('un buku'), Lernen.zerlegen('kupu-kupu', E('i6|kupu-kupu'))],
+    [{ artikel: null, kern: 'les piano' }, { artikel: null, kern: 'la chaise' }, { artikel: null, kern: 'un buku' }, { artikel: null, kern: 'kupu-kupu' }]);
+  soll('abstand', [Lernen.abstand('kakak', 'kakek'), Lernen.abstand('satu', 'sabtu'), Lernen.abstand('saya', 'saja'), Lernen.abstand('anak', 'anak-anak')], [1, 1, 1, 5]);
+  soll('zustand', Lernen.zustand(null, 'i1|halo'), { st: 0, faellig: '', auf: '', ab: '', rueck: false, teil: 0, form: 0, fest: 0, gesehen: 0, richtig: 0, falsch: 0,
+    schwach: { genus: 0, akzent: 0, hoeren: 0 }, zuletzt: '' });
+  soll('neu()', Lernen.neu(), FRISCH_INDO);
+  if (Lernen.neu().doppelwoerter === Lernen.neu().doppelwoerter) melde('neu() gibt dieselbe Liste doppelwoerter zweimal');
+  soll('das Französisch zählt weder doppel noch echo', [Object.keys(F.neu().zaehler).includes('doppel') || Object.keys(F.neu().zaehler).includes('echo'), 'doppelwoerter' in F.neu()], [false, false]);
+  // Äpfel wie im Französisch; im Finale zählen nur Karten dieses Kurses
+  soll('Äpfel beim ersten Versuch', K.UEBUNGEN.filter(u => u !== 'paare').map(u => Lernen.aepfel({ uebung: u, rolle: 'leit' }, { art: u === 'kennen' || u === 'echo' ? 'ohne' : 'richtig' })),
+    [0, 1, 1, 2, 2, 2, 3, 3, 4, 2, 3, 4, 1]);
+  const vier = VOKABELN.slice(0, 4).map(e => e.kid);
+  soll('Äpfel im Finale', [Lernen.aepfel({ uebung: 'paare', rolle: 'paare', kids: vier }, { art: 'ohne', fehlpaare: 1 }),
+    Lernen.aepfel({ uebung: 'paare', rolle: 'paare', kids: [...vier, 'u1|le livre'] }, { art: 'ohne', fehlpaare: 0 })], [3, 4]);
+  return Object.keys(Lernen).length + ' Namen wie Lernen, ohne Artikel und Akzente, kleine Kacheln, Zähler mit doppel und echo';
+});
+
+/* ---------- 11 · Wortschatz (Indonesisch) ---------- */
+
+indoPruefung(11, 'Wortschatz (Indonesisch): VOK_INDO.pruefen(), kein Schlüssel wie im Französisch', melde => {
+  for (const f of V.pruefen()) melde(f);
+  // Die Stände liegen getrennt, aber Merkhilfen, Wortmomente und Album hängen an den Schlüsseln
+  const fr = new Set(FRANZ.v.VOKABELN.flatMap(e => [e.id, e.kid]));
+  for (const e of VOKABELN) if (fr.has(e.id) || fr.has(e.kid)) melde('Schlüssel auch im Französisch: ' + e.id);
+  for (const g of V.LERNZIEL_REIHE) if (FRANZ.v.LERNZIELE[g]) melde('Lernziel auch im Französisch: ' + g);
+  for (const un of V.UNITE_REIHE) if (FRANZ.v.UNITE_REIHE.includes(un)) melde('Unité auch im Französisch: ' + un);
+  return VOKABELN.length + ' Einträge, ' + KARTEN.length + ' Karten, ' + V.LERNZIEL_REIHE.length + ' Lernziele, ' + VOKABELN.filter(e => e.art === 'satz').length + ' Sätze';
+});
+
+/* ---------- 12 · Leiter (Indonesisch) ---------- */
+
+indoPruefung(12, 'Leiter (Indonesisch): jede Karte hat auf jeder Stufe eine Leitaufgabe, mit und ohne Ton, ab Stufe 1 eine Nebenaufgabe, nie Artikel oder Akzent', melde => {
+  const zahl = leiterPruefen(melde);
+  jedeForm((e, teil, form) => {
+    for (let st = 0; st <= 5; st++) {
+      for (const mitTon of [true, false]) {
+        const k = stand({ st, teil, form }), neben = Lernen.nebenaufgaben(e, k, mitTon);
+        const wo = '«' + e.id + '» Stufe ' + st + ' Teil ' + teil + ' Form ' + form + (mitTon ? '' : ' ohne Ton');
+        if ([Lernen.leitaufgabe(e, k, mitTon), ...neben].some(x => x.uebung === 'artikel' || x.uebung === 'akzent')) melde(wo + ': Artikel oder Akzent');
+        if (st >= 1 && !neben.length) melde(wo + ': keine Nebenaufgabe');
+      }
+    }
+    for (const u of ['artikel', 'akzent']) if (Lernen.kann(u, e, teil, form, true)) melde('«' + e.id + '»: ' + u + ' geht');
+    if (Lernen.kontrast(e) !== null) melde('«' + e.id + '»: Kontrast ' + Lernen.kontrast(e));
+  });
+
+  // Was jede Stufe neben der Leitaufgabe übt (Sprachprofil): Wo das Französisch den Artikel und die
+  // Akzente übt, übt das Indonesisch das Ohr
+  const soll = (was, ist, erwartet) => {
+    if (ist !== erwartet) melde(was + ': «' + ist + '» statt «' + erwartet + '»');
+  };
+  const neben = (id, st, mitTon, mehr) => nebenZeile(E(id), st, mitTon, mehr);
+  soll('Nebenaufgaben «halo» Stufe 1 bis 5', [1, 2, 3, 4, 5].map(st => neben('i1|halo', st)).join(' | '),
+    'lauschen 3 | finden 2, lauschen 2 | schreiben-ton 2, lauschen 1 | schreiben-ton 2, lauschen 1 | schreiben-ton 2, lauschen 1');
+  soll('Nebenaufgaben «halo» ohne Ton', [1, 2, 3].map(st => neben('i1|halo', st, false)).join(' | '), 'finden 3 | finden 2 | finden 1');
+  soll('Nebenaufgaben mit einer Schwäche beim Hören', neben('i1|halo', 3, true, { schwach: { genus: 0, akzent: 0, hoeren: 2 } }), 'schreiben-ton 8, lauschen 7');
+  // Eine Schwäche beim Geschlecht oder bei den Akzenten käme nur aus einem kaputten Stand: Sie holt nichts nach vorn
+  soll('Nebenaufgaben mit Schwächen, die es hier nicht gibt', neben('i1|halo', 3, true, { schwach: { genus: 3, akzent: 3, hoeren: 0 } }), 'schreiben-ton 2, lauschen 1');
+  soll('Nebenaufgaben «Kucing itu tidur di kursi.» Stufe 1 bis 4', [1, 2, 3, 4].map(st => neben('i3|Kucing itu tidur di kursi.', st)).join(' | '),
+    'luecke 2 | luecke 3, bedeutung 1 | luecke 2, legen 2, hoeren 1 | legen 2, ordnen-ton 1, luecke 1');
+  soll('Nebenaufgaben des Satzes ohne Ton', [1, 3, 4].map(st => neben('i3|Kucing itu tidur di kursi.', st, false)).join(' | '),
+    'luecke 2 | luecke 2, legen 2, bedeutung 1 | legen 2, ordnen 1, luecke 1');
+  // Die Leiter: ein Wort, ein Satz, zwei Wörter (zum Ordnen braucht es drei)
+  const leiter = (id, mitTon) => [0, 1, 2, 3, 4, 5].map(st => {
+    const l = Lernen.leitaufgabe(E(id), stand({ st }), mitTon !== false);
+    return l.uebung + '/' + l.vorgabe;
+  }).join(' ');
+  soll('Wort auf der Leiter', leiter('i1|halo'), 'bedeutung/fr hoeren/ton legen/de schreiben/de schreiben/de schreiben/de');
+  soll('Wort mit Bindestrich auf der Leiter', leiter('i6|kupu-kupu'), 'bedeutung/fr hoeren/ton legen/de schreiben/de schreiben/de schreiben/de');
+  soll('Satz auf der Leiter', leiter('i3|Kucing itu tidur di kursi.'), 'bedeutung/fr hoeren/ton ordnen/ton ordnen/de bauen/de bauen/de');
+  soll('Satz auf der Leiter ohne Ton', leiter('i3|Kucing itu tidur di kursi.', false), 'bedeutung/fr bedeutung/fr ordnen/de ordnen/de bauen/de bauen/de');
+  soll('zwei Wörter werden gelegt, nicht geordnet', [leiter('i3|orang tua'), leiter('i4|bahasa Indonesia')].join(' | '),
+    'bedeutung/fr hoeren/ton legen/de schreiben/de schreiben/de schreiben/de | bedeutung/fr hoeren/ton legen/de schreiben/de schreiben/de schreiben/de');
+  // Paar: Die Leiter fragt den Teil, bei dem die Karte steht
+  soll('Paar auf der Leiter', ['anak', 'anak-anak'].map((f, teil) => Lernen.leitaufgabe(E('i3|anak, anak-anak'), stand({ st: 3, teil }), true)).map(l => l.uebung + ' ' + l.teil).join(' | '),
+    'schreiben 0 | schreiben 1');
+  ohneTonPruefen(melde);
+  return zahl + ' Leitaufgaben';
+});
+
+/* ---------- 13 · Aufgaben (Indonesisch) ---------- */
+
+indoPruefung(13, 'Aufgaben (Indonesisch): jede Übung für jeden Eintrag, Teil und jede Form; fehlerfreie Antwort ist richtig; Kacheln klein, Namen gross', melde => {
+  const soll = sollMit(melde);
+  const BUCHSTABE = /^[a-z]$/, TEXT = /^[A-Za-z .,!?-]+$/;
+  // Jedes Wort, das in einer Form des Kurses steht: Wort-Kacheln und Antworten kommen nur von dort
+  const KURSWORT = new Set(VOKABELN.flatMap(e => e.teile.flatMap(t => t.fr)).flatMap(f => f.toLowerCase().split(/[ .,!?]+/)).filter(Boolean));
+  const ausDemKurs = text => text.toLowerCase().split(/[ .,!?]+/).filter(Boolean).every(w => KURSWORT.has(w));
+  let grossGezeigt = 0, kleinGetippt = 0;
+  const jede = (a, e) => {
+    const wo = a.uebung + (a.vorgabe === 'ton' ? '/ton' : '') + ' «' + a.fr + '»';
+    if (a.clip.v !== 'i' || a.clipEintrag.v !== 'i') melde(wo + ': Stimme ' + a.clip.v + '/' + a.clipEintrag.v);
+    for (const k of a.kacheln || []) {
+      if (k.art === 'artikel') melde(wo + ': Artikel-Kachel ' + k.text);
+      if (k.art === 'buchstabe' && !BUCHSTABE.test(k.text)) melde(wo + ': Buchstaben-Kachel «' + k.text + '»');
+      // Wort-Kacheln klein, ausser den Namen, und nur Wörter des Kurses
+      if (k.art === 'wort' && (!TEXT.test(k.text) || !ausDemKurs(k.text) || (k.text !== k.text.toLowerCase() && !V.EIGENNAMEN.includes(k.text)))) melde(wo + ': Wort-Kachel «' + k.text + '»');
+    }
+    for (const p of a.plaetze || []) {
+      if (p.art === 'artikel' || p.wahl) melde(wo + ': Platz ' + p.art + (p.wahl ? ' mit Wahl' : ''));
+      if (p.art === 'buchstabe' && !BUCHSTABE.test(p.soll)) melde(wo + ': Platz «' + p.soll + '»');
+      if (p.art === 'buchstabe' && p.satzanfang) grossGezeigt++;
+    }
+    if (['finden', 'lauschen', 'luecke'].includes(a.uebung)) for (const o of a.optionen) if (!TEXT.test(o.text) || !ausDemKurs(o.text)) melde(wo + ': Antwort «' + o.text + '»');
+    // Die Tastatur hat keine Umschalttaste: Klein getippt ist richtig, auch «senin» für «Senin»
+    if (a.uebung === 'schreiben') {
+      kleinGetippt++;
+      if (!Lernen.urteil(a.ziel.toLowerCase(), e, a.teil, { form: a.form, vorgabe: a.vorgabe }).richtig) melde(wo + ': klein getippt nicht richtig');
+    }
+  };
+  const { zahl, lueckenwoerter } = aufgabenBauen(melde, jede);
+  const satzTeile = VOKABELN.filter(e => e.art === 'satz').reduce((n, e) => n + e.teile.length, 0);
+  const langeFormen = VOKABELN.filter(e => e.art === 'wort').flatMap(e => e.teile.flatMap(t => t.fr)).filter(f => (f.match(/\p{L}/gu) || []).length > 14).length;
+  soll('keine Artikel- und keine Akzent-Aufgabe', Object.keys(zahl).filter(x => /^(Knöpfe|akzent|artikel)/.test(x)), []);
+  soll('legen mit fehlendem Wort für jeden Satz-Teil', zahl['legen: Satz-Teile mit fehlendem Wort'], satzTeile);
+  soll('legen mit fehlendem Wort für die langen Wortformen', zahl['legen: lange Wortformen'], langeFormen);
+  // Keine Wortform hat drei Wörter und mehr als 14 Buchstaben: Wörter werden nie geordnet
+  soll('ordnen für keine Wortform', zahl['ordnen: lange Wortformen'] || 0, 0);
+  soll('bauen für jeden Satz-Teil', zahl['bauen: Satz-Teile'], satzTeile);
+  // Gross gezeigt wird nur, wo die Form gross geschrieben ist: der Anfang eines Satzes, eines Tags, einer Sprache
+  if (!grossGezeigt) melde('legen: nie ein Buchstabe gross gezeigt, die Prüfung sieht so nichts');
+  lueckenwoerterPruefen(lueckenwoerter, melde);
+
+  // Keine falsche Antwort in der Lücke und keine fremde Kachel beim Satzbau ist ein Wort des Satzes, sein
+  // Grundwort oder seine Verdopplung: «Ibu dan anak di dapur.» wäre auch richtig. Und keine fremde Kachel
+  // ist gross: Sie sähe aus wie ein Name im Satz.
+  const verboten = t => {
+    const aus = new Set();
+    for (const w of t.fr[0].toLowerCase().split(/[ .,!?]+/).filter(Boolean)) {
+      aus.add(w).add(w + '-' + w);
+      const m = w.match(/^(\p{L}+)-\1$/u);
+      if (m) aus.add(m[1]);
+    }
+    return aus;
+  };
+  const lueckenZahl = lueckeImSatz(melde, (a, e, teil) => {
+    const nein = verboten(e.teile[teil]);
+    for (const o of a.optionen) if (!o.richtig && nein.has(Lernen.falte(o.text))) melde('luecke «' + a.fr + '»: «' + o.text + '» passt auch');
+  });
+  let gebaut = 0;
+  jederTeil((e, teil, t) => {
+    if (e.art !== 'satz') return;
+    const nein = verboten(t);
+    for (let mal = 0; mal < 40; mal++) {
+      const a = Lernen.aufgabe(schritt(e, 'bauen', { teil }), null);
+      gebaut++;
+      for (const w of fremde(a)) {
+        if (nein.has(Lernen.falte(w))) melde('bauen «' + t.fr[0] + '»: fremde Kachel «' + w + '» passt auch');
+        if (w !== w.toLowerCase()) melde('bauen «' + t.fr[0] + '»: grosse fremde Kachel «' + w + '»');
+      }
+    }
+  });
+  const auf = (id, uebung, mehr, k) => Lernen.aufgabe(schritt(E(id), uebung, mehr), zMit(E(id), k || {}));
+  for (let mal = 0; mal < 20; mal++) {
+    const a = auf('i3|Ibu dan anak-anak di dapur.', 'luecke', {}, { gesehen: 0 });
+    if (frei(a)[0].soll !== 'anak-anak' || a.optionen.some(o => o.text === 'anak')) melde('luecke «Ibu dan anak-anak di dapur.»: ' + frei(a)[0].soll + ' unter ' + a.optionen.map(o => o.text).join(', '));
+  }
+
+  // Gross geschriebene Wort-Einträge beim Legen: Jede Kachel ist klein, auch jeder Störbuchstabe, und der
+  // Platz zeigt den grossen Buchstaben (satzanfang), sonst verriete die einzige grosse Kachel ihren Platz
+  const bild = a => a.plaetze.map(p => (p.art === 'fest' ? (p.text === ' ' ? '_' : p.text) : p.soll + (p.satzanfang ? '^' : ''))).join(' ');
+  for (const [id, erwartet] of [['i4|Senin', 's^ e n i n'], ['i4|Jumat', 'j^ u m a t'], ['i4|bahasa Jerman', 'b a h a s a _ j^ e r m a n'], ['i6|kupu-kupu', 'k u p u - k u p u']]) {
+    for (let mal = 0; mal < 5; mal++) {
+      const a = auf(id, 'legen');
+      soll('legen «' + E(id).fr + '»', [bild(a), gelesen(a.plaetze, true), a.kacheln.every(k => BUCHSTABE.test(k.text))], [erwartet, E(id).fr, true]);
+    }
+  }
+  // Die lange Form legt ein Wort und druckt den Namen: «Indonesia» ist ein Name und wird nie Lücke
+  const indonesia = auf('i4|bahasa Indonesia', 'legen');
+  soll('legen «bahasa Indonesia»', [indonesia.lueckenwort, bild(indonesia)], ['bahasa', 'b a h a s a _ Indonesia']);
+  // Gelegt mit einem Buchstaben zu viel oder zwei vertauscht: der Tipp zum Legen, nie zu Akzent oder Artikel
+  const senin = frei(auf('i4|Senin', 'legen'));
+  soll('reihenUrteil «Senin»', [['s', 'e', 'n', 'i', 'n'], ['s', 'e', 'n', 'e', 'n'], ['e', 's', 'n', 'i', 'n'], ['s', 'e', 'n', 'n', 'i']].map(g => {
+    const u = Lernen.reihenUrteil(g, senin);
+    return [u.richtig, u.tipp, u.fehler];
+  }), [[true, null, []], [false, 'buchstabe', []], [false, 'legen', []], [false, 'legen', []]]);
+  // Sätze: Namen bleiben gross, der Anfang wird gross gezeigt, und «anak-anak» ist ein Wort
+  const ordnen = id => {
+    const a = auf(id, 'ordnen');
+    return [wortBild(a.plaetze), sortiert(a.kacheln.map(k => k.text)), frei(a).map(p => !!p.satzanfang)];
+  };
+  soll('ordnen «Percik dari Jawa.»', ordnen('i1|Percik dari Jawa.'), ['[ ][ ][ ].', 'Jawa Percik dari', [true, false, false]]);
+  soll('ordnen «Nama saya Nea.»', ordnen('i1|Nama saya Nea.'), ['[ ][ ][ ].', 'Nea nama saya', [true, false, false]]);
+  soll('ordnen «Ibu dan anak-anak di dapur.»', ordnen('i3|Ibu dan anak-anak di dapur.'), ['[ ][ ][ ][ ][ ].', 'anak-anak dan dapur di ibu', [true, false, false, false, false]]);
+  soll('ordnen «Besok hari Sabtu.»', ordnen('i4|Besok hari Sabtu.'), ['[ ][ ][ ].', 'Sabtu besok hari', [true, false, false]]);
+  soll('reihenUrteil in falscher Reihenfolge', Lernen.reihenUrteil(['dari', 'percik', 'jawa'], frei(auf('i1|Percik dari Jawa.', 'ordnen'))).tipp, 'legen');
+  soll('reihenUrteil vertauscht', Lernen.reihenUrteil(['dari', 'Percik', 'Jawa'], frei(auf('i1|Percik dari Jawa.', 'ordnen'))).tipp, 'reihenfolge');
+  // Nach dem Ohr ordnen nur Sätze
+  soll('ordnen nach dem Ohr nur für Sätze', auf('i3|Kucing itu tidur di kursi.', 'ordnen', { vorgabe: 'ton' }).vorgabe, 'ton');
+
+  return Object.entries(zahl).filter(([was]) => !was.includes(':')).map(([was, n]) => n + ' ' + was).join(', ') + ', ' + lueckenZahl + ' Lückenwörter, '
+    + grossGezeigt + ' Plätze gross gezeigt, ' + kleinGetippt + '-mal klein getippt, ' + gebaut + '-mal gebaut';
+});
+
+/* ---------- 14 · Ablenker (Indonesisch) ---------- */
+
+indoPruefung(14, 'Ablenker (Indonesisch): verschieden, nie zwei richtige Antworten, auch Grossbuchstaben und Fragezeichen verraten nichts', melde => {
+  // Welche Karten als Ablenker in Frage kommen (wie in lernen.js): nie dieselbe Karte, nie dasselbe Deutsch,
+  // nie eine, die nie dabei sein darf oder gleich klingt, und nie dieselbe Art
+  const auswahl = e => {
+    const deZiel = new Set(e.deAlle.map(Lernen.norm));
+    return KARTEN.filter(k => k.kid !== e.kid && k.art === e.art && !k.deAlle.some(d => deZiel.has(Lernen.norm(d)))
+      && !inGruppe(V.NIE_ZUSAMMEN, k.kid, e.kid) && !inGruppe(V.KLANGGRUPPEN, k.kid, e.kid));
+  };
+  let finden = 0, lauschen = 0;
+  const zahl = ablenkerSechsmal(melde, (e, teil, form, seite, liste) => {
+    if (seite === 'de') return;
+    const ziel = e.teile[teil].fr[form] || e.teile[teil].fr[0], b = schriftbild(ziel);
+    const wo = seite + ' «' + ziel + '»';
+    const gleiche = liste.filter(x => schriftbild(x.e.teile[x.teil].fr[0]) === b).length;
+    // Wie viele mit demselben Schriftbild es gäbe: verschiedene Texte, höchstens einer je Karte
+    const teile = seite === 'klang' ? k => [0] : k => k.teile.map((x, i) => i);
+    const texte = new Set(), karten = new Set();
+    for (const k of auswahl(e)) {
+      for (const i of teile(k)) {
+        const f = k.teile[i].fr[0];
+        if (schriftbild(f) === b && Lernen.norm(f) !== Lernen.norm(ziel)) {
+          texte.add(Lernen.norm(f));
+          karten.add(k);
+        }
+      }
+    }
+    const moeglich = Math.min(texte.size, karten.size);
+    // finden: zuerst Ablenker, die so aussehen wie die Lösung, so viele es gibt
+    if (seite === 'fr') {
+      finden++;
+      if (gleiche < Math.min(liste.length, moeglich)) melde(wo + ': nur ' + gleiche + ' Antworten wie die Lösung, es gäbe ' + moeglich + ': ' + liste.map(x => x.e.teile[x.teil].fr[0]).join(', '));
+    }
+    // lauschen: Die Lösung steht nie als einzige mit ihrem Schriftbild da, wo es eine andere gäbe
+    if (seite === 'klang') {
+      lauschen++;
+      if (!gleiche && moeglich) melde(wo + ': die einzige Antwort mit diesem Schriftbild: ' + liste.map(x => x.e.teile[0].fr[0]).join(', '));
+    }
+  });
+  // lauschen: die ähnlichsten Klänge. Ein Ablenker mit einem anderen Schriftbild als die Lösung klingt nie
+  // weiter weg als eine Karte, die frei blieb; einer mit ihrem Schriftbild nie weiter als eine freie mit
+  // demselben (so bleibt es, wenn der fernste der drei einem Platz macht, der aussieht wie die Lösung)
+  jederTeil((e, teil, t) => {
+    if (e.art !== 'wort') return;
+    const ziel = Lernen.falte(t.fr[0]), weite = k => Lernen.abstand(ziel, Lernen.falte(k.teile[0].fr[0])), b = schriftbild(t.fr[0]);
+    const wie = k => schriftbild(k.teile[0].fr[0]);
+    const nah = Lernen.ablenker(e, teil, 'klang', 3);
+    const frei = auswahl(e).filter(k => !nah.some(x => x.e === k) && Lernen.norm(k.teile[0].fr[0]) !== Lernen.norm(t.fr[0]));
+    const anders = nah.filter(x => wie(x.e) !== b), gleich = nah.filter(x => wie(x.e) === b);
+    const weitAnders = Math.max(...anders.map(x => weite(x.e))), weitGleich = Math.max(...gleich.map(x => weite(x.e)));
+    const naeher = frei.find(k => weite(k) < weitAnders) || frei.find(k => wie(k) === b && weite(k) < weitGleich);
+    if (naeher) melde('lauschen «' + t.fr[0] + '»: «' + naeher.teile[0].fr[0] + '» klingt ähnlicher als die Auswahl ' + nah.map(x => x.e.teile[0].fr[0]).join(', '));
+  });
+  // Stichproben: Was am ähnlichsten klingt, steht dabei; Tage unter Tagen, Fragen unter Fragen
+  const klang = id => Lernen.ablenker(E(id), 0, 'klang', 3).map(x => x.e.teile[0].fr[0]);
+  const fr = id => Lernen.aufgabe(schritt(E(id), 'finden'), null).optionen.filter(o => !o.richtig).map(o => o.text);
+  for (let mal = 0; mal < 10; mal++) {
+    if (!klang('i3|kakak').includes('kakek') || !klang('i3|kakek').includes('kakak')) melde('lauschen «kakak»/«kakek»: ' + klang('i3|kakak') + ' / ' + klang('i3|kakek'));
+    if (!klang('i2|satu').includes('Sabtu') || !klang('i2|satu').includes('batu')) melde('lauschen «satu»: ' + klang('i2|satu'));
+    if (!klang('i1|selamat malam').includes('selamat makan')) melde('lauschen «selamat malam»: ' + klang('i1|selamat malam'));
+    if (!klang('i4|Senin').some(f => /^[A-Z]/.test(f))) melde('lauschen «Senin» allein gross: ' + klang('i4|Senin'));
+    if (!klang('i1|apa?').some(f => f.endsWith('?'))) melde('lauschen «apa?» allein mit Fragezeichen: ' + klang('i1|apa?'));
+    if (fr('i4|Senin').some(f => !/^[A-Z]/.test(f))) melde('finden «Montag»: ' + fr('i4|Senin'));
+    if (fr('i1|apa?').some(f => !f.endsWith('?'))) melde('finden «was?»: ' + fr('i1|apa?'));
+    if (fr('i4|hari ini').some(f => /[A-Z]/.test(f))) melde('finden «heute»: ' + fr('i4|hari ini'));
+    if (fr('i4|matematika').some(f => /[A-Z]/.test(f))) melde('finden «Mathematik»: ' + fr('i4|matematika'));
+  }
+  return zahl + ' Auswahlen, davon ' + finden + ' finden und ' + lauschen + ' lauschen auf ihr Schriftbild geprüft';
+});
+
+/* ---------- 15 · Urteil (Indonesisch) ---------- */
+
+indoPruefung(15, 'Urteil über Getipptes (Indonesisch): Bindestrich, gross und klein, Verwechslung, nie ein Artikel oder ein Akzent', melde => {
+  // [Eintrag, Eingabe, { teil, form, vorgabe }, erwartet: richtig, ganz, artikel, kern]
+  const J = true, N = false;
+  const TABELLE = [
+    ['i6|kupu-kupu', 'kupu-kupu', {}, J, null, 'ok', 'ok'],
+    ['i6|kupu-kupu', 'Kupu-Kupu', {}, J, null, 'ok', 'ok'],
+    ['i6|kupu-kupu', 'kupu-kupu!', {}, J, null, 'ok', 'ok'],
+    ['i6|kupu-kupu', 'kupu-kupu', { vorgabe: 'ton' }, J, null, 'ok', 'ok'],
+    // Der Bindestrich fehlt oder ist ein Leerzeichen: der Hinweis auf die Zeichen, nicht «ein anderes Wort»
+    ['i6|kupu-kupu', 'kupukupu', {}, N, null, 'ok', 'zeichen'],
+    ['i6|kupu-kupu', 'kupu kupu', {}, N, null, 'ok', 'zeichen'],
+    ['i6|kupu-kupu', 'kupu kupu', { vorgabe: 'ton' }, N, null, 'ok', 'zeichen'],
+    ['i1|tidak apa-apa', 'tidak apa apa', {}, N, null, 'ok', 'zeichen'],
+    ['i1|tidak apa-apa', 'tidak apaapa', {}, N, null, 'ok', 'zeichen'],
+    ['i1|terima kasih', 'terimakasih', {}, N, null, 'ok', 'zeichen'],
+    ['i1|apa kabar?', 'apakabar', {}, N, null, 'ok', 'zeichen'],
+    ['i5|es krim', 'es-krim', {}, N, null, 'ok', 'zeichen'],
+    // Einen Apostroph gibt es nicht: «Jum’at» ist auch der Hinweis auf die Zeichen
+    ['i4|Jumat', 'jum’at', {}, N, null, 'ok', 'zeichen'],
+    ['i4|Jumat', "jum'at", {}, N, null, 'ok', 'zeichen'],
+    // Nur eine Hälfte: «kupu» ist kein Wort, «anak» die andere Hälfte der Karte
+    ['i6|kupu-kupu', 'kupu', {}, N, null, 'ok', 'anders'],
+    ['i3|anak, anak-anak', 'anak-anak', { teil: 1 }, J, null, 'ok', 'ok'],
+    ['i3|anak, anak-anak', 'anak', { teil: 1 }, N, 'verwechselt', 'ok', 'anders'],
+    ['i3|anak, anak-anak', 'anak-anak', { teil: 0 }, N, 'verwechselt', 'ok', 'anders'],
+    ['i3|anak, anak-anak', 'anak anak', { teil: 1 }, N, null, 'ok', 'zeichen'],
+    ['i3|anak, anak-anak', 'anak-anaks', { teil: 1 }, N, null, 'ok', 'tippfehler'],
+    // Gross und klein zählen nicht: Die Tastatur hat keine Umschalttaste
+    ['i4|Senin', 'senin', {}, J, null, 'ok', 'ok'],
+    ['i4|Senin', 'SENIN', {}, J, null, 'ok', 'ok'],
+    ['i4|Senin', 'senin', { vorgabe: 'ton' }, J, null, 'ok', 'ok'],
+    ['i4|bahasa Jerman', 'bahasa jerman', {}, J, null, 'ok', 'ok'],
+    ['i4|bahasa Indonesia', 'bahasa indonesia', {}, J, null, 'ok', 'ok'],
+    ['i1|apa kabar?', 'Apa kabar', {}, J, null, 'ok', 'ok'],
+    ['i1|maaf', 'maaf!', {}, J, null, 'ok', 'ok'],
+    ['i1|terima kasih', 'terima  kasih', {}, J, null, 'ok', 'ok'],
+    // Ein Buchstabe daneben, ab vier Buchstaben
+    ['i4|Senin', 'senen', {}, N, null, 'ok', 'tippfehler'],
+    ['i3|kucing', 'kuching', {}, N, null, 'ok', 'tippfehler'],
+    ['i3|kucing', 'kucign', {}, N, null, 'ok', 'tippfehler'],
+    ['i1|saya', 'saja', {}, N, null, 'ok', 'tippfehler'],
+    ['i1|halo', 'hallo', {}, N, null, 'ok', 'tippfehler'],
+    ['i1|maaf', 'maf', {}, N, null, 'ok', 'tippfehler'],
+    ['i6|kupu-kupu', 'kupu-kupuu', {}, N, null, 'ok', 'tippfehler'],
+    ['i1|ya', 'ja', {}, N, null, 'ok', 'anders'],
+    // Ein Akzent von einer echten Tastatur ist ein falscher Buchstabe wie jeder andere, nie «Akzent setzen»
+    ['i3|kucing', 'kúcing', {}, N, null, 'ok', 'tippfehler'],
+    ['i6|kupu-kupu', 'kúpu-kupu', {}, N, null, 'ok', 'tippfehler'],
+    // So, wie es ein deutsches Ohr schreibt: ein anderes Wort (einen eigenen Hinweis dafür gibt es nicht)
+    ['i3|kucing', 'kutsching', {}, N, null, 'ok', 'anders'],
+    // Ein Wort einer anderen Karte: verwechselt
+    ['i2|satu', 'sabtu', {}, N, 'verwechselt', 'ok', 'tippfehler'],
+    ['i4|Sabtu', 'satu', {}, N, 'verwechselt', 'ok', 'tippfehler'],
+    ['i5|susu', 'teh', {}, N, 'verwechselt', 'ok', 'anders'],
+    ['i1|selamat pagi', 'selamat siang', {}, N, 'verwechselt', 'ok', 'anders'],
+    ['i4|Senin', 'selasa', {}, N, 'verwechselt', 'ok', 'anders'],
+    ['i1|tidak apa-apa', 'tidak', {}, N, 'verwechselt', 'ok', 'anders'],
+    ['i6|kupu-kupu', 'kura-kura', {}, N, 'verwechselt', 'ok', 'anders'],
+    // Zwei Wörter vertauscht: ein anderes Wort (beim Tippen gibt es keinen Hinweis auf die Reihenfolge)
+    ['i3|orang tua', 'tua orang', {}, N, null, 'ok', 'anders'],
+    ['i3|kamar mandi', 'mandi kamar', {}, N, null, 'ok', 'anders'],
+    ['i4|bahasa Jerman', 'jerman bahasa', {}, N, null, 'ok', 'anders'],
+    // Ohne Artikel ist, was französisch aussieht, einfach ein anderes Wort
+    ['i6|kupu-kupu', 'le kupu-kupu', {}, N, null, 'ok', 'anders'],
+    ['i1|halo', 'les halo', {}, N, null, 'ok', 'anders'],
+    ['i1|halo', 'la chaise', {}, N, null, 'ok', 'anders'],
+    ['i1|halo', '', {}, N, null, 'ok', 'anders'],
+  ];
+  for (const [id, eingabe, opt, richtig, ganz, artikel, kern] of TABELLE) {
+    const u = Lernen.urteil(eingabe, E(id), opt.teil || 0, opt);
+    const ist = [u.richtig, u.ganz, u.artikel, u.kern], soll = [richtig, ganz, artikel, kern];
+    if (!gleich(ist, soll)) melde('«' + eingabe + '» für ' + id + (opt.vorgabe === 'ton' ? ' (Diktat)' : '') + ': ' + ist.join(', ') + ' statt ' + soll.join(', '));
+    if (u.fehler.length || u.zeichen) melde('«' + eingabe + '» für ' + id + ': fehler ' + u.fehler + ', zeichen ' + u.zeichen);
+  }
+  const soll = sollMit(melde);
+  const u = (id, eingabe, opt) => Lernen.urteil(eingabe, E(id), (opt && opt.teil) || 0, opt);
+  soll('stellen', [u('i6|kupu-kupu', 'kupu kupu').stellen, u('i6|kupu-kupu', 'kupukupu').stellen, u('i4|Senin', 'senen').stellen, u('i3|kucing', 'kúcing').stellen,
+    u('i6|kupu-kupu', 'kupu-kupu').stellen], [[4], [3], [3], [1], []]);
+  soll('andere', [u('i3|anak, anak-anak', 'anak', { teil: 1 }).andere, u('i2|satu', 'sabtu').andere, u('i1|halo', 'la chaise').andere],
+    [{ nr: E('i3|anak, anak-anak').nr, teil: 0 }, { nr: E('i4|Sabtu').nr, teil: 0 }, null]);
+  soll('ziel und bezug', [u('i3|anak, anak-anak', 'x', { teil: 1 }).ziel, u('i4|Senin', 'senen').bezug], ['anak-anak', 'Senin']);
+
+  // Über alle Wortformen (Prüfung 5) und dazu, was nur hier vorkommt
+  const vokale = { a: 'á', e: 'é', i: 'í', o: 'ó', u: 'ú' };
+  let zahl = TABELLE.length + alleFormenUrteilen(melde, (e, teil, form, text, pruefe) => {
+    const wo = '«' + text + '»';
+    // Der Bindestrich fehlt oder ist ein Leerzeichen: zeichen
+    if (text.includes('-')) for (const eingabe of [text.replace(/-/g, ''), text.replace(/-/g, ' ')]) pruefe(eingabe, x => x.kern === 'zeichen');
+    // Die Hälfte einer Verdopplung ist nie richtig
+    const m = text.match(/^(\p{L}+)-\1$/u);
+    if (m && pruefe(m[1]).richtig) melde(wo + ': die Hälfte «' + m[1] + '» angenommen');
+    // Ein Akzent auf dem ersten Vokal: ein falscher Buchstabe, nie «Akzent»
+    if (/[aeiou]/.test(text)) pruefe(text.replace(/[aeiou]/, v => vokale[v]), x => x.kern === 'tippfehler' || x.kern === 'anders');
+    // Ohne Umschalttaste: klein getippt ist richtig, ganz gross auch
+    if (!pruefe(text.toLowerCase()).richtig || !pruefe(text.toUpperCase()).richtig) melde(wo + ': klein oder gross getippt nicht angenommen');
+    // Zwei Wörter vertauscht, ein französischer Artikel davor: nie richtig
+    const w = text.split(' ');
+    if (w.length === 2 && w[0] !== w[1] && pruefe(w[1] + ' ' + w[0]).richtig) melde(wo + ': vertauscht angenommen');
+    for (const artikel of ['le ', 'la ', 'les ', 'un ', 'une ', 'l’']) if (pruefe(artikel + text).richtig) melde(wo + ': mit «' + artikel + '» angenommen');
+  });
+  // Über Kreuz (Prüfung 5): nie ein Urteil über einen Artikel, nie Akzent oder Ligatur, nie ein Fehler,
+  // der eine Schwäche wäre. Gezählt: jede Wortform gegen jede Form und jeden Artikel vor ihr, zweimal.
+  let schief = 0;
+  const kreuz = ueberKreuz(melde, (x, eingabe, e, teil, form, vorgabe) => {
+    if (x.artikel === 'ok' && x.kern !== 'akzent' && x.kern !== 'ligatur' && !x.fehler.length && !x.zeichen) return;
+    if (schief++ < 10) melde('«' + eingabe + '» für «' + e.teile[teil].fr[form] + '»' + (vorgabe === 'ton' ? ' (Diktat)' : '') + ': ' + x.artikel + '/' + x.kern + ', fehler ' + x.fehler);
+  });
+  const formen = VOKABELN.flatMap(e => e.teile.flatMap(t => t.fr)).length, wortformen = VOKABELN.filter(e => e.art === 'wort').flatMap(e => e.teile.flatMap(t => t.fr)).length;
+  soll('über Kreuz', kreuz, wortformen * (formen + 7) * 2);
+  zahl += kreuz;
+  return zahl + ' Urteile';
+});
+
+/* ---------- 16 · Planer (Indonesisch) ---------- */
+
+indoPruefung(16, 'Planer (Indonesisch): 60 Tage gespielt und 4000 beliebige Stände; Budget, leere Runden, Reihenfolge, Sätze, Leiter, freies Üben', melde => {
+  const soll = sollMit(melde);
+  const P1 = ersteZiele();
+  const rollen = plan => plan.schritte.map(s => s.uebung + (s.check ? '/' + s.check : '')).join(' ');
+  const hinweis = [];
+
+  /* Die ersten Karten und der erste Tag (3.9): Die erste Pelajaran ist gewählt, ohne Frage nach der Klasse */
+  {
+    const z = zMitZielen(P1);
+    const plan = Lernen.planen(z, HEUTE, { modus: 'runde', mitTon: true });
+    planPruefen(kopie(z), plan, {}, HEUTE, melde, 'erste Runde', true);
+    soll('die ersten neuen Karten', plan.neu, V.LERNZIELE[P1[0]].eintraege.slice(0, 4).map(e => e.kid));
+    soll('erste Runde: viermal kennen, acht Checks, nachsprechen, Finale mit vier Paaren',
+      [rollen(plan).split(' ').sort().join(' '), plan.schritte[plan.schritte.length - 1].kids.length, plan.art, plan.faellig],
+      ['bedeutung/a bedeutung/a bedeutung/a bedeutung/a echo finden/b finden/b finden/b finden/b kennen kennen kennen kennen paare', 4, 'runde', 0]);
+    soll('erste Runde beginnt mit kennen, die erste beurteilte Aufgabe ist der erste Check', [plan.schritte[0].uebung, plan.schritte.find(beurteilt).check], ['kennen', 'a']);
+    soll('planen legt keine Karte an und stellt nur den Tag um', [Object.keys(z.karten).length, z.tag, z.zaehler, z.doppelwoerter],
+      [0, { datum: HEUTE, neu: 0, runden: 0, frei: [] }, FRISCH_INDO.zaehler, []]);
+    soll('erste Runde ohne Ton: kein Nachsprechen', rollen(Lernen.planen(zMitZielen(P1), HEUTE, { mitTon: false })).split(' ').sort().join(' '),
+      'bedeutung/a bedeutung/a bedeutung/a bedeutung/a finden/b finden/b finden/b finden/b kennen kennen kennen kennen paare');
+  }
+
+  /* Kontingent und Bremsen: wie im Französisch, mit einem eigenen Kontingent im eigenen Stand */
+  {
+    const y = zMitZielen(P1);
+    const neu = [];
+    let plan;
+    for (let runde = 0; runde < 4; runde++) {
+      plan = Lernen.planen(y, HEUTE, {});
+      neu.push(plan.art === 'leer' ? 'leer' : plan.schritte.filter(s => s.neu).length);
+      if (plan.art !== 'leer') spiele(y, plan, HEUTE, () => 'richtig');
+    }
+    soll('neue Karten in vier Runden an einem Tag', [neu, y.tag.neu, y.tag.runden], [[4, 2, 'leer', 'leer'], 6, 2]);
+    for (const [proTag, erwartet] of [[4, [4, 'leer']], [9, [4, 4, 1, 'leer']], [12, [4, 4, 4, 'leer']]]) {
+      const x = zMitZielen(P1, { neuProTag: proTag }), ist = [];
+      for (let runde = 0; runde < erwartet.length; runde++) {
+        plan = Lernen.planen(x, HEUTE, {});
+        ist.push(plan.art === 'leer' ? 'leer' : plan.schritte.filter(s => s.neu).length);
+        if (plan.art !== 'leer') spiele(x, plan, HEUTE, () => 'richtig');
+      }
+      soll('neue Karten bei ' + proTag + ' am Tag', ist, erwartet);
+    }
+    plan = Lernen.planen(y, Lernen.tagPlus(HEUTE, 1), {});
+    soll('am nächsten Tag beginnt das Kontingent neu', [y.tag.neu, plan.schritte.filter(s => s.neu).length > 0], [0, true]);
+    // Bremsen: mehr als 14 fällig, oder mehr als 16 auf Stufe 1 und 2
+    const zwei = V.LERNZIEL_REIHE.filter(g => V.LERNZIELE[g].un === V.UNITE_REIHE[0] || V.LERNZIELE[g].un === V.UNITE_REIHE[1]);
+    const mitStufe = (zahl, mehr) => {
+      const x = zMitZielen(zwei);
+      KARTEN.filter(e => e.un === V.UNITE_REIHE[1] && e.art === 'wort').slice(0, zahl).forEach(e => {
+        x.karten[e.kid] = stand({ st: 3, gesehen: 4, richtig: 4, zuletzt: 'rrr', ...mehr });
+      });
+      return x;
+    };
+    const neue = x => Lernen.planen(x, HEUTE, {}).schritte.filter(s => s.neu).length;
+    const morgen = Lernen.tagPlus(HEUTE, 1);
+    soll('mehr als 14 fällige Karten: keine neue', [neue(mitStufe(15, { st: 1, faellig: HEUTE })), neue(mitStufe(15, { faellig: HEUTE })), Lernen.zahlen(mitStufe(15, { faellig: HEUTE }), HEUTE).neuFrei],
+      [0, 0, 0]);
+    soll('16 junge Karten bremsen nicht, 17 schon', [neue(mitStufe(16, { st: 2, faellig: morgen })), neue(mitStufe(17, { st: 2, faellig: morgen })),
+      Lernen.planen(mitStufe(17, { st: 1, faellig: morgen }), HEUTE, {}).art], [4, 0, 'leer']);
+    // Mehr fällig, als in eine Runde passt: Jedes Wort auf Stufe 1 übt das Lauschen nebenher, wie im
+    // Französisch ein Nomen seinen Artikel. Elf in der Runde, drei Plätze für Nebenaufgaben, zwei warten.
+    const viele = zMitZielen(zwei);
+    const woerter = KARTEN.filter(e => e.un === V.UNITE_REIHE[0] && e.art === 'wort').slice(0, 13);
+    woerter.forEach((e, i) => {
+      viele.karten[e.kid] = stand({ st: 1, gesehen: 4, richtig: 2, falsch: i > 9 ? 2 : 0, zuletzt: i > 9 ? 'rf' : 'rr', faellig: Lernen.tagPlus(HEUTE, -i) });
+    });
+    plan = Lernen.planen(viele, HEUTE, {});
+    planPruefen(kopie(viele), plan, {}, HEUTE, melde, 'dreizehn fällige Wörter', true);
+    soll('dreizehn fällige Wörter: elf in der Runde, die zwei am wenigsten dringenden warten, drei lauschen nebenher',
+      [plan.faellig, woerter.filter(e => !plan.schritte.some(x => x.kid === e.kid)).map(e => e.kid), plan.neu, plan.schritte.filter(x => x.rolle === 'neben').map(x => x.uebung)],
+      [11, woerter.slice(0, 2).map(e => e.kid), [], ['lauschen', 'lauschen', 'lauschen']]);
+    spiele(viele, plan, HEUTE, () => 'richtig');
+    soll('die nächste Runde am selben Tag bringt die beiden Wartenden', Lernen.planen(viele, HEUTE, {}).faellig, 2);
+  }
+
+  /* Eine Uhr, die einmal vorging */
+  uhrGingVor(V.LERNZIEL_REIHE.slice(0, 2), 10, melde);
+
+  /* Leere Runden und das nächste Lernziel (3.4, Schritt 9): ohne Plus-Blätter, rundherum ab der Pelajaran */
+  {
+    const z = zMitZielen(P1);
+    z.tag = { datum: HEUTE, neu: z.neuProTag, runden: 2, frei: [] };
+    let plan = Lernen.planen(z, HEUTE, {});
+    soll('nichts fällig, Kontingent aufgebraucht: leer ohne Angebot', [plan.art, plan.mehr, plan.schritte, plan.morgen], ['leer', null, [], 0]);
+    const alle = (ziele, unite) => {
+      const x = zMitZielen(ziele, { unite });
+      for (const e of KARTEN) if (e.lernziele.some(g => x.ziele[g])) x.karten[e.kid] = stand({ st: 2, gesehen: 3, richtig: 3, faellig: Lernen.tagPlus(HEUTE, 1) });
+      return x;
+    };
+    plan = Lernen.planen(alle(P1, 'i1'), HEUTE, {});
+    soll('alles kennengelernt, nichts fällig: leer mit dem nächsten Lernziel', [plan.art, plan.mehr, plan.morgen], ['leer', 'i2-1', KARTEN.filter(e => e.un === 'i1').length]);
+    soll('das nächste Lernziel: ab der gewählten Pelajaran, rundherum', [Lernen.planen(alle(['i3-1'], 'i3'), HEUTE, {}).mehr, Lernen.planen(alle(['i6-4'], 'i6'), HEUTE, {}).mehr,
+      Lernen.planen(alle(V.LERNZIEL_REIHE.filter(g => !g.startsWith('i1')), 'i3'), HEUTE, {}).mehr, Lernen.planen(alle(V.LERNZIEL_REIHE, 'i2'), HEUTE, {}).mehr,
+      Lernen.planen(alle([], null), HEUTE, {}).mehr], ['i3-2', 'i6-1', 'i1-1', null, 'i1-1']);
+    const y = alle(P1, 'i1');
+    y.karten[KARTEN[0].kid].faellig = HEUTE;
+    soll('eine fällige Karte reicht für eine Runde, die bis RUNDE_MIN aufgefüllt wird',
+      [Lernen.planen(y, HEUTE, {}).art, Lernen.planen(y, HEUTE, {}).schritte.filter(beurteilt).length], ['runde', K.RUNDE_MIN]);
+  }
+
+  /* Die Leiter beim Verbuchen (3.3) */
+  {
+    buchungPruefen(V.LERNZIELE[P1[0]].eintraege[0], P1, melde);
+    soll('Paar: beide Hälften werden geschrieben, bevor die Karte reif ist', drehen('i3|anak, anak-anak', 4), ['hoeren anak', 'legen anak-anak', 'schreiben anak', 'schreiben anak-anak']);
+    soll('einfache Karte dreht nicht', drehen('i6|kupu-kupu', 3), ['hoeren kupu-kupu', 'legen kupu-kupu', 'schreiben kupu-kupu']);
+    soll('Satz auf der Leiter', drehen('i3|Kucing itu tidur di kursi.', 4).map(x => x.split(' ')[0]), ['hoeren', 'ordnen', 'ordnen', 'bauen']);
+    // Schwächen: nur das Ohr. Fehler beim Geschlecht oder bei den Akzenten kann es hier nicht geben, und
+    // meldete sie doch jemand, entstünde keine Schwäche, die keine Übung je abbaut
+    const schwach = (uebung, art, mehr, id) => {
+      const e = E(id || 'i1|halo'), w = mitKarten(zMitZielen(P1), { [e.kid]: { st: 3, schwach: { genus: 1, akzent: 1, hoeren: 1 } } });
+      Lernen.verbuchen(w, schritt(e, uebung, { rolle: 'neben', ...mehr }), { art, fehler: (mehr && mehr.fehler) || [] }, HEUTE);
+      const s = w.karten[e.kid].schwach;
+      return [s.genus, s.akzent, s.hoeren].join('');
+    };
+    soll('Schwäche Ohr', [schwach('hoeren', 'falsch'), schwach('lauschen', 'falsch'), schwach('schreiben', 'falsch', { vorgabe: 'ton' }), schwach('hoeren', 'richtig'),
+      schwach('lauschen', 'richtig'), schwach('schreiben', 'richtig', { vorgabe: 'ton' }), schwach('schreiben', 'fast', { vorgabe: 'ton' }), schwach('schreiben', 'falsch', { vorgabe: 'de' })],
+    ['113', '113', '113', '110', '110', '110', '111', '111']);
+    soll('Schreib- und Legefehler machen keine Schwäche beim Geschlecht oder bei den Akzenten', [schwach('schreiben', 'fast', { fehler: ['genus', 'akzent'] }),
+      schwach('legen', 'falsch', { fehler: ['genus', 'akzent'] }, 'i6|kupu-kupu'), schwach('legen', 'fast', { fehler: ['akzent'] }, 'i3|Kucing itu tidur di kursi.')], ['111', '111', '111']);
+    schwaecheNurMitUebung(P1, melde);
+  }
+
+  /* Was eine Runde mitbringt: Auftakt, Aufwärmen, Nebenaufgaben */
+  {
+    const ding = V.LERNZIELE[P1[0]].eintraege.map(e => e.kid);
+    const morgen = Lernen.tagPlus(HEUTE, 1);
+    let z = mitKarten(zMitZielen(P1), { [ding[0]]: { st: 1 }, [ding[1]]: { st: 3 }, [ding[2]]: { st: 3 }, [ding[3]]: { st: 4, faellig: morgen, zuletzt: 'rr' } });
+    let plan = Lernen.planen(z, HEUTE, {});
+    soll('Auftakt mit dem Zuhören der Stufe-1-Karte', [kurz(plan.schritte[0]), kurz(Lernen.planen(z, HEUTE, { mitTon: false }).schritte[0])],
+      ['hoeren/leit «' + ding[0].split('|')[1] + '»', 'bedeutung/leit «' + ding[0].split('|')[1] + '»']);
+    // Eine ruhende Karte mit einer Schwäche beim Hören übt genau das
+    z = mitKarten(zMitZielen(P1), { [ding[0]]: { st: 1 }, [ding[1]]: { st: 4, faellig: morgen, schwach: { genus: 0, akzent: 0, hoeren: 2 } } });
+    plan = Lernen.planen(z, HEUTE, {});
+    planPruefen(kopie(z), plan, {}, HEUTE, melde, 'ruhende Karte mit Schwäche', true);
+    if (!plan.schritte.some(s => s.kid === ding[1] && s.rolle === 'neben' && (s.uebung === 'lauschen' || (s.uebung === 'schreiben' && s.vorgabe === 'ton')))) melde('ruhende Karte übt ihre Schwäche nicht: ' + plan.schritte.map(kurz).join(' · '));
+    // Ohne Ton entfällt ein Diktat, dessen Karte in der Runde ohnehin geschrieben wird
+    z = mitKarten(zMitZielen(P1), { [ding[1]]: { st: 3, schwach: { genus: 0, akzent: 0, hoeren: 3 } } });
+    plan = Lernen.planen(z, HEUTE, {});
+    const diktat = plan.schritte.find(s => s.uebung === 'schreiben' && s.vorgabe === 'ton');
+    soll('Diktat als Begleiter', [!!diktat && diktat.begleiter, diktat && Lernen.ohneTon(diktat, z)], [true, null]);
+    // Die Karte mit der höchsten Stufe steht im mittleren Drittel, nie zweimal schreiben hintereinander
+    Lernen.zufall = zufallAb(61);
+    let mitte = 0, doppelt = 0, runden = 0;
+    for (let lauf = 0; lauf < 100; lauf++) {
+      z = zMitZielen(P1);
+      ding.slice(0, 8).forEach((kid, i) => {
+        z.karten[kid] = stand({ st: i === 5 ? 5 : i < 3 ? 1 : 3, gesehen: 4, richtig: 4, faellig: HEUTE, zuletzt: 'rr' });
+      });
+      plan = Lernen.planen(z, HEUTE, {});
+      const kern = ohneSchluss(plan), p = kern.findIndex(s => s.kid === ding[5] && s.rolle === 'leit');
+      runden++;
+      if (p * 3 >= kern.length && p * 3 < kern.length * 2) mitte++;
+      if (kern.some((s, i) => i && s.uebung === 'schreiben' && kern[i - 1].uebung === 'schreiben')) doppelt++;
+    }
+    soll('die höchste Stufe im mittleren Drittel, nie zweimal schreiben hintereinander (100 Runden)', [mitte, doppelt], [runden, 0]);
+  }
+
+  /* 60 Tage mit Antworten, wie sie kommen */
+  const { weich, zaehle } = weichNeu();
+  const laeufe = [[1, P1, 0.8, true], [2, V.LERNZIEL_REIHE, 0.65, true], [3, V.LERNZIEL_REIHE.filter(g => g.startsWith('i4')), 0.9, false],
+    [4, V.LERNZIEL_REIHE.filter(g => g.startsWith('i2')), 0.5, true]];
+  let echos = 0, doppel = 0;
+  const tage = sechzigTage(laeufe, zaehle, melde, (saat, z) => {
+    if (saat === 1 && Object.values(z.karten).filter(k => k.st >= 3).length < 10) melde('nach 60 Tagen kaum ein Wort mit Rispe');
+    // Es gibt keine Artikel- und keine Akzent-Aufgabe: Ihre Zähler und Schwächen bleiben bei 0
+    soll('Saat ' + saat + ': Zähler für Artikel und Akzente', [z.zaehler.lelaLauf, z.zaehler.lelaBest, z.zaehler.akzent], [0, 0, 0]);
+    soll('Saat ' + saat + ': Schwächen beim Geschlecht oder bei den Akzenten', Object.entries(z.karten).filter(([, k]) => k.schwach.genus || k.schwach.akzent).map(([kid]) => kid), []);
+    soll('Saat ' + saat + ': doppel zählt die Wörter mit Bindestrich in doppelwoerter', [z.zaehler.doppel, z.doppelwoerter.every(kid => KARTE[kid].teile.some(t => t.fr.some(doppelwort)))],
+      [z.doppelwoerter.length, true]);
+    // Ohne Ton wird nie nachgesprochen
+    if (!laeufe.find(l => l[0] === saat)[3] && z.zaehler.echo) melde('Saat ' + saat + ': ohne Ton ' + z.zaehler.echo + '-mal nachgesprochen');
+    echos += z.zaehler.echo;
+    doppel += z.zaehler.doppel;
+  });
+  // Die Läufe bringen falsche erste Versuche (ersterVersuch: ein Akzent, der Bindestrich als Leerzeichen,
+  // zwei Buchstaben vertauscht), und keiner wird zu einer Schwäche beim Geschlecht oder bei den Akzenten
+  if (tage.schwachGewachsen) melde('60 Tage: ' + tage.schwachGewachsen + ' Schwächen beim Geschlecht oder bei den Akzenten');
+  if (!echos || !doppel) melde('60 Tage: nie nachgesprochen oder nie ein Wort mit Bindestrich geschrieben, die Zähler sind so nicht geprüft');
+  hinweis.push(tage.tageGespielt + ' Tage und ' + tage.rundenGespielt + ' Runden gespielt, grösste Runde ' + tage.groessteRunde + ' Aufgaben, höchstens ' + tage.meisteRunden
+    + ' Runden bis leer, ' + echos + '-mal nachgesprochen, ' + doppel + ' Wörter mit Bindestrich geschrieben');
+  jedesLernzielAllein(zaehle, melde);
+  // Kein Satz vor SATZ_AB bekannten Karten, solange ein neues Wort wartet
+  soll('der erste Satz kommt, sobald acht Karten bekannt sind, und nur einer je Runde', ersterSatz(['i1-4', 'i1-5']), ['i1|Nama saya Nea.', true, 1]);
+
+  /* 4000 beliebige Stände: oft nur ein oder zwei der kleinsten Lernziele */
+  {
+    const n = g => V.LERNZIELE[g].eintraege.length;
+    const kleine = V.LERNZIEL_REIHE.filter(g => n(g) <= 7).sort((a, b) => n(a) - n(b));
+    const { arten, klein } = beliebigeStaende(4000, 600, kleine, zaehle, melde);
+    hinweis.push('4000 Stände: ' + arten.runde + ' Runden, ' + arten.frei + ' freie, ' + arten.leer + ' leere, ' + klein + ' Pläne mit ein oder zwei Karten');
+    hinweis.push(...weichHinweis(weich));
+    // Regel (ii), nie zweimal schreiben hintereinander, gemessen am 21.11.2026 an diesen Ständen: Runden ab
+    // vier Karten 252 von 2986 = 8,4 % (56 nach der Suche vermeidbar, im Französisch 103 von 5706), freies
+    // Üben 336 von 905 = 37,1 % (163). Mehr als im Französisch, weil hier fast jede Karte ein Wort ist, das
+    // ab Stufe 3 geschrieben wird. Im freien Üben fehlt der volle Abstand nie.
+    weichGrenzen(weich, [['runde', null, 0.1], ['frei', null, 0.42]], [], melde);
+  }
+
+  /* Freies Üben (3.4) */
+  {
+    hinweis.push('«Für den Test üben» mit ' + V.LERNZIELE['i6-1'].eintraege.length + ' Karten: ' + fuerDenTest('i6-1', 12, melde).join(', ') + ' Karten je Runde');
+    soll('«Für den Test üben» fragt beide Hälften eines Paars', gefragteFormen('i3-1', 'i3|anak, anak-anak'), ['anak', 'anak-anak']);
+    soll('«Frei üben» ebenso', gefragteFormen('i3-1', 'i3|anak, anak-anak', true), ['anak', 'anak-anak']);
+    // Wörter werden geschrieben, Sätze gebaut
+    const x = zMitZielen(['i6-4'], { unite: 'i6' });
+    for (const e of V.LERNZIELE['i6-4'].eintraege) x.karten[e.kid] = stand({ st: 3, gesehen: 3, faellig: HEUTE });
+    const plan = Lernen.planen(x, HEUTE, { modus: 'frei', gruppe: 'i6-4' });
+    planPruefen(kopie(x), plan, { modus: 'frei', gruppe: 'i6-4' }, HEUTE, melde, '«Für den Test üben» mit Sätzen', true);
+    soll('«Für den Test üben»: Wörter geschrieben, Sätze gebaut', plan.schritte.map(s => s.uebung + '/' + s.rolle + '/' + KARTE[s.kid].art).sort(),
+      [...V.LERNZIELE['i6-4'].eintraege.map(e => (e.art === 'satz' ? 'bauen/fuell/satz' : 'schreiben/fuell/wort'))].sort());
+    // Unbekannte Karten werden eingeführt, ohne das Kontingent
+    const w = zMitZielen(P1, { tag: { datum: HEUTE, neu: 6, runden: 1, frei: [] } });
+    const p = Lernen.planen(w, HEUTE, { modus: 'frei', gruppe: P1[1] });
+    planPruefen(kopie(w), p, { modus: 'frei', gruppe: P1[1] }, HEUTE, melde, 'freies Üben mit unbekannten Karten', true);
+    soll('freies Üben führt vier unbekannte Karten ein', [p.art, p.neu.length], ['frei', 4]);
+    soll('«Frei üben» ohne bekannte Karte ist leer', Lernen.planen(zMitZielen(P1), HEUTE, { modus: 'frei' }).art, 'leer');
+  }
+
+  /* Zahlen für Lichtung, Album und Eltern */
+  {
+    const leer = Lernen.zahlen(Lernen.neu(), HEUTE);
+    soll('zahlen: frischer Stand', [leer.gekannt, leer.frucht, leer.reif, leer.stufen, leer.aktiv, leer.faellig, leer.neuFrei, leer.schwer],
+      [0, 0, 0, [VOKABELN.length, 0, 0, 0, 0, 0], 0, 0, 0, []]);
+    // Ohne Plus-Blätter sind alle Wörter einer Pelajaran Grundwörter
+    soll('zahlen: je Pelajaran', Object.entries(leer.proUnite).map(([un, u]) => [un, u.alle === u.basis, u.alle]),
+      V.UNITE_REIHE.map(un => [un, true, VOKABELN.filter(e => e.un === un).length]));
+    soll('zahlen ohne Zustand wirft nicht', [Lernen.zahlen(null, HEUTE).gekannt, Lernen.zahlen({}, HEUTE).stufen[0]], [0, VOKABELN.length]);
+    const z = mitKarten(zMitZielen(P1), { 'i1|halo': { st: 3, falsch: 2, schwach: { genus: 0, akzent: 0, hoeren: 2 } }, 'i1|selamat pagi': { st: 5, faellig: Lernen.tagPlus(HEUTE, 1), falsch: 1 } });
+    const vorher = kopie(z), n = Lernen.zahlen(z, HEUTE);
+    soll('zahlen schreibt nichts', z, vorher);
+    soll('zahlen: die schwierigsten Karten', n.schwer, [{ kid: 'i1|halo', falsch: 2, art: 'hoeren' }, { kid: 'i1|selamat pagi', falsch: 1, art: null }]);
+  }
+  return hinweis.join('; ');
+});
+
+/* ---------- 17 · Schnellster Weg (Indonesisch) ---------- */
+
+indoPruefung(17, 'Schnellster Weg (Indonesisch): Tag 0, 1, 3, 7, 14, dann reif; die letzten drei Abrufe geschrieben', melde => {
+  const soll = sollMit(melde);
+  const wort = schnellsterWeg('i3-1', 'i3|keluarga', 14, true);
+  soll('Wort: Stufe 5 am Tag 14', wort.aus, ['0:1 bedeutung', '1:2 hoeren', '3:3 legen', '7:4 schreiben', '14:5 schreiben']);
+  soll('reif: fällig in 21 Tagen', [wort.k.st, wort.k.faellig, wort.k.fest, wort.k.zuletzt], [5, Lernen.tagPlus(HEUTE, 35), 0, 'rrrrr']);
+  soll('reife Karte: bestätigt nach 21, 45, 90, 90 Tagen', schnellsterWeg('i3-1', 'i3|keluarga', 290, true).aus.slice(5), ['35:5 schreiben', '80:5 schreiben', '170:5 schreiben', '260:5 schreiben']);
+  soll('Wort ohne Ton', schnellsterWeg('i3-1', 'i3|keluarga', 14, false).aus, ['0:1 bedeutung', '1:2 bedeutung', '3:3 legen', '7:4 schreiben', '14:5 schreiben']);
+  // Sätze und Karten weiter hinten kommen nach den Wörtern davor: gezählt ab ihrem ersten Tag
+  const abErstem = aus => aus.map(x => (x.split(':')[0] - aus[0].split(':')[0]) + ':' + x.split(':')[1]);
+  soll('Satz: erst nach dem Ohr ordnen, dann nach dem Deutschen, dann bauen', abErstem(schnellsterWeg('i3-4', 'i3|Kucing itu tidur di kursi.', 21, true).aus),
+    ['0:1 bedeutung', '1:2 hoeren', '3:3 ordnen-ton', '7:4 ordnen', '14:5 bauen']);
+  soll('zwei Wörter: gelegt, dann geschrieben', abErstem(schnellsterWeg('i4-2', 'i4|bahasa Indonesia', 21, true).aus), ['0:1 bedeutung', '1:2 hoeren', '3:3 legen', '7:4 schreiben', '14:5 schreiben']);
+  soll('Wort mit Bindestrich', abErstem(schnellsterWeg('i6-1', 'i6|kupu-kupu', 21, true).aus), ['0:1 bedeutung', '1:2 hoeren', '3:3 legen', '7:4 schreiben', '14:5 schreiben']);
+  // Kein Tag früher: Wer täglich spielt, kann die Leiter nicht abkürzen
+  keineAbkuerzung(['i1-1', 'i4-3'], melde);
+  return wort.aus.join(', ');
+});
+
+/* ---------- 18 · Gespeicherter Stand (Indonesisch) ---------- */
+
+indoPruefung(18, 'Gespeicherter Stand (Indonesisch): pruefen() übersteht alles, lässt nur Gültiges durch, und kein Kurs liest den Stand des anderen', melde => {
+  const soll = sollMit(melde);
+  soll('neu()', Lernen.neu(), FRISCH_INDO);
+  if (Lernen.neu() === Lernen.neu() || Lernen.neu().karten === Lernen.neu().karten) melde('neu() gibt dasselbe Objekt zweimal');
+  const gueltig = gueltigFuer(FRISCH_INDO);
+  const gut = { vorgestellt: true, gehoert: true, unite: 'i1', ziele: { 'i1-1': true }, neuProTag: 9, karten: { 'i1|halo': { st: 3, gesehen: 4 } } };
+  unlesbarPruefen(FRISCH_INDO, gut, melde);
+  soll('dieselben Felder mit v: 1 werden gelesen', [Lernen.pruefen({ ...gut, v: 1 }).unite, Lernen.pruefen({ ...gut, v: 1 }).karten['i1|halo'].st], ['i1', 3]);
+  // Feld für Feld: Französisches und Unbekanntes fällt weg, doppelwoerter behält nur Karten mit einem Wort
+  // mit Bindestrich, jede einmal, und doppel ist ihre Zahl, was auch immer gespeichert war
+  const roh = {
+    v: 1, vorgestellt: true, gehoert: 'ja', unite: 'u1', neuProTag: 12,
+    ziele: { 'i1-1': true, 'i9-1': true, 'u1-S': true, 'i6-4': 'true' },
+    erklaert: { lauschen: true, tanzen: true },
+    tag: { datum: '2026-11-13', neu: 3, runden: 1, frei: ['i1|halo', 'u1|le livre', 'i1|halo'] },
+    zaehler: { runden: 2, perfekt: 1, ohr: 5, lelaLauf: 0, lelaBest: 0, akzent: 0, saetze: 1, geschrieben: 4, doppel: 9, echo: 3, fremd: 7 },
+    doppelwoerter: ['i6|kupu-kupu', 'i6|kupu-kupu', 'i1|halo', 'i1|tidak apa-apa', 'u2|la grand-mère', 7, null, 'i3|anak, anak-anak', 'i9|gibt es nicht'],
+    karten: {
+      'i1|halo': { st: 4, gesehen: 6, richtig: 5, falsch: 1, schwach: { genus: 0, akzent: 0, hoeren: 2 }, zuletzt: 'rrfr' },
+      'i3|anak, anak-anak': { st: 2, gesehen: 3, teil: 1, form: 4 },
+      'u1|le livre': { st: 3, gesehen: 4 },
+      'i9|gibt es nicht': { st: 5, gesehen: 9 },
+    },
+  };
+  const z = Lernen.pruefen(roh);
+  if (!gueltig(z)) melde('pruefen lässt Ungültiges durch: ' + JSON.stringify(z).slice(0, 300));
+  soll('Feld für Feld', [z.vorgestellt, z.gehoert, z.unite, z.neuProTag, z.ziele, z.erklaert, z.tag, z.zaehler, z.doppelwoerter, Object.keys(z.karten).sort(),
+    [z.karten['i3|anak, anak-anak'].teil, z.karten['i3|anak, anak-anak'].form]],
+  [true, false, null, 12, { 'i1-1': true }, { lauschen: true }, { datum: '2026-11-13', neu: 3, runden: 1, frei: ['i1|halo'] },
+    { runden: 2, perfekt: 1, ohr: 5, lelaLauf: 0, lelaBest: 0, akzent: 0, saetze: 1, geschrieben: 4, doppel: 2, echo: 3 }, ['i6|kupu-kupu', 'i3|anak, anak-anak'],
+    ['i1|halo', 'i3|anak, anak-anak'], [1, 0]]);
+  soll('zweimal geprüft ist einmal geprüft', Lernen.pruefen(z), z);
+  soll('ohne doppelwoerter zählt doppel nichts', [Lernen.pruefen({ v: 1, zaehler: { doppel: 5, echo: 2 } }).zaehler.doppel, Lernen.pruefen({ v: 1, zaehler: { doppel: 5, echo: 2 } }).zaehler.echo], [0, 2]);
+  // Müll in jeder Tiefe, wie im Französisch
+  const lesbar = muellPruefen(FRISCH_INDO, ['i1', 'i3', 'i1|halo', 'i1-1', ['i1|halo', 'x', 3]], ['x', 'constructor', 'u1|le livre'], 'i9-1', gueltig, melde);
+  if (lesbar < 1000) melde('der Müll enthält zu selten etwas Lesbares (' + lesbar + ')');
+
+  // Der Stand des einen Kurses ist für den anderen leer: keine Karte, kein Lernziel, keine Unité. Darum
+  // liegen sie unter getrennten Schlüsseln (nea.igel.franz, nea.igel.indo): Läse der falsche Kurs einen
+  // Stand und speicherte ihn, wäre der Fortschritt des anderen weg.
+  const F = FRANZ.lernen, fZufall = F.zufall;
+  F.zufall = zufallAb(18018);
+  Lernen.zufall = zufallAb(18019);
+  const frZ = F.neu();
+  frZ.unite = 'u1';
+  for (const g of ['u1-1', 'u1-S']) frZ.ziele[g] = true;
+  const idZ = zMitZielen(ersteZiele());
+  let heute = HEUTE;
+  for (let t = 0; t < 5; t++, heute = Lernen.tagPlus(heute, 1)) {
+    for (const s of F.planen(frZ, heute, {}).schritte) F.verbuchen(frZ, s, { art: beurteilt(s) ? 'richtig' : 'ohne', fehler: [] }, heute);
+    spiele(idZ, Lernen.planen(idZ, heute, {}), heute, () => 'richtig');
+  }
+  F.zufall = fZufall;
+  const frAlsIndo = Lernen.pruefen(kopie(frZ)), indoAlsFr = F.pruefen(kopie(idZ));
+  soll('ein französischer Stand im Indonesisch', [Object.keys(frZ.karten).length > 0, Object.keys(frAlsIndo.karten), frAlsIndo.ziele, frAlsIndo.unite, frAlsIndo.doppelwoerter],
+    [true, [], {}, null, []]);
+  soll('ein indonesischer Stand im Französisch', [Object.keys(idZ.karten).length > 0, Object.keys(indoAlsFr.karten), indoAlsFr.ziele, indoAlsFr.unite, 'doppelwoerter' in indoAlsFr,
+    Object.keys(indoAlsFr.zaehler)], [true, [], {}, null, false, Object.keys(F.neu().zaehler)]);
+  soll('jeder Kurs liest seinen eigenen Stand unverändert', [gleich(Lernen.pruefen(kopie(idZ)), idZ), gleich(F.pruefen(kopie(frZ)), frZ)], [true, true]);
+  return '3000-mal Müll, davon ' + lesbar + '-mal mit lesbaren Karten oder Lernzielen; ' + Object.keys(frZ.karten).length + ' französische und '
+    + Object.keys(idZ.karten).length + ' indonesische Karten bleiben im anderen Kurs draussen';
+});
+
+/* ---------- 19 · Zähler (Indonesisch) ---------- */
+
+indoPruefung(19, 'Zähler (Indonesisch): doppel und echo für Perciks Erfolge, die übrigen wie im Französisch', melde => {
+  const soll = sollMit(melde);
+  const halo = E('i1|halo'), kupu = E('i6|kupu-kupu'), anak = E('i3|anak, anak-anak'), tidak = E('i1|tidak apa-apa'), satz = E('i3|Kucing itu tidur di kursi.');
+  const nachEiner = (e, uebung, art, mehr) => {
+    const z = mitKarten(zMitZielen(V.LERNZIEL_REIHE), { [e.kid]: { st: 3 } });
+    Lernen.verbuchen(z, schritt(e, uebung, { rolle: 'neben', ...mehr }), { art, fehler: [] }, HEUTE);
+    return Object.entries(z.zaehler).filter(([, n]) => n).map(([name, n]) => name + ' ' + n).join(', ');
+  };
+  // [Eintrag, Übung, mehr] → was «richtig» zählt; «fast» und «falsch» zählen nie
+  const ZAEHLT = [
+    [halo, 'bedeutung', {}, ''], [halo, 'hoeren', {}, 'ohr 1'], [halo, 'finden', {}, ''], [halo, 'lauschen', {}, 'ohr 1'], [halo, 'legen', {}, ''],
+    [halo, 'schreiben', { vorgabe: 'de' }, 'geschrieben 1'], [halo, 'schreiben', { vorgabe: 'ton' }, 'ohr 1, geschrieben 1'],
+    // Ein Wort mit Bindestrich zählt dazu doppel, auch im Diktat; «tidak apa-apa» sind zwei Wörter
+    [kupu, 'schreiben', { vorgabe: 'de' }, 'geschrieben 1, doppel 1'], [kupu, 'schreiben', { vorgabe: 'ton' }, 'ohr 1, geschrieben 1, doppel 1'],
+    [tidak, 'schreiben', { vorgabe: 'de' }, 'geschrieben 1'], [kupu, 'legen', {}, ''], [kupu, 'lauschen', {}, 'ohr 1'],
+    // Beim Paar zählt nur die Hälfte mit Bindestrich
+    [anak, 'schreiben', { vorgabe: 'de', teil: 0 }, 'geschrieben 1'], [anak, 'schreiben', { vorgabe: 'de', teil: 1 }, 'geschrieben 1, doppel 1'],
+    [satz, 'luecke', {}, ''], [satz, 'ordnen', { vorgabe: 'ton' }, 'saetze 1'], [satz, 'ordnen', { vorgabe: 'de' }, 'saetze 1'], [satz, 'bauen', {}, 'saetze 1'],
+    [satz, 'hoeren', {}, 'ohr 1'], [satz, 'legen', {}, ''],
+  ];
+  for (const [e, uebung, mehr, erwartet] of ZAEHLT) {
+    const wo = 'Zähler nach ' + uebung + (mehr.vorgabe ? '/' + mehr.vorgabe : '') + ' «' + e.id + '»' + (mehr.teil ? ' Teil ' + mehr.teil : '');
+    soll(wo + ' richtig', nachEiner(e, uebung, 'richtig', mehr), erwartet);
+    for (const rolle of ['leit', 'check', 'fuell', 'wdh']) soll(wo + ' richtig als ' + rolle, nachEiner(e, uebung, 'richtig', { ...mehr, rolle }), erwartet);
+    soll(wo + ' richtig im freien Üben', nachEiner(e, uebung, 'richtig', { ...mehr, rolle: 'fuell', frei: true }), erwartet);
+    if (!K.WAHL.includes(uebung)) soll(wo + ' fast', nachEiner(e, uebung, 'fast', mehr), '');
+    soll(wo + ' falsch', nachEiner(e, uebung, 'falsch', mehr), '');
+  }
+  // Nachsprechen zählt jedes Mal, Kennenlernen und das Finale nie
+  soll('Zähler nach echo, kennen, paare', [nachEiner(halo, 'echo', 'ohne', { rolle: 'echo' }), nachEiner(halo, 'kennen', 'ohne', { rolle: 'kennen' }),
+    nachEiner(halo, 'paare', 'ohne', { rolle: 'paare', kids: [halo.kid] })], ['echo 1', '', '']);
+  // Jedes Wort mit Bindestrich zählt einmal, wie oft und wie es auch geschrieben wird
+  const z = mitKarten(zMitZielen(V.LERNZIEL_REIHE), {});
+  const verlauf = [];
+  for (const [e, art, mehr] of [[kupu, 'richtig', {}], [kupu, 'richtig', { vorgabe: 'ton' }], [kupu, 'richtig', {}], [E('i6|kura-kura'), 'fast', {}],
+    [E('i6|kura-kura'), 'falsch', {}], [E('i6|kura-kura'), 'richtig', {}], [anak, 'richtig', { teil: 1 }], [anak, 'richtig', { teil: 1 }], [tidak, 'richtig', {}]]) {
+    Lernen.verbuchen(z, schritt(e, 'schreiben', { rolle: 'leit', ...mehr }), { art, fehler: [] }, HEUTE);
+    verlauf.push(z.zaehler.doppel);
+  }
+  soll('doppel zählt jedes Wort einmal', [verlauf, z.doppelwoerter], [[1, 1, 1, 1, 1, 2, 3, 3, 3], [kupu.kid, 'i6|kura-kura', anak.kid]]);
+  // Was doppel zählen kann: Karten mit einem Wort mit Bindestrich. indo_doppel will fünf davon (texte.js,
+  // KURS_INDO.erfolge.zahl in indo.js). Jedes ist ein Doppelwort aus zwei gleichen Hälften: So meinen der
+  // Zähler, der Text des Erfolgs und Perciks Tipp o_tipp_doppelwort (DOPPELWORT in indo.js) dieselben
+  // Wörter. Ein Wort wie «sayur-mayur» zählte doppel mit, bekäme den Tipp aber nicht: Das wäre erst zu
+  // entscheiden.
+  const doppelKarten = KARTEN.filter(e => e.art === 'wort' && e.teile.some(t => t.fr.some(doppelwort)));
+  const ungleich = KARTEN.flatMap(e => e.teile.flatMap(t => t.fr)).filter(f => doppelwort(f) && !/^(\p{L}+)-\1$/u.test(f));
+  soll('Wörter mit Bindestrich aus zwei ungleichen Hälften', ungleich, []);
+  if (doppelKarten.length < 5) melde('nur ' + doppelKarten.length + ' Karten mit einem Wort mit Bindestrich: indo_doppel braucht fünf');
+  for (let i = 0; i < 3; i++) Lernen.verbuchen(z, schritt(halo, 'echo', { rolle: 'echo' }), { art: 'ohne' }, HEUTE);
+  soll('echo zählt jedes Mal', z.zaehler.echo, 3);
+  // Von Hand gebaut, ohne doppelwoerter: verbuchen legt die Liste an
+  const hand = { karten: {}, ziele: {} };
+  Lernen.verbuchen(hand, schritt(kupu, 'schreiben', { rolle: 'fuell', frei: true }), { art: 'richtig', fehler: [] }, HEUTE);
+  soll('Stand von Hand', [hand.doppelwoerter, hand.zaehler.doppel], [[kupu.kid], 1]);
+  // Das Französisch zählt weder doppel noch echo: Sein Stand bleibt, wie er ist
+  const F = FRANZ.lernen, frZ = F.neu();
+  F.verbuchen(frZ, schritt(EF('u2|la grand-mère'), 'schreiben', { rolle: 'leit' }), { art: 'richtig', fehler: [] }, HEUTE);
+  F.verbuchen(frZ, schritt(EF('u1|la chaise'), 'echo', { rolle: 'echo' }), { art: 'ohne' }, HEUTE);
+  soll('das Französisch zählt weder doppel noch echo', [Object.keys(frZ.zaehler), frZ.zaehler.geschrieben, 'doppelwoerter' in frZ], [Object.keys(F.neu().zaehler), 1, false]);
+  // Runden: nur modus 'runde', nur bis zur Ernte gespielt mit mindestens vier beurteilten Aufgaben
+  const r = mitKarten(zMitZielen(V.LERNZIEL_REIHE), {}), runden = [];
+  for (const bilanz of [{ modus: 'runde', falsch: 0, geurteilt: 12 }, { modus: 'runde', falsch: 2, geurteilt: 14 }, { modus: 'runde', falsch: 0, geurteilt: 3 },
+    { modus: 'frei', falsch: 0, geurteilt: 12 }, null]) {
+    const x = Lernen.rundeFertig(r, bilanz, HEUTE);
+    runden.push([r.zaehler.runden, r.zaehler.perfekt, r.tag.runden, x.zaehlt, x.perfekt].join(' '));
+  }
+  soll('rundeFertig', runden, ['1 1 1 true true', '2 1 2 true false', '2 1 3 false false', '2 1 3 false false', '2 1 3 false false']);
+  return ZAEHLT.length + ' Übungen mit ihren Zählern, doppel ' + verlauf.join('') + ' über neun Schreibaufgaben, echo ' + z.zaehler.echo + ' nach drei, '
+    + doppelKarten.length + ' Karten mit Doppelwort';
+});
+
+/* ---------- 20 · Alle Kurse zusammen ---------- */
+
+// Die Namen, die ein klassisches Skript auf oberster Ebene anlegt, ohne es auszuführen: Vor seinem ersten
+// Satz steht ein throw. Angelegt wird trotzdem alles: var und function stehen dann am Global, let, const
+// und class in ihrer toten Zone, wo schon typeof wirft.
+function obersteNamen(datei) {
+  const quelle = readFileSync(join(DIR, datei), 'utf8');
+  const ctx = vm.createContext({});
+  const leer = new Set(vm.runInContext('Object.getOwnPropertyNames(this)', ctx));
+  try {
+    vm.runInContext('throw 0;\n' + quelle, ctx, { filename: datei });
+  } catch (err) {
+    if (err !== 0) throw err;
+  }
+  const global = vm.runInContext('this', ctx);
+  const angelegt = Object.getOwnPropertyNames(global).filter(n => !leer.has(n));
+  const woerter = [...new Set(quelle.match(/[A-Za-z_$][\w$]*/g) || [])];
+  const lexikalisch = vm.runInContext('(namen => namen.filter(n => { try { (0, eval)("typeof " + n); return false; } catch (e) { return e instanceof ReferenceError; } }))', ctx)(woerter);
+  return [...angelegt.map(n => ({ n, art: typeof global[n] === 'function' ? 'function' : 'var' })), ...lexikalisch.map(n => ({ n, art: 'let/const/class' }))];
+}
+
+pruefung(20, 'Alle Kurse zusammen: Aufnahmen ohne doppelte Datei, getrennte Stimmen, keine verwaiste Aufnahme, Erfolge je Kurs, kein Name zweimal im Browser', melde => {
+  const soll = sollMit(melde);
+  const hinweis = [];
+
+  /* Namen auf oberster Ebene: Alle Skripte der Seite teilen sich einen Bereich, ebenso die des Service
+     Workers. Ein const zweimal bricht das ganze Skript ab, eine function zweimal ersetzt still die erste. */
+  // Ein var, das zwei Skripte absichtlich teilen: texte.js hält mit «var FAKTEN» den Platz frei, fakten.js füllt ihn
+  const GETEILT = ['FAKTEN'];
+  const pruefeBereich = (wo, dateien) => {
+    const wer = new Map();
+    for (const datei of dateien) for (const { n, art } of obersteNamen(datei)) wer.set(n, [...(wer.get(n) || []), { datei, art }]);
+    for (const [n, liste] of wer) {
+      if (liste.length < 2 || (GETEILT.includes(n) && liste.every(x => x.art === 'var'))) continue;
+      melde(wo + ': «' + n + '» steht in ' + liste.map(x => x.datei + ' (' + x.art + ')').join(' und '));
+    }
+  };
+  const seite = [...readFileSync(join(DIR, 'index.html'), 'utf8').matchAll(/<script\s+src="([^"]+)"/g)].map(m => m[1]).filter(d => existsSync(join(DIR, d)));
+  // Was es schon gibt, aber index.html noch nicht lädt, kommt dazu: Es wird dort einmal stehen
+  const dazu = readdirSync(DIR).filter(d => d.endsWith('.js') && d !== 'sw.js' && !seite.includes(d)).sort();
+  pruefeBereich('Seite', [...seite, ...dazu]);
+  const sw = readFileSync(join(DIR, 'sw.js'), 'utf8');
+  const worker = ['sw.js', ...[...sw.matchAll(/importScripts\(([^)]*)\)/g)].flatMap(m => [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]))].filter(d => existsSync(join(DIR, d)));
+  pruefeBereich('Service Worker', worker);
+  hinweis.push((seite.length + dazu.length) + ' Skripte der Seite' + (dazu.length ? ' (noch nicht in index.html: ' + dazu.join(', ') + ')' : '') + ' und ' + worker.length + ' des Service Workers ohne doppelten Namen');
+
+  /* Aufnahmen aller Kurse */
+  let T = null, F = null;
+  try {
+    T = require('./texte.js');
+    F = require('./franz-texte.js');
+    T.setFakten(require('./fakten.js').FAKTEN);
+  } catch (err) {
+    if (err.code !== 'MODULE_NOT_FOUND') throw err;
+    hinweis.push('texte.js, fakten.js oder franz-texte.js fehlt, Aufnahmen nicht geprüft');
+    return hinweis.join('; ');
+  }
+  // Perciks Texte, sobald es sie gibt: in Node als INDO_TEXTE oder als Ganzes
+  const mitOtter = existsSync(join(DIR, 'indo-texte.js'));
+  let I = null;
+  if (mitOtter) {
+    const m = require('./indo-texte.js');
+    I = m.INDO_TEXTE || m;
+    if (typeof I.pruefen !== 'function') melde('INDO_TEXTE.pruefen fehlt');
+    else for (const f of I.pruefen()) melde('INDO_TEXTE.pruefen(): ' + f);
+    if (typeof I.alleIndoClips !== 'function') {
+      melde('INDO_TEXTE.alleIndoClips fehlt');
+      I = null;
+    }
+  } else hinweis.push('indo-texte.js fehlt noch: Aufnahmen ohne den Otter geprüft');
+  const clips = [...T.alleSaetze().map(x => ({ s: x.s, v: 'p' })), ...F.alleFranzClips(), ...(I ? I.alleIndoClips() : [])];
+  // Keine zwei Texte auf einer Datei: Einer bliebe sonst stumm oder spräche den anderen
+  const dateien = new Map();
+  for (const c of clips) {
+    const datei = T.clipDatei(c), wie = c.v + ' ' + c.s.normalize('NFC');
+    if (dateien.has(datei) && dateien.get(datei) !== wie) melde('zwei Aufnahmen, eine Datei ' + datei + ': «' + dateien.get(datei) + '» und «' + wie + '»');
+    dateien.set(datei, wie);
+  }
+  // Getrennte Stimmen: Jedes Kürzel gehört genau einem, Pieks (p), dem Hörnchen oder dem Otter. Sonst
+  // bekäme ein indonesisches Wort, das wie ein französisches geschrieben ist, die französische Aufnahme.
+  const kuerzel = l => [l.de, l.fremd, l.wort, l.langsam];
+  const h = kuerzel(T.LEHRER.h), o = kuerzel(T.LEHRER.o);
+  soll('Kürzel der Lehrer', [h, o, h.filter(x => o.includes(x) || x === 'p'), o.filter(x => x === 'p')], [['hd', 'hf', 'f', 'fl'], ['od', 'oi', 'i', 'il'], [], []]);
+  soll('Stimmen der Aufnahmen', [...new Set(clips.map(c => c.v))].sort(), I ? ['f', 'fl', 'hd', 'hf', 'i', 'il', 'od', 'oi', 'p'] : ['f', 'fl', 'hd', 'hf', 'p']);
+  // Je Stimme ihre Dateien, jede einmal: Sagt Pieks denselben Satz in zwei Listen (pi_fakt wie
+  // p_fakt_franz), ist das eine Aufnahme. So ergeben die drei zusammen die Zahl davor.
+  const wer = { p: new Set(), h: new Set(), o: new Set() };
+  for (const c of clips) {
+    const w = T.stimmeVon(c);
+    if (!(w in wer)) melde('Aufnahme ohne Stimme: ' + c.v + ' «' + c.s + '»');
+    else wer[w].add(T.clipDatei(c));
+  }
+  // Was gesprochen wird, hat Buchstaben und keinen Platzhalter mehr ({H}, {O}, eine vergessene Klammer)
+  for (const c of clips) {
+    if (/[{}]/.test(c.s)) melde('Platzhalter oder Klammer in einer Aufnahme: ' + c.v + ' «' + c.s + '»');
+    if (!/\p{L}/u.test(c.s)) melde('Aufnahme ohne Buchstaben: ' + c.v + ' «' + c.s + '»');
+  }
+  // Die indonesischen Vokabeln sind genau die Aufnahmen, die VOK_INDO.vokabelClip gibt
+  if (I && INDO) {
+    const soll2 = new Set(), vk = INDO.v.vokabelClip;
+    for (const e of INDO.v.VOKABELN) {
+      for (const c of [vk(e), vk(e, undefined, 0, true), ...e.teile.flatMap((t, i) => t.fr.flatMap((f, j) => [vk(e, i, j), vk(e, i, j, true)]))]) if (c) soll2.add(c.v + ' ' + c.s);
+    }
+    soll('indonesische Vokabeln', sortiert([...new Set(clips.filter(c => c.v === 'i' || c.v === 'il').map(c => c.v + ' ' + c.s))]), sortiert([...soll2]));
+  }
+  // Keine verwaiste Aufnahme: Was in audio/vorhanden.json steht, sagt noch jemand. Fehlt sie hier, ist
+  // ein Text umgeschrieben worden, und make-audio --aufraeumen löschte die Datei.
+  const vorhanden = JSON.parse(readFileSync(join(DIR, 'audio', 'vorhanden.json'), 'utf8'));
+  const verwaist = vorhanden.filter(id => !dateien.has(id));
+  if (verwaist.length) melde(verwaist.length + ' verwaiste Aufnahmen in audio/vorhanden.json: ' + verwaist.slice(0, 10).join(', ') + (verwaist.length > 10 ? ', …' : ''));
+  hinweis.push(dateien.size + ' Aufnahmen ohne doppelte Datei (Pieks ' + wer.p.size + ', Hörnchen ' + wer.h.size + ', Otter ' + wer.o.size + '), '
+    + vorhanden.length + ' vorhanden, keine verwaist');
+
+  /* Die Erfolge aller Kurse stehen in einer Liste (ERFOLGE in texte.js). Jeder Kurs findet seine am Vorsatz
+     (fr_, indo_), die übrigen gehören dem Rechnen und der Lichtung. Fest stehen die Zahlen, weil README.md
+     sie nennt (60: 27, 16 fürs Französisch, 17 fürs Indonesisch, seit Percik dazukam) und jeder neue Erfolg
+     eine Bedingung braucht (app.js, Franz.erfolgBedingungen, KURS_INDO.erfolge). */
+  const jeKurs = { allgemein: 0, fr: 0, indo: 0 };
+  for (const id of Object.keys(T.ERFOLGE)) jeKurs[id.startsWith('fr_') ? 'fr' : id.startsWith('indo_') ? 'indo' : 'allgemein']++;
+  soll('Erfolge: allgemein, Französisch, Indonesisch', [jeKurs.allgemein, jeKurs.fr, jeKurs.indo], [27, 16, 17]);
+  // Pieks liest jeden Namen vor («Neuer Erfolg!»): Zwei gleiche Namen wären eine Aufnahme für zwei Erfolge
+  const namen = new Map();
+  for (const [id, e] of Object.entries(T.ERFOLGE)) {
+    if (namen.has(e.name)) melde('Erfolge ' + namen.get(e.name) + ' und ' + id + ' heissen beide «' + e.name + '»');
+    namen.set(e.name, id);
+  }
+  hinweis.push(Object.keys(T.ERFOLGE).length + ' Erfolge (' + jeKurs.allgemein + ' allgemein, ' + jeKurs.fr + ' Französisch, ' + jeKurs.indo + ' Indonesisch)');
+  return hinweis.join('; ');
+});
+
 /* ---------- Lauf ---------- */
 
 let fehler = 0;
 for (const p of pruefungen.sort((a, b) => a.nr - b.nr)) {
+  kursSetzen(p.kurs.lernen, p.kurs.v);
   Lernen.zufall = zufallAb(p.nr * 1000 + 7);
   const liste = [];
   let hinweis = '';

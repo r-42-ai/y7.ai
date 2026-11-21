@@ -120,11 +120,10 @@ const ITEM_HOERNCHEN = {
 };
 
 /* =====================================================================
-   SYMBOLE fürs Sprite (#sprite), viewBox je Symbol.
+   SYMBOLE fürs Sprite (#sprite), viewBox je Symbol. Was jeder Kurs braucht (i-pieks-kopf,
+   i-hoeren, i-langsam), steht in grafik.js (KURS_SYMBOLE); hier nur, was zu ihr gehört.
    t-franz        ihr Gesicht: das Fach Französisch, und in der Blase das Abzeichen «sie spricht».
                   Der runde Grund lässt sich tönen: --franz-grund am <svg>, das das Symbol zeigt.
-   i-pieks-kopf   Pieks' Gesicht: sein Abzeichen in der Blase und sein Tipp beim Mitraten
-   i-hoeren       Lautsprecher (currentColor) · i-langsam  Schnecke: langsam vorlesen
    erdbeere       reife Erdbeere
    reife-0 … 5    die Stufen einer Karte: Samen, Knospe, Blüte, grüne, halbrote, reife Erdbeere.
                   Jede Stufe hat ihre eigene Form und Grösse, man erkennt sie auch ohne Farbe.
@@ -145,30 +144,6 @@ const FRANZ_SYMBOLE = `
       <ellipse cx="38" cy="62.4" rx="3.1" ry="2.3" fill="#2B1A10"/>
       <path d="M34.4 66.8 Q38 70.4 41.6 66.8" stroke="#5A3420" stroke-width="1.6" fill="none" stroke-linecap="round"/>
       <ellipse cx="23.6" cy="60" rx="3.7" ry="2.5" fill="#F59E95" opacity=".7"/><ellipse cx="52.4" cy="60" rx="3.7" ry="2.5" fill="#F59E95" opacity=".7"/>
-    </symbol>
-    <symbol id="i-pieks-kopf" viewBox="0 0 24 24">
-      <path d="M20.5 12.6 Q22.5 14.6 24 15.4 Q22.1 15.4 19.5 16.5 Q20.2 19.3 21.1 20.7 Q19.5 19.8 16.8 19.6 Q15.9 22.1 16 23.3 Q15.1 22.2 13 21 Q11.9 22.7 11.4 23.7 Q11.1 22.4 9 20.5 Q5.9 20.9 4.8 21.6 Q5.4 20.2 5.7 18.2 Q3.2 18.4 1.6 18.8 Q2.9 17.6 3.8 14.6 Q1.4 13 -.2 12.6 Q1.6 12.2 3.8 10.6 Q2.3 8.7 1.2 7.7 Q2.8 8 5.7 7 Q6.2 4.1 5.8 2.8 Q7 3.8 9 4.7 Q9.9 2.6 10.2 1.4 Q10.8 2.7 13 4.2 Q14.9 2.5 15.8 1.2 Q15.6 3 16.8 5.6 Q20 5.7 21.5 5.1 Q20.4 6.5 19.5 8.7 Q22.2 9.6 23.9 9.6 Q22.3 10.4 20.5 12.6 Z" fill="#6B4627"/>
-      <path d="M19.4 12.6 Q20.8 15 21.9 15.8 Q20.4 15.7 18.2 16.6 Q18.1 18.6 18.3 19.4 Q17.5 19 15.1 19.3 Q14.1 21.4 13.9 22.6 Q13.3 21.4 10.9 19.9 Q9.1 20.8 8.5 21.5 Q8.5 20.4 7.2 18.2 Q4.6 17.2 3.7 17.4 Q4.4 16.6 4.9 14.7 Q2.9 12.8 1.7 12.4 Q3.1 12.1 4.9 10.5 Q4.7 7.5 4.1 6.6 Q5.3 7.1 7.2 7 Q7.7 4.9 7.6 3.9 Q8.4 4.7 10.9 5.3 Q12.8 3.7 13.3 2.7 Q13.5 4 15.1 5.9 Q17.4 5.3 18.4 4.6 Q17.8 5.9 18.2 8.6 Q20.4 9.2 21.6 9.1 Q20.5 9.9 19.4 12.6 Z" fill="#93633A"/>
-      <circle cx="5.9" cy="9.6" r="2.1" fill="#E8C597"/><circle cx="18.1" cy="9.6" r="2.1" fill="#E8C597"/>
-      <path d="M12 7.4 C16 7.4 19.3 10 19.5 13.5 C19.7 17 15.6 19.7 12 21 C8.4 19.7 4.3 17 4.5 13.5 C4.7 10 8 7.4 12 7.4 Z" fill="#F1D4A8"/>
-      <ellipse cx="12" cy="17.2" rx="3.3" ry="2.3" fill="#FAE8CB"/>
-      <ellipse cx="9" cy="12.8" rx="1.25" ry="1.6" fill="#2B1A10"/><ellipse cx="15" cy="12.8" rx="1.25" ry="1.6" fill="#2B1A10"/>
-      <circle cx="9.4" cy="12.2" r=".5" fill="#fff"/><circle cx="15.4" cy="12.2" r=".5" fill="#fff"/>
-      <ellipse cx="12" cy="16.6" rx="1.7" ry="1.3" fill="#2B1A10"/>
-      <ellipse cx="6.9" cy="15.6" rx="1.4" ry=".9" fill="#F59E95" opacity=".6"/><ellipse cx="17.1" cy="15.6" rx="1.4" ry=".9" fill="#F59E95" opacity=".6"/>
-    </symbol>
-    <symbol id="i-hoeren" viewBox="0 0 32 32">
-      <path d="M4.5 12 H10 L17 6 V26 L10 20 H4.5 Z" fill="currentColor" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/>
-      <path d="M21.5 11.5 Q24.6 16 21.5 20.5 M25.2 7.2 Q31 16 25.2 24.8" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>
-    </symbol>
-    <symbol id="i-langsam" viewBox="0 0 32 32">
-      <path d="M25.2 12.5 L23.4 6.6 M28 12.5 L29.6 6.6" stroke="#C98D4B" stroke-width="2.2" stroke-linecap="round" fill="none"/>
-      <circle cx="23.2" cy="6" r="1.6" fill="#C98D4B"/><circle cx="29.8" cy="6" r="1.6" fill="#C98D4B"/>
-      <path d="M2.5 26.5 C2.5 24.5 4.5 23.5 7 23.5 H20 C22 23.5 23 22 23 20 V15 C23 12.8 24.6 11.2 26.6 11.2 C28.6 11.2 30.2 12.8 30.2 15 V20.5 C30.2 24.6 27.2 27.8 23 27.8 H4.5 C3.3 27.8 2.5 27.3 2.5 26.5 Z" fill="#E9B872"/>
-      <circle cx="13.5" cy="15.5" r="9.6" fill="#F28C28"/>
-      <path d="M13.8 16.2 C13.2 14.6 15.6 13.4 17 15 C18.8 17.2 16.6 20.4 13.4 20.2 C9.6 20 7.8 15.8 10 12.6 C12.6 9 18.4 9.6 20.2 13.8" fill="none" stroke="#FFD9A6" stroke-width="2" stroke-linecap="round"/>
-      <circle cx="27.4" cy="15.6" r="1.2" fill="#2B1A10"/>
-      <path d="M25.4 19.4 Q27 21 28.8 19.6" stroke="#8C5A2B" stroke-width="1.2" fill="none" stroke-linecap="round"/>
     </symbol>
     <symbol id="erdbeere" viewBox="0 0 40 40">
       <path d="M20 38 C13 35 5.5 26 5.5 17.5 C5.5 11.5 11 8.5 20 8.5 C29 8.5 34.5 11.5 34.5 17.5 C34.5 26 27 35 20 38 Z" fill="#E2483D"/>

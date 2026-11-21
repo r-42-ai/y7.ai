@@ -1,7 +1,7 @@
 'use strict';
 
 /* =====================================================================
-   ÜBUNGEN: die Französisch-Aufgaben auf der Karte
+   ÜBUNGEN: die Aufgaben der Sprachkurse (Französisch …) auf der Karte
    Reine Ansicht. Sie baut Vorgabe, Antwort und Feld einer Aufgabe aus
    Lernen.aufgabe() und meldet dem Gastgeber (franz.js), was Nea tut.
    Verbuchen, Äpfel, Stimme und die drei festen Knöpfe gehören ihm.
@@ -29,6 +29,12 @@
 
    Tasten und Kacheln im Feld antworten beim Aufsetzen des Fingers
    (pointerdown), alles auf der Karte beim Klick.
+
+   Jeder Kurs gibt bei zeigen(aufgabe, gastgeber, kurs) mit, was hier von
+   seiner Sprache abhängt (siehe FRANZ unten: sein Lernen, das urteilt,
+   Tastatur, Akzente auf den Ziffern, lang, «auf Französisch»,
+   Merkhilfen, Bildchen der Stufen). Ohne kurs gilt Französisch, genau
+   wie es hier immer stand.
    ===================================================================== */
 
 const Uebungen = (() => {
@@ -38,9 +44,54 @@ const Uebungen = (() => {
   const ARTIKEL_GENUS = { le: 'm', un: 'm', la: 'f', une: 'f' };
   const DE_GENUS = { der: 'm', die: 'f', eine: 'f' };
 
+  /* ---------- Der Kurs ---------- */
+
+  // Was ein Kurs der Ansicht mitgibt. Ohne Angabe gilt dieser, Französisch.
+  //   lang          die Sprache der Fremdwörter (lang="…")
+  //   sprache       für «Wie heisst das auf …?» und «Schreibe auf …»
+  //   lernen()      sein Lernen (Lernen oder Lernen.kurs(…)): Es urteilt über Getipptes und Gelegtes, kennt
+  //                 den Kontrast der Artikel und wie lang eine Form höchstens getippt wird (K.SCHREIBEN_MAX)
+  //   tastatur      { reihen, akzente, tippbar }, wie im Sprachprofil von Lernen (S.tastatur). reihen: die
+  //                 Tasten jeder Reihe mit Leerzeichen getrennt; back, leer und ok sind die Sondertasten. Es gibt
+  //                 zehn Spalten, leer füllt seine Reihe darauf auf (bei Französisch zwei Spalten breit, bei
+  //                 einer Reihe mehr nur eine). akzente: was die Ziffern 1, 2, … der echten Tastatur tippen
+  //                 (leer: nichts), diese Tasten sind hervorgehoben. tippbar: was sich tippen lässt (fehlt:
+  //                 jede Taste mit einem Zeichen und das Leerzeichen).
+  //   stufen        die Symbole der Stufen 0–5 heissen stufen + Stufe (#reife-0 …)
+  //   merkhilfen()  die Merkhilfen je Eintrag (MERKHILFEN)
+  //   uebungen      welche Übungen es gibt (fehlt: alle); jede andere wird nur gezeigt (unbekanntBauen)
+  // Die Tastatur des Französisch, oben die Akzente (an der echten Tastatur auf den Ziffern 1 bis 8). Sie gilt,
+  // wenn Lernen kein Sprachprofil mit einer Tastatur hat.
+  const FRANZ_TASTATUR = {
+    reihen: ['é è ê à â ç û œ ’ -', 'q w e r t z u i o p', 'a s d f g h j k l back', 'y x c v b n m leer ok'],
+    akzente: ['é', 'è', 'ê', 'à', 'â', 'ç', 'û', 'œ'],
+  };
+  const FRANZ = {
+    key: 'franz', lang: 'fr', sprache: 'Französisch', stufen: 'reife-',
+    lernen: () => Lernen,
+    get tastatur() {
+      try { return (Lernen.SPRACHE && Lernen.SPRACHE.tastatur) || FRANZ_TASTATUR; } catch (err) { return FRANZ_TASTATUR; }
+    },
+    merkhilfen: () => MERKHILFEN,
+  };
+  const SPALTEN = 10;
+  // Die Tastatur eines Kurses, einmal ausgerechnet: Reihen, Akzente, und was sich tippen lässt
+  const tastaturen = new WeakMap();
+  function tastaturVon(kurs) {
+    if (!tastaturen.has(kurs)) {
+      const t = kurs.tastatur || {}, reihen = (t.reihen || []).map(r => r.split(' ').filter(Boolean));
+      const tippbar = t.tippbar || new Set(reihen.flat().filter(k => k.length === 1).concat(' '));
+      tastaturen.set(kurs, { reihen, akzente: t.akzente || [], tippbar });
+    }
+    return tastaturen.get(kurs);
+  }
+  // Die Sprache und das Lernen der Aufgabe, die gerade gebaut wird
+  const sprache = () => (lauf && lauf.kurs ? lauf.kurs : FRANZ).lang;
+  const lernen = () => (lauf && lauf.kurs && lauf.kurs.lernen ? lauf.kurs : FRANZ).lernen();
+
   /* ---------- Die laufende Aufgabe ---------- */
 
-  // { a, host, ctl, geurteilt, fertig, uhren, hoerer, spiel }; null: Nichts hört mehr zu
+  // { a, host, kurs, tast, ctl, geurteilt, fertig, uhren, hoerer, spiel }; null: Nichts hört mehr zu
   let lauf = null;
 
   // Der Gastgeber muss nicht jede Meldung kennen
@@ -136,11 +187,6 @@ const Uebungen = (() => {
     });
   }
 
-  // Die obere Reihe der Tastatur; an der physischen liegen diese Zeichen auf den Ziffern 1 bis 8
-  const AKZENT_TASTEN = ['é', 'è', 'ê', 'à', 'â', 'ç', 'û', 'œ'];
-  const TASTEN = ['é è ê à â ç û œ ’ -', 'q w e r t z u i o p', 'a s d f g h j k l back', 'y x c v b n m leer ok'];
-  const TIPPBAR = new Set(TASTEN.join(' ').split(' ').filter(k => k.length === 1).concat(' '));
-
   // Ziffer einer Taste, auch vom Ziffernblock und von Tastaturen, auf denen die Ziffern mit Shift kommen
   function zifferVon(e) {
     if (/^[1-9]$/.test(e.key)) return +e.key;
@@ -148,12 +194,13 @@ const Uebungen = (() => {
     return m ? +m[1] : 0;
   }
   // Das Zeichen, das eine Taste beim Legen und Schreiben meint: Buchstaben klein (grosse gibt es
-  // auf der Tastatur unten nicht), 1 bis 8 sind die Akzente, jeder Apostroph ist der typografische.
+  // auf der Tastatur unten nicht), die Ziffern sind die Akzente des Kurses (Französisch: 1 bis 8 die
+  // obere Reihe), jeder Apostroph ist der typografische, wo es ihn gibt.
   // '' für alles andere, auch für tote Tasten: Auf die ist kein Verlass.
-  function zeichenVon(e) {
+  function zeichenVon(e, tast) {
     const k = typeof e.key === 'string' ? e.key : '';
-    if (/^[1-8]$/.test(k)) return AKZENT_TASTEN[k - 1];
-    if (/^['’ʼ]$/.test(k)) return '’';
+    if (/^[1-9]$/.test(k)) return tast.akzente[k - 1] || '';
+    if (/^['’ʼ]$/.test(k)) return tast.tippbar.has('’') ? '’' : '';
     if (k === ' ' || k === '-') return k;
     const klein = k.toLowerCase().normalize('NFC');
     return [...klein].length === 1 && /^\p{L}$/u.test(klein) ? klein : '';
@@ -221,10 +268,10 @@ const Uebungen = (() => {
     }
     return aus;
   }
-  // Die Erdbeere einer Stufe (0 Samen … 5 reif)
-  function stufeHTML(st) {
+  // Das Bildchen einer Stufe (0 Samen … 5 reif): bei Französisch die Erdbeere, sonst das des Kurses
+  function stufeHTML(st, kurs) {
     const n = clamp(Math.round(+st || 0), 0, 5);
-    return '<svg class="fr-stufe s' + n + '" viewBox="0 0 24 24" aria-hidden="true"><use href="#reife-' + n + '"/></svg>';
+    return '<svg class="fr-stufe s' + n + '" viewBox="0 0 24 24" aria-hidden="true"><use href="#' + (kurs || FRANZ).stufen + n + '"/></svg>';
   }
 
   // Plätze zeichnen. Was dieselbe Zahl «wort» trägt, steht in einem span.fr-wort und bricht nie um
@@ -268,7 +315,7 @@ const Uebungen = (() => {
       }
       h += '</span>';
     }
-    return '<div class="fr-plaetze ' + reihe + (opt.klasse ? ' ' + opt.klasse : '') + '" lang="fr">' + h + '</div>';
+    return '<div class="fr-plaetze ' + reihe + (opt.klasse ? ' ' + opt.klasse : '') + '" lang="' + sprache() + '">' + h + '</div>';
   }
   // Buchstaben-Plätze so gross wie möglich (höchstens 56 px), aber das längste Wort bleibt auf
   // einer Zeile. Gemessen wird, weil Vorgedrucktes so breit ist wie seine Schrift. Dreizehn
@@ -319,7 +366,7 @@ const Uebungen = (() => {
   // Die Ablage mit allen Kacheln. Am Ende der Knopf, der die zuletzt gelegte zurückholt.
   // Fremde Kacheln sehen aus wie alle anderen.
   function ablageHTML(kacheln) {
-    return '<div class="fr-ablage" lang="fr">'
+    return '<div class="fr-ablage" lang="' + sprache() + '">'
       + kacheln.map(k => '<button type="button" class="fr-kachel ' + esc(k.art || '') + '" data-id="' + esc(k.id) + '">' + esc(k.text) + '</button>').join('')
       + '<button type="button" class="fr-zurueck" aria-label="Letzte Kachel zurücknehmen" lang="de" disabled>' + zeichen('i-back') + '</button></div>';
   }
@@ -336,18 +383,21 @@ const Uebungen = (() => {
     }
     return aus;
   }
-  // Die Tastatur für «schreiben»: vier Reihen zu zehn Spalten, oben die Akzente
-  function tastaturHTML() {
+  // Die Tastatur für «schreiben»: die Reihen des Kurses zu zehn Spalten (Französisch: vier, oben die Akzente).
+  // Die Leertaste füllt ihre Reihe; zwei Spalten breit ist sie ohnehin (uebungen.css), sonst sagt es ihr style.
+  function tastaturHTML(tast) {
+    const leer = spalten => '<button type="button" class="taste fr-taste leer" data-k="leer" aria-label="Leerzeichen" lang="de"'
+      + (spalten === 2 ? '' : ' style="grid-column: span ' + spalten + '"') + '><svg viewBox="0 0 32 32" aria-hidden="true">'
+      + '<path d="M5 12 V20 H27 V12" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';
     const sonder = {
       back: '<button type="button" class="taste fr-taste zurueck" data-k="back" aria-label="Löschen" lang="de" disabled>' + zeichen('i-back') + '</button>',
-      leer: '<button type="button" class="taste fr-taste leer" data-k="leer" aria-label="Leerzeichen" lang="de"><svg viewBox="0 0 32 32" aria-hidden="true">'
-        + '<path d="M5 12 V20 H27 V12" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>',
       ok: '<button type="button" class="taste fr-taste pruefen" data-k="ok" aria-label="Prüfen" lang="de" disabled>' + zeichen('i-ok') + '</button>',
     };
-    return TASTEN.join(' ').split(' ').map(k => {
-      const z = AKZENT_TASTEN.indexOf(k);
+    return tast.reihen.map(reihe => reihe.map(k => {
+      if (k === 'leer') return leer(Math.max(1, SPALTEN - (reihe.length - 1)));
+      const z = tast.akzente.indexOf(k);
       return sonder[k] || '<button type="button" class="taste fr-taste' + (z >= 0 ? ' akzent" data-z="' + (z + 1) : '') + '" data-k="' + esc(k) + '">' + esc(k) + '</button>';
-    }).join('');
+    }).join('')).join('');
   }
 
   /* ---------- Karte und Feld ---------- */
@@ -374,7 +424,7 @@ const Uebungen = (() => {
 
   // Vorgabe: kleine Überschrift, grosse Zeile mit den Hör-Knöpfen, kleine Zeile darunter.
   // v = { cap, gross, klein, fr, ton, clip, langsam }: gross und klein sind fertiges HTML;
-  // fr: Die grosse Zeile ist Französisch; ton: 'gross' (nur hören) | 'normal' | nichts.
+  // fr: Die grosse Zeile ist in der Fremdsprache; ton: 'gross' (nur hören) | 'normal' | nichts.
   function vorgabeBauen(v) {
     const a = lauf.a;
     const clip = v.clip === undefined ? a.clip : v.clip;
@@ -391,7 +441,7 @@ const Uebungen = (() => {
     }
     if (v.gross) {
       const n = v.gross.replace(/<[^>]*>/g, '').length;
-      kern += '<div class="fr-gross' + (n > 34 ? ' laenger' : n > 18 ? ' lang' : '') + '"' + (v.fr ? ' lang="fr"' : '') + '>' + v.gross + '</div>';
+      kern += '<div class="fr-gross' + (n > 34 ? ' laenger' : n > 18 ? ' lang' : '') + '"' + (v.fr ? ' lang="' + sprache() + '"' : '') + '>' + v.gross + '</div>';
     }
     if (kern) h += '<div class="fr-kern">' + kern + '</div>';
     if (v.klein) h += '<div class="fr-klein">' + v.klein + '</div>';
@@ -406,12 +456,12 @@ const Uebungen = (() => {
 
   /* ---------- Auswahl: bedeutung, hoeren, finden, lauschen, luecke ---------- */
 
-  // Was jede Auswahl-Aufgabe vorgibt. optFr: Die Antworten sind Französisch.
-  // ohneTon: was dasteht, wenn eine Hör-Aufgabe doch ohne Ton gezeigt wird.
+  // Was jede Auswahl-Aufgabe vorgibt. optFr: Die Antworten sind in der Fremdsprache.
+  // ohneTon: was dasteht, wenn eine Hör-Aufgabe doch ohne Ton gezeigt wird. cap kann vom Kurs abhängen.
   const WAHL = {
     bedeutung: { cap: 'Was heisst das?', gross: a => a.fr, fr: true, ton: 'normal' },
     hoeren: { cap: 'Was hörst du?', ton: 'gross', ohneTon: a => a.fr, fr: true },
-    finden: { cap: 'Wie heisst das auf Französisch?', gross: a => a.de, optFr: true },
+    finden: { cap: k => 'Wie heisst das auf ' + k.sprache + '?', gross: a => a.de, optFr: true },
     lauschen: { cap: 'Was hörst du?', ton: 'gross', ohneTon: a => a.de, optFr: true },
     luecke: { cap: 'Welches Wort fehlt?', klein: a => a.de, optFr: true },
   };
@@ -422,7 +472,7 @@ const Uebungen = (() => {
     const mitTon = w.ton && a.ton !== false && a.clip;
     const gross = w.gross ? w.gross(a) : (w.ohneTon && !mitTon ? w.ohneTon(a) : '');
     vorgabeBauen({
-      cap: w.cap, ton: w.ton, fr: !!w.fr,
+      cap: typeof w.cap === 'function' ? w.cap(lauf.kurs) : w.cap, ton: w.ton, fr: !!w.fr,
       gross: gross ? esc(gross) : '',
       klein: w.klein ? esc(w.klein(a)) : '',
     });
@@ -432,7 +482,7 @@ const Uebungen = (() => {
     const lang = Math.max(0, ...optionen.map(o => String(o.text).length)) > 26;
     const feld = feldArt('auswahl', (optionen.length === 3 ? 'einzeln' : '') + (lang ? ' lang' : ''));
     feld.innerHTML = optionen.map((o, i) => '<button type="button" class="fr-option" data-i="' + i + '"'
-      + (w.optFr ? ' lang="fr"' : '') + '><span class="fr-opt-text">' + esc(o.text) + '</span></button>').join('');
+      + (w.optFr ? ' lang="' + sprache() + '"' : '') + '><span class="fr-opt-text">' + esc(o.text) + '</span></button>').join('');
     const knoepfe = [...feld.querySelectorAll('.fr-option')];
 
     // Ein Versuch: Die zweite Wahl wäre nur noch Raten unter dem Rest
@@ -553,14 +603,14 @@ const Uebungen = (() => {
     const m = /^(.*?: )(\S+) (.*), aber (.*)\.$/.exec(text);
     if (!m || !DE_GENUS[m[2]]) return esc(text);
     return esc(m[1]) + '<span class="fr-artikel-' + DE_GENUS[m[2]] + '">' + esc(m[2]) + '</span> ' + esc(m[3])
-      + ', aber <span lang="fr">' + frHTML(m[4], e, { schild: false }) + '</span>.';
+      + ', aber <span lang="' + sprache() + '">' + frHTML(m[4], e, { schild: false }) + '</span>.';
   }
-  // Lernen und die Merkhilfen sind Nachbardateien: Fehlt eine, steht die Karte eben ohne Kasten da
+  // Lernen und die Merkhilfen (des Kurses) sind Nachbardateien: Fehlt eine, steht die Karte eben ohne Kasten da
   function kontrastVon(a) {
-    try { return Lernen.kontrast(a.e); } catch (err) { return null; }
+    try { return lernen().kontrast(a.e); } catch (err) { return null; }
   }
   function merkhilfeVon(a) {
-    try { return MERKHILFEN[a.e.id] || null; } catch (err) { return null; }
+    try { return lauf.kurs.merkhilfen()[a.e.id] || null; } catch (err) { return null; }
   }
 
   function wortKarte(a, cap, mitKaesten) {
@@ -577,7 +627,7 @@ const Uebungen = (() => {
       // Was zusammengehört, steht nebeneinander; Sätze und Langes untereinander
       const gestapelt = e.art === 'satz' || teile.some(t => (t.fr.join(', ') + t.zeigeDe).length > 40);
       h += '<div class="fr-teile' + (gestapelt ? ' gestapelt' : '') + '">' + teile.map(t => '<div class="fr-teil">'
-        + '<span lang="fr">' + frHTML(t.fr.join(', '), e, { schild: false }) + '</span><i>=</i><span>' + esc(t.zeigeDe) + '</span></div>').join('') + '</div>';
+        + '<span lang="' + sprache() + '">' + frHTML(t.fr.join(', '), e, { schild: false }) + '</span><i>=</i><span>' + esc(t.zeigeDe) + '</span></div>').join('') + '</div>';
     }
     if (mitKaesten) {
       const kontrast = kontrastVon(a), merk = merkhilfeVon(a);
@@ -646,7 +696,7 @@ const Uebungen = (() => {
     if (n > 1 && rechts.every((x, i) => x === links[i])) rechts.push(rechts.shift());
     let h = '<div class="fr-paare">';
     for (let r = 0; r < n; r++) {
-      h += '<button type="button" class="fr-paar fr" data-seite="fr" data-i="' + links[r] + '" data-reihe="' + r + '" lang="fr">' + esc(paare[links[r]].fr) + '</button>'
+      h += '<button type="button" class="fr-paar fr" data-seite="fr" data-i="' + links[r] + '" data-reihe="' + r + '" lang="' + sprache() + '">' + esc(paare[links[r]].fr) + '</button>'
         + '<button type="button" class="fr-paar de" data-seite="de" data-i="' + rechts[r] + '" data-reihe="' + r + '">' + esc(paare[rechts[r]].de) + '</button>';
     }
     $('frAntwort').innerHTML = h + '</div>';
@@ -764,7 +814,7 @@ const Uebungen = (() => {
       // So springt nichts, und ein Tipp auf eine Lücke holt sie zurück.
       // data-z: die Ziffer, die den Kandidaten auf der Tastatur wählt (zu sehen erst nach der ersten Taste)
       if (aktiv) {
-        feld.innerHTML = (aktiv.p.wahl || []).map((w, i) => '<button type="button" class="fr-option" data-i="' + i + '" data-z="' + (i + 1) + '" lang="fr">' + esc(w) + '</button>').join('');
+        feld.innerHTML = (aktiv.p.wahl || []).map((w, i) => '<button type="button" class="fr-option" data-i="' + i + '" data-z="' + (i + 1) + '" lang="' + sprache() + '">' + esc(w) + '</button>').join('');
       } else {
         for (const b of feld.querySelectorAll('.fr-option')) {
           b.disabled = true;
@@ -802,7 +852,7 @@ const Uebungen = (() => {
       if (!lauf || lauf.geurteilt || !luecken.every(l => l.wert)) return false;
       versuche++;
       const eingabe = text();
-      const u = Lernen.reihenUrteil(luecken.map(l => l.wert), luecken.map(l => l.p));
+      const u = lernen().reihenUrteil(luecken.map(l => l.wert), luecken.map(l => l.p));
       if (!u.richtig && versuche === 1) {
         // Was stimmt, bleibt; die anderen Lücken sind wieder leer
         fehler = u.fehler.slice();
@@ -1001,7 +1051,7 @@ const Uebungen = (() => {
     function pruefen() {
       if (!lauf || lauf.geurteilt || !voll()) return false;
       versuche++;
-      const u = Lernen.reihenUrteil(offen.map(s => s.k.text), offen.map(s => s.p));
+      const u = lernen().reihenUrteil(offen.map(s => s.k.text), offen.map(s => s.p));
       if (u.richtig) {
         const eingabe = text();
         stapel = [];
@@ -1158,18 +1208,20 @@ const Uebungen = (() => {
     const diktat = a.vorgabe === 'ton' && a.ton !== false && !!a.clip;
     const anders = diktat ? [] : a.vorgabe === 'ton' ? (a.formen || []).slice(0, a.form) : a.andersAls || [];
     vorgabeBauen({
-      cap: diktat ? 'Schreibe, was du hörst' : 'Schreibe auf Französisch',
+      cap: diktat ? 'Schreibe, was du hörst' : 'Schreibe auf ' + lauf.kurs.sprache,
       ton: diktat ? 'gross' : '',
       gross: diktat ? '' : esc(a.de || ''),
-      klein: anders.length ? 'anders als: ' + anders.map(f => '<b lang="fr">' + esc(f) + '</b>').join(', ') : '',
+      klein: anders.length ? 'anders als: ' + anders.map(f => '<b lang="' + sprache() + '">' + esc(f) + '</b>').join(', ') : '',
     });
     // Über der Tastatur ist auf einem kleinen Handy wenig Platz: Dort fällt der Hör-Knopf kleiner aus
     if (diktat && $('frHoeren')) $('frHoeren').classList.add('knapp');
     const antwort = $('frAntwort');
-    antwort.innerHTML = '<div class="fr-zeile feld aktiv" lang="fr" aria-label="Deine Antwort"></div><div class="fr-hinweis"></div>';
+    antwort.innerHTML = '<div class="fr-zeile feld aktiv" lang="' + sprache() + '" aria-label="Deine Antwort"></div><div class="fr-hinweis"></div>';
     const zeile = antwort.querySelector('.fr-zeile'), hinweis = antwort.querySelector('.fr-hinweis');
     const feld = feldArt('tastatur');
-    feld.innerHTML = tastaturHTML();
+    // Was sich auf der Tastatur des Kurses tippen lässt, und wie lang es höchstens wird
+    const tippbar = lauf.tast.tippbar, MAX = lernen().K.SCHREIBEN_MAX;
+    feld.innerHTML = tastaturHTML(lauf.tast);
     const ok = feld.querySelector('[data-k="ok"]'), back = feld.querySelector('[data-k="back"]');
     // text: die getippten Zeichen, je { ch, falsch }; ort: die Schreibmarke steht vor text[ort];
     // weit: beim Nachbauen so viele Zeichen der Lösung stehen schon da
@@ -1217,8 +1269,8 @@ const Uebungen = (() => {
     function tippe(ch) {
       if (!lauf || lauf.fertig || (lauf.geurteilt && !nachbau)) return false;
       if (nachbau) return abschreiben(ch);
-      // Mehr als 30 Zeichen hat keine Form, die getippt wird
-      if (text.length >= 30) {
+      // Länger als MAX (30) ist keine Form, die getippt wird
+      if (text.length >= MAX) {
         bewege(zeile, 'wackelt');
         return true;
       }
@@ -1253,7 +1305,7 @@ const Uebungen = (() => {
     // Eine falsche Taste wackelt nur. Komma und Fragezeichen gibt es auf der Tastatur nicht: Sie
     // setzen sich von selbst.
     const vonSelbst = () => {
-      while (weit < ziel.length && !TIPPBAR.has(ziel[weit].toLowerCase())) weit++;
+      while (weit < ziel.length && !tippbar.has(ziel[weit].toLowerCase())) weit++;
     };
     function abschreiben(ch) {
       if (ch !== ziel[weit].toLowerCase()) {
@@ -1292,7 +1344,7 @@ const Uebungen = (() => {
       // Die Spur gehört zu der Form, an der gemessen wurde: «la gymnastik» zeigt «la gymnastique», nicht «la gym».
       // Sonst stünden die markierten Stellen hinter dem Ende der Spur. Wer ihr folgt, schreibt eine Form, die gilt.
       const form = bezug ? [...bezug] : ziel;
-      const kernAb = form.length - [...Lernen.zerlegen(form.join(''), e).kern].length;
+      const kernAb = form.length - [...lernen().zerlegen(form.join(''), e).kern].length;
       let wort = 0, vorn = false, imKern = false;
       const plaetze = form.map((ch, i) => {
         const p = /\p{L}/u.test(ch) ? { art: 'buchstabe', wort, zeigt: !vorn || (i >= kernAb && !imKern) ? ch : '' } : { art: 'fest', text: ch, wort };
@@ -1312,7 +1364,7 @@ const Uebungen = (() => {
     function pruefen() {
       const ein = eingabe();
       if (!offenIst() || !pruefbar()) return false;
-      const u = Lernen.urteil(ein, e, a.teil, { form: a.form, vorgabe: diktat ? 'ton' : 'de' });
+      const u = lernen().urteil(ein, e, a.teil, { form: a.form, vorgabe: diktat ? 'ton' : 'de' });
       if (u.ganz === 'gleiche_form') {
         // Die Form, die oben steht: kein Versuch. Die Zeile wird leer, das Hörnchen fragt nach der anderen.
         text = [];
@@ -1371,7 +1423,7 @@ const Uebungen = (() => {
       // Nachbauen setzt es sich von selbst. Wer schon schreibt oder ein Wort mit «?» vor sich hat,
       // tippt es mit, und es fällt weg. «Weiss ich nicht» heisst es nur auf der leeren Zeile.
       if (k === '?' && (nachbau || text.length || ziel.includes('?'))) return true;
-      return TIPPBAR.has(z) ? tippe(z) : false;
+      return tippbar.has(z) ? tippe(z) : false;
     }
     tippHoerer(feld, '.fr-taste', b => {
       const k = b.dataset.k;
@@ -1417,16 +1469,19 @@ const Uebungen = (() => {
     return {};
   }
 
-  function zeigen(aufgabe, host) {
+  // kurs: was der Kurs mitgibt (siehe FRANZ oben); ohne ihn Französisch
+  function zeigen(aufgabe, host, kurs) {
     aufraeumen();
-    const a = aufgabe || {};
-    lauf = { a, host: host || {}, ctl: {}, geurteilt: false, fertig: false, uhren: [], hoerer: [], spiel: () => false };
+    const a = aufgabe || {}, k = kurs || FRANZ;
+    lauf = { a, host: host || {}, kurs: k, tast: tastaturVon(k), ctl: {}, geurteilt: false, fertig: false, uhren: [], hoerer: [], spiel: () => false };
     $('frVorgabe').innerHTML = '';
     $('frAntwort').innerHTML = '';
     // Die neue Aufgabe fängt oben an, auch wenn die letzte bis zur Lösung gerollt war
     const karte = $('frKarte');
     if (karte) karte.scrollTop = 0;
-    lauf.ctl = (BAU[a.uebung] || unbekanntBauen)(a) || {};
+    // Eine Übung, die der Kurs nicht hat, zeigt nur, was gemeint war
+    const bau = k.uebungen && !k.uebungen.includes(a.uebung) ? unbekanntBauen : BAU[a.uebung] || unbekanntBauen;
+    lauf.ctl = bau(a) || {};
     // Kein Knopf der Aufgabe behält den Fokus: Sonst löst die Leertaste nach einem Mausklick ihn noch einmal aus.
     // Das gilt, solange eine Aufgabe dasteht, für die ganze Eingabe, also auch für «Prüfen», «Weiss ich nicht»
     // und «Weiter»: Beim Schreiben ist die Leertaste ein Zeichen und darf nie «Prüfen» auslösen.
@@ -1460,7 +1515,7 @@ const Uebungen = (() => {
       // Eine gehaltene Taste prüft nicht zweimal und legt keine Reihe von Kacheln
       if (e.repeat) return true;
     }
-    if (typeof ctl.taste === 'function' && ctl.taste(e, zeichenVon(e)) === true) return true;
+    if (typeof ctl.taste === 'function' && ctl.taste(e, zeichenVon(e, lauf.tast)) === true) return true;
     if (k === 'Enter') return typeof ctl.pruefen === 'function' && ctl.pruefen() === true;
     if (k === 'Tab') {
       // Auch ohne Clip verbraucht: Sonst wandert der Fokus auf einen Knopf, und die Leertaste gehört ihm
@@ -1486,5 +1541,5 @@ const Uebungen = (() => {
     b.insertAdjacentHTML('beforeend', '<span class="fr-pieks-kopf" aria-hidden="true">' + zeichen('i-pieks-kopf', 24) + '</span>');
   }
 
-  return { zeigen, taste, pruefen, weissNicht, pieksTipp, aufraeumen, leeren, frHTML, schildHTML, stufeHTML };
+  return { zeigen, taste, pruefen, weissNicht, pieksTipp, aufraeumen, leeren, frHTML, schildHTML, stufeHTML, FRANZ };
 })();
