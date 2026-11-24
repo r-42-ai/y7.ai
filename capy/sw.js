@@ -3,14 +3,14 @@
 // ankommen; nur wenn das nicht klappt, kommt die gespeicherte Kopie.
 'use strict';
 
-// Liefern alleAufnahmen(), um alle Aufnahmen zu kennen (Capy und das Lama)
-importScripts('texte.js', 'russisch-texte.js');
+// Liefern alleAufnahmen() und uhrAufnahmen(), um alle Aufnahmen zu kennen (Capy, das Lama, die Uhr)
+importScripts('texte.js', 'russisch-texte.js', 'uhr-texte.js');
 
 // Bei neuen Texten genügt es, die «Stand»-Zeile zu ändern: dann holt der neue
 // Service Worker die fehlenden Aufnahmen nach, ohne alles neu zu laden.
 // Wurden bestehende Aufnahmen neu gesprochen (gleiche Dateinamen, z.B. andere
 // Stimme), stattdessen CACHE hochzählen, damit alte Aufnahmen verschwinden.
-// Stand: кошка statt кот
+// Stand: Capy bringt Yuna die Uhr bei
 const CACHE = 'capy-v1';
 const FILES = [
   './',
@@ -18,6 +18,9 @@ const FILES = [
   'russisch-texte.js',
   'russisch.js',
   'russisch.css',
+  'uhr-texte.js',
+  'uhr.js',
+  'uhr.css',
   'manifest.webmanifest',
   'favicon.svg',
   'apple-touch-icon.png',
@@ -25,7 +28,7 @@ const FILES = [
   'icon-512.png',
   'icon-maskable-512.png',
 ];
-const AUDIO = [...new Set(alleAufnahmen().map(x => 'audio/' + x.datei + '.mp3'))];
+const AUDIO = [...new Set(alleAufnahmen().concat(uhrAufnahmen()).map(x => 'audio/' + x.datei + '.mp3'))];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

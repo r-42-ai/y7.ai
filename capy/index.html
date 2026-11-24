@@ -949,6 +949,7 @@
 </style>
 <!-- nach dem eigenen Stil, damit die Russisch-Ecke bei Gleichstand gewinnt -->
 <link rel="stylesheet" href="russisch.css">
+<link rel="stylesheet" href="uhr.css">
 </head>
 <body>
 
@@ -1329,6 +1330,7 @@
       <span id="solved">0</span>
     </button>
     <button class="round pill album" id="album" type="button" aria-label="Album"><svg viewBox="0 0 24 24"><use href="#i-album"/></svg></button>
+    <button class="round pill uhr-kopfknopf" id="uhrKnopf" type="button" aria-label="Uhr lernen" hidden></button>
     <button class="round pill ru-kopfknopf" id="ruKnopf" type="button" aria-label="Russisch" hidden></button>
     <button class="round pill" id="stimme" type="button" aria-label="Vorlesen ausschalten"><svg viewBox="0 0 24 24"><use href="#i-stimme"/></svg></button>
     <button class="round pill" id="sound" type="button" aria-label="Geräusche ausschalten"><svg viewBox="0 0 24 24"><use href="#i-ton"/></svg></button>
@@ -1467,6 +1469,7 @@
     </div>
     <button class="go" id="los" type="button">Los geht's!</button>
     <button class="go zweit" id="losRu" type="button" hidden>Russisch</button>
+    <button class="go uhr-los" id="losUhr" type="button" hidden>Uhr lernen</button>
   </div>
 </div>
 
@@ -2361,6 +2364,9 @@ async function feiern(diese, lob, aufgestiegen, freund, hutNeu) {
       [NEUER_FREUND, sprechtext(freund.text)])) || !gilt()) return;
   }
   if (hutNeu && (!(await sag(zieh('hut_tipp'))) || !gilt())) return;
+  // Einmal am Tag erinnert Capy an die Uhr (uhr.js). Erst nach Stufe und Freund:
+  // ein Tipp auf die Uhr beendet die Feier.
+  if (window.Uhr && (!(await Uhr.erinnern()) || !gilt())) return;
   await pause(300);
   if (!gilt()) return;
   ansage(esc(anzeigetext(vor)) + ' ' + esc(anzeigetext(fakt)), [sprechtext(vor), sprechtext(fakt)]);
@@ -2617,8 +2623,8 @@ const Welt = (() => {
 })();
 
 // Eine Karte oder die Schatzkiste liegt über dem Spiel
-// (auch die Karten und die Russisch-Ecke aus russisch.js)
-const verdeckt = () => !!document.querySelector('.overlay:not([hidden]), #ru:not([hidden])');
+// (auch die Karten und die Russisch-Ecke aus russisch.js, die Uhr-Ecke aus uhr.js)
+const verdeckt = () => !!document.querySelector('.overlay:not([hidden]), #ru:not([hidden]), #uhr:not([hidden])');
 
 /* =====================================================================
    BESUCH: Ab und zu läuft ein Tier über die Wiese oder fliegt vorbei.
@@ -3375,5 +3381,8 @@ if ('serviceWorker' in navigator) {
 <!-- Russisch mit Capys Freundin, dem Lama. Fehlen diese Dateien, läuft alles andere wie immer. -->
 <script src="russisch-texte.js"></script>
 <script src="russisch.js"></script>
+<!-- Die Uhr lernen mit Capys Kuckucksuhr. Fehlen diese Dateien, läuft alles andere wie immer. -->
+<script src="uhr-texte.js"></script>
+<script src="uhr.js"></script>
 </body>
 </html>

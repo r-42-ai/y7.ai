@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Vertont alle Sätze aus texte.js (Capy) und russisch-texte.js (das Lama)
+ * Vertont alle Sätze aus texte.js und uhr-texte.js (Capy) und russisch-texte.js (das Lama)
  * mit ElevenLabs und legt sie als audio/<datei>.mp3 ab. Der Dateiname ist
  * ein Prüfwert über den gesprochenen Text (siehe datei() in texte.js), beim
  * Lama mit «l-» davor (langsam: «ll-»). Ändert sich ein Satz, entsteht eine
@@ -34,6 +34,7 @@ import { fileURLToPath } from 'node:url';
 const DIR = dirname(fileURLToPath(import.meta.url));
 const AUDIO = join(DIR, 'audio');
 const R = createRequire(import.meta.url)('./russisch-texte.js');
+const U = createRequire(import.meta.url)('./uhr-texte.js');
 
 // Capy: «Sandra Squirrel – Quirky Explorer», verspielt und lebendig, von Yunas
 // Familie ausgewählt (vorher «Ela», die beim Loben zu eintönig klang).
@@ -53,7 +54,8 @@ if (has('--force') && !nurStimme && !has('--nur-lebhaft') && !has('--nur-kurz'))
 }
 if (opt('--voice') && !nurStimme) { console.error('--voice nur zusammen mit --stimme.'); process.exit(1); }
 
-const saetze = R.alleAufnahmen();
+// Alles, was die App je abspielen kann: Capy, das Lama und die Uhr-Ecke (jede Aufnahme nur einmal)
+const saetze = [...new Map(R.alleAufnahmen().concat(U.uhrAufnahmen()).map(x => [x.datei, x])).values()];
 
 mkdirSync(AUDIO, { recursive: true });
 const vorhanden = new Set(readdirSync(AUDIO).filter(f => f.endsWith('.mp3')).map(f => f.slice(0, -4)));

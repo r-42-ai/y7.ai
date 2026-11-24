@@ -2,7 +2,7 @@
   "id": "/capy/",
   "name": "Zahlen-Capy",
   "short_name": "Zahlen-Capy",
-  "description": "Zahlenpyramiden mit Capy, Plus und Minus bis 100, und Russisch mit dem Lama",
+  "description": "Zahlenpyramiden mit Capy, Plus und Minus bis 100, die Uhr lesen mit der Kuckucksuhr, und Russisch mit dem Lama",
   "lang": "de-CH",
   "start_url": "./",
   "scope": "./",

@@ -7,11 +7,16 @@
  *   gelernten Buchstaben lesen
  * - jedes Merkwort gibt es, kein Bild kommt doppelt vor
  * - in deutschen Stücken steht nichts Kyrillisches und umgekehrt
+ * Und die Uhr-Ecke (uhr-texte.js):
+ * - jede Fünf-Minuten-Zeit hat ihre eigenen Worte, jede Station gültige Arten
+ * - jede Geschichte aus Capys Tag passt zu mindestens einer Viertelstunde
+ * - angezeigte Texte in Schweizer Schreibweise (ss statt ß)
  * Bei einem Fehler endet es mit Code 1.
  */
 import { createRequire } from 'node:module';
 
 const R = createRequire(import.meta.url)('./russisch-texte.js');
+const U = createRequire(import.meta.url)('./uhr-texte.js');
 const fehler = [];
 const KYR = /[А-Яа-яЁё]/;
 const nurBuchstaben = s => s.toUpperCase().replace(/[^А-ЯЁ]/g, '').split('');
@@ -69,9 +74,32 @@ for (const x of [...R.WOERTER, ...R.SAETZE, ...R.ZAUBERWOERTER]) {
   if (/[A-Za-z]/.test(x.ru)) fehler.push('«' + x.ru + '» enthält lateinische Buchstaben.');
 }
 
+// Uhr
+const worte = new Set();
+for (let t = 0; t < 720; t += 5) {
+  const w = U.uhrZeitwort(t);
+  if (!w) fehler.push('Uhr: keine Worte für ' + U.uhrDigital(t));
+  if (worte.has(w)) fehler.push('Uhr: «' + w + '» kommt zweimal vor.');
+  worte.add(w);
+  if (U.uhrArt(t) === 'minute') fehler.push('Uhr: ' + U.uhrDigital(t) + ' hat keine Art.');
+}
+U.UHR_STATIONEN.forEach((st, i) => {
+  if (st.nr !== i + 1) fehler.push('Uhr: Station ' + st.nr + ' steht an Platz ' + (i + 1) + '.');
+  for (const a of [...st.arten, ...(st.wdh || [])]) if (a !== 'minute' && !U.UHR_ARTEN[a]) fehler.push('Uhr: Station ' + st.nr + ' hat die unbekannte Art «' + a + '».');
+  if (!st.lern.length) fehler.push('Uhr: Station ' + st.nr + ' erklärt nichts.');
+});
+for (const sz of U.UHR_SZENEN) {
+  const viertel = sz.zeit.some(([von, bis]) => { for (let t = von; t <= bis; t++) if (t % 15 === 0) return true; return false; });
+  if (!viertel) fehler.push('Uhr: «' + sz.t + '» passt zu keiner Viertelstunde.');
+}
+const uhrAnzeige = [...Object.values(U.UHR_TEXTE).flatMap(v => (Array.isArray(v) ? v : Object.values(v))), ...U.UHR_STATIONEN.flatMap(st => st.lern),
+  ...U.UHR_SZENEN, ...Object.values(U.UHR_CAPY).flat()].map(e => (typeof e === 'string' ? e : e.t));
+for (const t of uhrAnzeige) if (/ß/.test(t)) fehler.push('Uhr: «' + t + '» hat ein ß (Schweizer Schreibweise: ss).');
+
 const a = R.russischAufnahmen();
 console.log(`${R.BUCHSTABEN.length} Buchstaben, ${R.WOERTER.filter(w => !w.merk).length} Wörter (+${R.WOERTER.filter(w => w.merk).length} Merkwörter), ` +
   `${R.SAETZE.length} Sätze, ${R.ZAUBERWOERTER.length} Zauberwörter, ${a.length} Aufnahmen.`);
+console.log(`Uhr: ${U.UHR_STATIONEN.length} Stationen, ${worte.size} Zeiten in Worten, ${U.UHR_SZENEN.length} Geschichten, ${U.uhrAufnahmen().length} Aufnahmen.`);
 if (fehler.length) {
   console.error(fehler.length + ' Fehler:\n  ' + fehler.join('\n  '));
   process.exit(1);
