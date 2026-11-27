@@ -477,8 +477,9 @@
   }
 
   function tonKnopf() {
-    $('uhrTon').innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="${stand.stimme ? '#i-ton' : '#i-stumm'}"/></svg>`;
-    $('uhrTon').setAttribute('aria-label', stand.stimme ? 'Ton ausschalten' : 'Ton einschalten');
+    // Dasselbe Zeichen wie oben bei Capy: die Sprechblase ist die Stimme (der Lautsprecher dort sind die Geräusche)
+    $('uhrTon').innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="${stand.stimme ? '#i-stimme' : '#i-stimme-aus'}"/></svg>`;
+    $('uhrTon').setAttribute('aria-label', stand.stimme ? 'Vorlesen ausschalten' : 'Vorlesen einschalten');
   }
   const mandarinenZeigen = () => { $('uhrM').textContent = stand.mandarinen; };
   const titelUhr = () => { const d = new Date(); $('uhrTitelIcon').innerHTML = iconUhr(d.getHours() * 60 + d.getMinutes()); };

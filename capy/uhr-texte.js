@@ -230,7 +230,7 @@ const UHR_TEXTE = {
   karte_digital: ['Die Zeigeruhr kannst du schon! Jetzt kommt die Digitaluhr.'],
   karte_fertig: ['Du kannst jetzt alle Uhren lesen! Ich bin so stolz auf dich.'],
   gesperrt: ['Diese Uhr kommt später. Zuerst die davor!'],
-  ton_aus: ['Mein Ton ist aus. Tipp oben auf den Lautsprecher, damit du mich hörst!'],
+  ton_aus: ['Meine Stimme ist aus. Tipp oben auf die Sprechblase, damit du mich hörst!'],
   ueben_start: ['Wir üben, was du schon kannst.', 'Eine Runde üben! Mal sehen, was du noch weisst.'],
 
   // Uhr spielen

@@ -269,10 +269,12 @@
     wieseSprech.querySelector('span').innerHTML = ruHtml(st);
     wieseSprech.hidden = false;
     freuen(wieseLama, 1400);
-    const alt = buehne;
-    buehne = { lama: wieseLama, sagt: null };
+    // Nur zurückstellen, wenn inzwischen niemand die Bühne gewechselt hat: Ging die Russisch-Ecke
+    // dazwischen auf, gehört die Bühne dem Lama dort (sonst bliebe seine Blase stehen)
+    const alt = buehne, meine = { lama: wieseLama, sagt: null };
+    buehne = meine;
     return sprich(null, st.map(x => lamaAufnahme(x))).then(ok => {
-      buehne = alt;
+      if (buehne === meine) buehne = alt;
       setTimeout(() => { wieseSprech.hidden = true; }, 600);
       return ok;
     });

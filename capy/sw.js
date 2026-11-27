@@ -10,7 +10,7 @@ importScripts('texte.js', 'russisch-texte.js', 'uhr-texte.js');
 // Service Worker die fehlenden Aufnahmen nach, ohne alles neu zu laden.
 // Wurden bestehende Aufnahmen neu gesprochen (gleiche Dateinamen, z.B. andere
 // Stimme), stattdessen CACHE hochzählen, damit alte Aufnahmen verschwinden.
-// Stand: Aufnahmen zuerst aus dem Speicher, Vorladen in kurzen Häppchen
+// Stand: Ton wacht beim Tippen wieder auf, Lama-Blase bleibt nicht stehen
 const CACHE = 'capy-v1';
 const FILES = [
   './',
@@ -73,8 +73,7 @@ self.addEventListener('message', e => {
   if (!laedt) laedt = audioVorladen().catch(() => {}).finally(() => { laedt = null; });
 });
 
-// waitUntil wird gleich beim Ereignis aufgerufen, nicht erst später in einem then():
-// Safari verweigert das sonst, und die Antwort ginge verloren.
+// waitUntil wird gleich beim Ereignis aufgerufen, nicht erst später in einem then().
 self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;

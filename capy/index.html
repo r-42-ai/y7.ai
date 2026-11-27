@@ -1751,6 +1751,10 @@ function audio() {
 }
 // Auf iPad und iPhone sonst stumm, sobald der Lautlos-Schalter an ist
 try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* älteres Safari */ }
+// iPad und iPhone wecken den Ton nur bei einem Tipp zuverlässig wieder auf (nach Sperre, Anruf, Siri):
+// darum bei jedem Tipp und beim Zurückkommen in die App nachschauen
+['pointerdown', 'touchend', 'click'].forEach(art => document.addEventListener(art, () => { if (audioCtx) audio(); }, { passive: true }));
+document.addEventListener('visibilitychange', () => { if (!document.hidden && audioCtx) audio(); });
 
 /* TÖNE (selbst erzeugt, keine Dateien) */
 const Ton = (() => {
@@ -1909,6 +1913,11 @@ const Stimme = (() => {
     // Sonst warteten alle, die auf das Ende einer Ansage warten (die Uhr-Ecke, das Lama), für immer.
     const bufs = c ? (await mitFrist(Promise.all(saetze.map(s => dekodieren(c, s))), 5000)) || [] : [];
     if (meine !== nummer) return false;
+    // Ist der Ton gerade erst wieder aufgewacht, kurz warten, statt die Ansage stumm zu lassen
+    if (c && c.state !== 'running' && bufs.some(Boolean)) {
+      await Promise.race([c.resume().catch(() => {}), pause(300)]);
+      if (meine !== nummer) return false;
+    }
     if (!c || c.state !== 'running' || !bufs.some(Boolean)) {
       await schlafen(warte * 1000 + lesezeit(saetze));
       return meine === nummer;
