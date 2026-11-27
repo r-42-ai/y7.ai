@@ -10,7 +10,7 @@ importScripts('texte.js', 'russisch-texte.js', 'uhr-texte.js');
 // Service Worker die fehlenden Aufnahmen nach, ohne alles neu zu laden.
 // Wurden bestehende Aufnahmen neu gesprochen (gleiche Dateinamen, z.B. andere
 // Stimme), stattdessen CACHE hochzählen, damit alte Aufnahmen verschwinden.
-// Stand: Capy bringt Yuna die Uhr bei
+// Stand: Aufnahmen zuerst aus dem Speicher, Vorladen in kurzen Häppchen
 const CACHE = 'capy-v1';
 const FILES = [
   './',
@@ -44,15 +44,19 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Die App bittet nach dem Start darum: alle Aufnahmen holen, die noch fehlen.
-// Ohne Netz bricht es still ab und versucht es beim nächsten Start wieder.
+// Die App bittet nach dem Start und dann jede Dreiviertelminute darum: Aufnahmen holen,
+// die noch fehlen, jeweils höchstens 25 Sekunden lang. Safari mag keine minutenlangen
+// Aufträge an den Service Worker; so ist nach einer Weile trotzdem alles da.
+// Ohne Netz bricht es still ab und versucht es beim nächsten Mal wieder.
 let laedt = null;
 async function audioVorladen() {
   const c = await caches.open(CACHE);
   const da = new Set((await c.keys()).map(r => r.url));
+  const schluss = Date.now() + 25000;
   for (const f of AUDIO) {
     const url = new URL(f, self.registration.scope).href;
     if (da.has(url)) continue;
+    if (Date.now() > schluss) return;
     try {
       const r = await fetch(url);
       if (r.ok) await c.put(url, r);
@@ -61,24 +65,31 @@ async function audioVorladen() {
     }
   }
 }
+// Ohne waitUntil: Ein lange offenes Ereignis kann in Safari die Anfragen der App aufhalten
+// (dann schweigen Capy und das Lama). Wird der Service Worker dazwischen beendet, macht
+// die nächste Bitte einfach weiter.
 self.addEventListener('message', e => {
   if (e.data !== 'vorladen') return;
-  if (!laedt) laedt = audioVorladen().finally(() => { laedt = null; });
-  e.waitUntil(laedt);
+  if (!laedt) laedt = audioVorladen().catch(() => {}).finally(() => { laedt = null; });
 });
 
+// waitUntil wird gleich beim Ereignis aufgerufen, nicht erst später in einem then():
+// Safari verweigert das sonst, und die Antwort ginge verloren.
 self.addEventListener('fetch', e => {
-  const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
-  e.respondWith(
-    fetch(req)
-      .then(res => {
-        if (res.ok) {
-          const copy = res.clone();
-          e.waitUntil(caches.open(CACHE).then(c => c.put(req, copy)));
-        }
-        return res;
-      })
-      .catch(() => caches.match(req, { ignoreSearch: true }).then(hit => hit || caches.match('./')))
-  );
+  const req = e.request, url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  // Aufnahmen ändern sich nie (der Name ist ein Prüfwert über den Text): zuerst aus dem Speicher.
+  // Fehlt eine und klappt das Netz nicht, gibt es einen Fehler, nie die Startseite statt Ton.
+  if (url.pathname.includes('/audio/')) {
+    const antwort = caches.match(req, { ignoreSearch: true })
+      .then(hit => (hit ? { res: hit } : fetch(req).then(res => ({ res, kopie: res.ok ? res.clone() : null }))));
+    e.respondWith(antwort.then(x => x.res));
+    e.waitUntil(antwort.then(x => x.kopie && caches.open(CACHE).then(c => c.put(req, x.kopie))).catch(() => {}));
+    return;
+  }
+  // Alles andere: zuerst das Netz, damit Änderungen sofort ankommen; ohne Netz die gespeicherte Kopie
+  const netz = fetch(req).then(res => ({ res, kopie: res.ok ? res.clone() : null }));
+  e.respondWith(netz.then(x => x.res).catch(() => caches.match(req, { ignoreSearch: true })
+    .then(hit => hit || (req.mode === 'navigate' ? caches.match('./') : Response.error()))));
+  e.waitUntil(netz.then(x => x.kopie && caches.open(CACHE).then(c => c.put(req, x.kopie))).catch(() => {}));
 });

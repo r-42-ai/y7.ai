@@ -804,6 +804,15 @@
       </div>`;
   }
   const weiterKnopf = (text = 'Weiter') => `<button class="go u-weiter" type="button" data-aktion="weiter">${text} ${ICON.weiter}</button>`;
+  // Nach einer richtigen Antwort sofort «Weiter» zeigen: Es geht auch von selbst weiter, wenn Capy
+  // fertig ist (und der Kuckuck gerufen hat), aber Yuna muss nie warten, und nichts kann hängen bleiben.
+  function weiterZeigen() {
+    const seite = inhalt.querySelector('.u-seite');
+    if (!seite || seite.querySelector('[data-aktion=weiter]')) return;
+    const ersetzen = seite.querySelector('.u-ok, .u-pad');
+    if (ersetzen) ersetzen.outerHTML = `<div class="u-dann">${weiterKnopf()}</div>`;
+    else seite.insertAdjacentHTML('beforeend', `<div class="u-dann">${weiterKnopf()}</div>`);
+  }
   const okKnopf = () => `<button class="go u-ok" type="button" data-aktion="pruefen" aria-label="Prüfen">${ICON.ok}</button>`;
   const szeneHtml = sz => (sz ? `<div class="u-szene"><span class="u-szene-bild">${sz.bild}</span><span>${esc(sz.t)}</span></div>` : '');
   // Wenn die Runde inzwischen weiter ist, nichts mehr tun
@@ -916,6 +925,7 @@
       capyMag('happy');
       if (R.uhr) R.uhr.richtig();
       merken(schluessel(a), !R.fehlerHier);
+      weiterZeigen();
       const lob = txt(zieh(R.fehlerHier ? 'ok_nachfehler' : 'ok'));
       let teile;
       if (a.typ === 'tz-lesen') teile = [lob, txt(uhrTageszeit(t).satz), esIst(t)];
@@ -994,6 +1004,7 @@
       u.richtig();
       u.geist(soll, []);
       merken(schluessel(a), !R.fehlerHier);
+      weiterZeigen();
       await sagU(txt(zieh(R.fehlerHier ? 'ok_nachfehler' : 'ok')), istFuenf(soll) ? esIst(soll) : digitalSag(R.ziel));
       if (!gilt(meine, a)) return;
       if (soll % 60 === 0) await u.kuckuck(soll / 60 || 12);
@@ -1140,6 +1151,7 @@
       capyMag('happy');
       R.uhr.richtig();
       merken(schluessel(a), !R.fehlerHier);
+      weiterZeigen();
       await sagU(txt(zieh(R.fehlerHier ? 'ok_nachfehler' : 'ok')), digitalSag(soll));
       if (gilt(meine, a)) setTimeout(() => { if (gilt(meine, a)) naechste(); }, 300);
       return;

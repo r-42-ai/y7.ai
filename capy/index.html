@@ -1745,7 +1745,8 @@ function audio() {
     if (!AC) return null;
     audioCtx = new AC();
   }
-  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  // iPad und iPhone: nach Anruf, Sperrbildschirm oder Siri steht er auf «interrupted», nicht auf «suspended»
+  if (audioCtx.state !== 'running' && audioCtx.state !== 'closed') audioCtx.resume().catch(() => {});
   return audioCtx;
 }
 // Auf iPad und iPhone sonst stumm, sobald der Lautlos-Schalter an ist
@@ -1812,13 +1813,22 @@ const Stimme = (() => {
   let wecker = null;            // beendet das Warten, wenn unterbrochen wird
   let letzte = [];
 
+  // Eine Aufnahme laden. Hängt das Netz (oder der Service Worker), wird nach 8 s abgebrochen:
+  // dann gibt es diesmal keinen Ton, und beim nächsten Mal wird es neu versucht.
   function holen(satz) {
     const id = datei(satz);
     if (!roh.has(id)) {
-      roh.set(id, fetch('audio/' + id + '.mp3').then(r => (r.ok ? r.arrayBuffer() : null)).catch(() => null));
+      const ab = window.AbortController ? new AbortController() : null;
+      const frist = ab ? setTimeout(() => ab.abort(), 8000) : 0;
+      roh.set(id, fetch('audio/' + id + '.mp3', ab ? { signal: ab.signal } : {})
+        .then(r => (r.ok && /audio|mpeg|octet/.test(r.headers.get('content-type') || 'audio') ? r.arrayBuffer() : null))
+        .catch(() => null)
+        .finally(() => clearTimeout(frist)));
     }
     return roh.get(id);
   }
+  // Wartet höchstens ms auf p; danach gilt «nichts da» (null)
+  const mitFrist = (p, ms) => Promise.race([p, new Promise(res => setTimeout(() => res(null), ms))]);
 
   // Stille am Anfang und Ende abschneiden, damit Teile ohne Lücke klingen
   function trimmen(c, buf) {
@@ -1858,13 +1868,15 @@ const Stimme = (() => {
     const daten = await holen(satz);
     if (!daten) { roh.delete(id); return null; }
     try {
-      const buf = await new Promise((ok, nein) => c.decodeAudioData(daten.slice(0), ok, nein));
+      // Neuere Browser geben zusätzlich ein Promise zurück: dessen Fehler hier abfangen (sonst «Uncaught»)
+      const buf = await new Promise((ok, nein) => { const p = c.decodeAudioData(daten.slice(0), ok, nein); if (p && p.catch) p.catch(nein); });
       // Das Lama zuerst laut genug machen, sonst schnitte das Kürzen leise Anfänge ab (с, ф, х).
       // Der Puffer gehört uns, er darf verändert werden.
       const t = trimmen(c, typeof satz === 'string' ? buf : angleichen(buf));
       fertig.set(id, t);
       return t;
     } catch (e) {
+      roh.delete(id);   // kaputt angekommen: beim nächsten Mal neu holen
       return null;
     }
   }
@@ -1893,7 +1905,9 @@ const Stimme = (() => {
     const meine = nummer;
     letzte = saetze;
     const c = stand.stimme ? audio() : null;
-    const bufs = c ? await Promise.all(saetze.map(s => dekodieren(c, s))) : [];
+    // Nie hängen bleiben: Was nach 5 s nicht geladen ist, fehlt diesmal (dann zählt die Lesezeit).
+    // Sonst warteten alle, die auf das Ende einer Ansage warten (die Uhr-Ecke, das Lama), für immer.
+    const bufs = c ? (await mitFrist(Promise.all(saetze.map(s => dekodieren(c, s))), 5000)) || [] : [];
     if (meine !== nummer) return false;
     if (!c || c.state !== 'running' || !bufs.some(Boolean)) {
       await schlafen(warte * 1000 + lesezeit(saetze));
@@ -3373,7 +3387,12 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js')
       .then(() => navigator.serviceWorker.ready)
-      .then(r => r.active && r.active.postMessage('vorladen'))
+      .then(r => {
+        // in kurzen Häppchen (siehe sw.js): jetzt und dann jede Dreiviertelminute, solange die App offen ist
+        const bitten = () => { if (!document.hidden && r.active) r.active.postMessage('vorladen'); };
+        bitten();
+        setInterval(bitten, 45000);
+      })
       .catch(() => {});
   });
 }
